@@ -16,7 +16,7 @@ def title_case(s: str) -> str:
     """Convert string to title case, handling special characters"""
     return ' '.join(word.capitalize() for word in s.replace('_', ' ').replace('-', ' ').split())
 
-ALLOWED_EXTENSIONS = {'mp3', 'wav', 'mp4', 'avi', 'mov'}
+ALLOWED_EXTENSIONS = {'mp3', 'wav', 'mp4', 'avi', 'mov', 'jpg', 'jpeg', 'png', 'gif'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -289,31 +289,37 @@ def register_routes(app):
             # Filter out duplicates and check file sizes
             filenames = []
             duplicates = []
-            oversized = []
+            invalid_types = []
+            total_size = 0
 
             for file in files:
-                if file.filename and allowed_file(file.filename):
-                    filename = secure_filename(file.filename)
-                    # Check file size before saving
-                    file.seek(0, os.SEEK_END)
-                    size = file.tell()
-                    file.seek(0)
+                if not file.filename:
+                    continue
 
-                    if size > 500 * 1024 * 1024:  # 500MB limit
-                        oversized.append(filename)
-                        continue
+                filename = secure_filename(file.filename)
+                file.seek(0, os.SEEK_END)
+                size = file.tell()
+                file.seek(0)
 
-                    # Check if file already exists in database
-                    existing = AudioAnalysis.query.filter_by(filename=filename).first()
-                    if existing:
-                        duplicates.append(filename)
-                    else:
-                        filenames.append(filename)
+                if not allowed_file(file.filename):
+                    invalid_types.append(filename)
+                    continue
 
-            if oversized:
+                total_size += size
+                if total_size > 500 * 1024 * 1024:  # 500MB total batch limit
+                    return jsonify({'error': 'Total batch size exceeds 500MB limit'}), 413
+
+                # Check if file already exists in database
+                existing = AudioAnalysis.query.filter_by(filename=filename).first()
+                if existing:
+                    duplicates.append(filename)
+                else:
+                    filenames.append(filename)
+
+            if invalid_types:
                 return jsonify({
-                    'error': f'The following files exceed 500MB size limit: {", ".join(oversized)}'
-                }), 413
+                    'error': f'Invalid file types: {", ".join(invalid_types)}. Allowed types: {", ".join(ALLOWED_EXTENSIONS)}'
+                }), 400
 
             if not filenames:
                 message = "No valid files selected"
@@ -357,7 +363,8 @@ def register_routes(app):
                 'batch_id': batch_id,
                 'message': 'Batch upload started',
                 'status_url': f'/api/upload/batch/{batch_id}/status',
-                'duplicates': duplicates if duplicates else []
+                'duplicates': duplicates if duplicates else [],
+                'files': filenames
             }), 202
 
         except RequestEntityTooLarge:
@@ -365,7 +372,7 @@ def register_routes(app):
             return jsonify({'error': 'File too large. Maximum file size is 500MB'}), 413
         except Exception as e:
             logger.error(f"Unexpected error in batch upload: {str(e)}", exc_info=True)
-            return jsonify({'error': 'An unexpected error occurred'}), 500
+            return jsonify({'error': 'An unexpected error occurred during batch upload'}), 500
 
     @app.route('/api/upload/batch/<batch_id>/status')
     def batch_status(batch_id):
@@ -518,6 +525,9 @@ def register_routes(app):
                         # Determine MIME type
                         file_ext = os.path.splitext(filename)[1].lower()
                         mime_type = 'audio/wav' if file_ext == '.wav' else 'audio/mpeg'
+                        if file_ext in ['.jpg', '.jpeg', '.png', '.gif']:
+                            mime_type = 'image/' + file_ext[1:]
+
 
                         # Process with Gemini
                         analysis_result = analyzer.upload_to_gemini(filepath, mime_type)
@@ -531,7 +541,7 @@ def register_routes(app):
                         analysis = AudioAnalysis(
                             title=title_case(os.path.splitext(filename)[0]),
                             filename=filename,
-                            file_type='Audio',
+                            file_type='Audio' if file_ext in ['.mp3', '.wav', '.mp4', '.avi', '.mov'] else 'Image',
                             format=analysis_result.get('format', 'narrated episode'),
                             duration=analysis_result.get('duration', '00:00:00'),
                             has_narration=analysis_result.get('has_narration', False),
