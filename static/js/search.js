@@ -13,149 +13,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Keep track of current bundle
     let currentBundle = null;
 
-    // Normalize and group similar terms
-    function normalizeTerms(items) {
-        const normalized = new Map();
-
-        // Common variations to combine
-        const variations = {
-            'mom': ['mum', 'mommy', 'mummy', 'mother'],
-            'dad': ['daddy', 'father', 'papa'],
-            'grandma': ['grandmother', 'granny', 'nana'],
-            'grandpa': ['grandfather', 'granddad', 'grandpapa'],
-            'house': ['home', 'residence', 'dwelling'],
-            'forest': ['woods', 'woodland', 'grove'],
-            'school': ['classroom', 'schoolhouse', 'academy']
-        };
-
-        items.forEach(item => {
-            if (!item) return; // Skip null/undefined items
-
-            let normalizedTerm = item.toLowerCase().trim();
-            if (!normalizedTerm) return; // Skip empty strings
-
-            // Check if this term is a variation of another
-            for (const [main, variants] of Object.entries(variations)) {
-                if (variants.includes(normalizedTerm) || normalizedTerm === main) {
-                    normalizedTerm = main;
-                    break;
-                }
-            }
-
-            if (!normalized.has(normalizedTerm)) {
-                normalized.set(normalizedTerm, new Set());
-            }
-            normalized.get(normalizedTerm).add(item);
-        });
-
-        return normalized;
-    }
-
-    // Create hierarchical structure for environments
-    function categorizeEnvironments(environments) {
-        const categories = {
-            'Indoor Locations': {
-                items: ['house', 'school', 'library', 'museum', 'store', 'restaurant'],
-                pattern: /(house|home|school|library|museum|store|shop|restaurant|building|room)/i
-            },
-            'Outdoor Nature': {
-                items: ['forest', 'beach', 'mountain', 'park', 'garden', 'lake', 'river'],
-                pattern: /(forest|beach|mountain|park|garden|lake|river|woods|field)/i
-            },
-            'Fantasy Realms': {
-                items: ['castle', 'magical forest', 'enchanted garden', 'fairy kingdom'],
-                pattern: /(castle|magical|enchanted|fairy|kingdom|realm)/i
-            },
-            'Urban Settings': {
-                items: ['city', 'street', 'playground', 'neighborhood', 'mall'],
-                pattern: /(city|street|playground|neighborhood|mall|urban|town)/i
-            }
-        };
-
-        const categorized = {};
-        for (const category in categories) {
-            categorized[category] = new Set();
-        }
-        const other = new Set();
-
-        environments.forEach(env => {
-            if (!env) return; // Skip null/undefined
-            let matched = false;
-            for (const [category, info] of Object.entries(categories)) {
-                if (info.pattern.test(env)) {
-                    categorized[category].add(env);
-                    matched = true;
-                    break;
-                }
-            }
-            if (!matched) {
-                other.add(env);
-            }
-        });
-
-        if (other.size > 0) {
-            categorized['Other Locations'] = other;
-        }
-
-        return categorized;
-    }
-
-    // Create hierarchical structure for themes
-    function categorizeThemes(themes) {
-        const categories = {
-            'Emotional Journey': {
-                items: ['friendship', 'love', 'family', 'courage', 'hope'],
-                pattern: /(friend|love|family|courage|hope|emotion|feel)/i
-            },
-            'Adventure & Discovery': {
-                items: ['exploration', 'adventure', 'discovery', 'quest'],
-                pattern: /(explore|adventure|discover|quest|journey)/i
-            },
-            'Life Lessons': {
-                items: ['responsibility', 'growth', 'learning', 'change'],
-                pattern: /(responsibility|grow|learn|change|lesson)/i
-            },
-            'Magic & Wonder': {
-                items: ['magic', 'fantasy', 'imagination', 'dreams'],
-                pattern: /(magic|fantasy|imagine|dream|wonder)/i
-            }
-        };
-
-        const categorized = {};
-        for (const category in categories) {
-            categorized[category] = new Set();
-        }
-        const other = new Set();
-
-        themes.forEach(theme => {
-            if (!theme) return; // Skip null/undefined
-            let matched = false;
-            for (const [category, info] of Object.entries(categories)) {
-                if (info.pattern.test(theme)) {
-                    categorized[category].add(theme);
-                    matched = true;
-                    break;
-                }
-            }
-            if (!matched) {
-                other.add(theme);
-            }
-        });
-
-        if (other.size > 0) {
-            categorized['Other Themes'] = other;
-        }
-
-        return categorized;
-    }
-
     // Function to create checkboxes from categorized items
     function populateCategorizedCheckboxes(container, categories, type) {
         container.innerHTML = Object.entries(categories).map(([category, items]) => `
             <div class="card mb-3">
                 <div class="card-header" role="button" data-bs-toggle="collapse" 
                      data-bs-target="#${type}-${category.replace(/\s+/g, '-').toLowerCase()}"
-                     aria-expanded="false">
+                     aria-expanded="true">
                     <div class="d-flex justify-content-between align-items-center">
                         <h6 class="mb-0">
                             ${category}
@@ -181,6 +45,96 @@ document.addEventListener('DOMContentLoaded', function() {
         `).join('');
     }
 
+    // Create hierarchical structure for themes
+    function categorizeThemes(themes) {
+        const categories = {
+            'Emotional Journey': {
+                pattern: /(friend|love|family|courage|hope|emotion|feel)/i
+            },
+            'Adventure & Discovery': {
+                pattern: /(explore|adventure|discover|quest|journey)/i
+            },
+            'Life Lessons': {
+                pattern: /(responsibility|grow|learn|change|lesson)/i
+            },
+            'Magic & Wonder': {
+                pattern: /(magic|fantasy|imagine|dream|wonder)/i
+            }
+        };
+
+        const categorized = {};
+        for (const category in categories) {
+            categorized[category] = new Set();
+        }
+        const other = new Set();
+
+        themes.forEach(theme => {
+            if (!theme) return;
+            let matched = false;
+            for (const [category, info] of Object.entries(categories)) {
+                if (info.pattern.test(theme)) {
+                    categorized[category].add(theme);
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched) {
+                other.add(theme);
+            }
+        });
+
+        if (other.size > 0) {
+            categorized['Other Themes'] = other;
+        }
+
+        return categorized;
+    }
+
+    // Create hierarchical structure for environments
+    function categorizeEnvironments(environments) {
+        const categories = {
+            'Indoor Locations': {
+                pattern: /(house|home|school|library|museum|store|shop|restaurant|building|room)/i
+            },
+            'Outdoor Nature': {
+                pattern: /(forest|beach|mountain|park|garden|lake|river|woods|field)/i
+            },
+            'Fantasy Realms': {
+                pattern: /(castle|magical|enchanted|fairy|kingdom|realm)/i
+            },
+            'Urban Settings': {
+                pattern: /(city|street|playground|neighborhood|mall|urban|town)/i
+            }
+        };
+
+        const categorized = {};
+        for (const category in categories) {
+            categorized[category] = new Set();
+        }
+        const other = new Set();
+
+        environments.forEach(env => {
+            if (!env) return;
+            let matched = false;
+            for (const [category, info] of Object.entries(categories)) {
+                if (info.pattern.test(env)) {
+                    categorized[category].add(env);
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched) {
+                other.add(env);
+            }
+        });
+
+        if (other.size > 0) {
+            categorized['Other Locations'] = other;
+        }
+
+        return categorized;
+    }
+
     // Function to generate bundle title
     function generateBundleTitle(type, commonality) {
         const titles = {
@@ -188,25 +142,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 `✨ Tales of ${commonality}: Where Magic Begins`,
                 `🌟 The ${commonality} Chronicles: Untold Wonders`,
                 `🎭 Once Upon a ${commonality}`,
-                `💫 Whispers of ${commonality}`,
-                `🌈 ${commonality}: A Tapestry of Tales`,
-                `✨ Through the Lens of ${commonality}`
+                `💫 Whispers of ${commonality}`
             ],
             character: [
                 `🦸 ${commonality}'s Epic Adventures`,
                 `⚔️ ${commonality}: Legend in the Making`,
-                `🎭 The ${commonality} Saga: Heroes Rise`,
-                `✨ ${commonality}'s Magical Moments`,
-                `🌟 Legends of ${commonality}`,
-                `💫 ${commonality}: Beyond the Story`
+                `🎭 The ${commonality} Saga: Heroes Rise`
             ],
             environment: [
                 `🏰 Secrets of the ${commonality}`,
                 `🌌 ${commonality}: A World of Wonder`,
-                `🌳 Hidden Tales of the ${commonality}`,
-                `🌊 The Magic of ${commonality}`,
-                `🗺️ Lost in the ${commonality}`,
-                `✨ ${commonality}: Realm of Dreams`
+                `🌳 Hidden Tales of the ${commonality}`
             ]
         };
 
@@ -216,73 +162,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to generate elevator pitch
     function generateElevatorPitch(type, commonality, count, items) {
-        const examples = items
-            .slice(0, 3)
-            .map(item => item.title || 'Untitled')
-            .filter(title => title !== 'Untitled');
-
-        const speakingCharacters = items
-            .flatMap(item => item.speaking_characters || [])
-            .filter(Boolean)
-            .slice(0, 3);
-
-        const relatedThemes = items
-            .flatMap(item => item.themes || [])
-            .filter(Boolean)
-            .filter(theme => theme !== commonality)
-            .slice(0, 2);
+        const examples = items.slice(0, 3).map(item => item.title || 'Untitled').filter(title => title !== 'Untitled');
+        const speakingCharacters = items.flatMap(item => item.speaking_characters || []).filter(Boolean).slice(0, 3);
+        const relatedThemes = items.flatMap(item => item.themes || []).filter(theme => theme !== commonality).slice(0, 2);
 
         const pitches = {
             theme: [
-                `🎭 Step into a realm of wonder with ${count} enchanted tales that weave the magic of "${commonality}"! From the spellbinding "${examples[0]}"${examples[1] ? ` to the mesmerizing "${examples[1]}"` : ''}${relatedThemes.length ? `, where themes of ${relatedThemes.join(' and ')} dance together in perfect harmony` : ''}.`,
-                `✨ Discover a treasure trove of ${count} magical stories that bring "${commonality}" to vivid life. Journey from the captivating "${examples[0]}"${examples[1] ? ` through the enchanted world of "${examples[1]}"` : ''}, where every tale is a doorway to adventure.`
+                `🎭 Step into a realm of wonder with ${count} enchanted tales that weave the magic of "${commonality}"! From the spellbinding "${examples[0]}"${examples[1] ? ` to the mesmerizing "${examples[1]}"` : ''}${relatedThemes.length ? `, where themes of ${relatedThemes.join(' and ')} dance together in perfect harmony` : ''}.`
             ],
             character: [
-                `⚔️ Join the legendary ${commonality} on ${count} epic quests${speakingCharacters.length ? `, alongside beloved heroes ${speakingCharacters.join(', ')}` : ''}! Your adventure begins with the thrilling "${examples[0]}"${examples[1] ? ` and soars through "${examples[1]}"` : ''}.`,
-                `🦸 Experience ${count} legendary tales where ${commonality} becomes a beacon of hope${speakingCharacters.length ? `. Stand with ${speakingCharacters.join(' and ')} as they` : ''}. The saga unfolds in "${examples[0]}"${examples[1] ? ` and reaches new heights in "${examples[1]}"` : ''}!`
+                `⚔️ Join the legendary ${commonality} on ${count} epic quests${speakingCharacters.length ? `, alongside beloved heroes ${speakingCharacters.join(', ')}` : ''}! Your adventure begins with the thrilling "${examples[0]}"${examples[1] ? ` and soars through "${examples[1]}"` : ''}.`
             ],
             environment: [
-                `🏰 Unlock the mysteries of the ${commonality} in ${count} breathtaking tales! Your journey begins with "${examples[0]}"${examples[1] ? ` and ventures deep into "${examples[1]}"` : ''}${relatedThemes.length ? `. Each step reveals ${relatedThemes.join(' and ')}` : ''}.`,
-                `🌌 Step through the gateway to the enchanted ${commonality}, where ${count} remarkable stories await. From the wondrous "${examples[0]}"${examples[1] ? ` to the magical "${examples[1]}"` : ''}, each tale holds secrets yearning to be discovered.`
+                `🏰 Unlock the mysteries of the ${commonality} in ${count} breathtaking tales! Your journey begins with "${examples[0]}"${examples[1] ? ` and ventures deep into "${examples[1]}"` : ''}${relatedThemes.length ? `. Each step reveals ${relatedThemes.join(' and ')}` : ''}.`
             ]
         };
 
         const options = pitches[type] || pitches.theme;
-        return options[Math.floor(Math.random() * options.length)];
-    }
-
-    // Function to generate bundle preview
-    function generateBundlePreview(results) {
-        const commonThemes = findCommonalities(results, 'themes');
-        const commonCharacters = findCommonalities(results, 'characters_mentioned');
-        const commonEnvironments = findCommonalities(results, 'environments');
-
-        // Select the most prominent commonality for the main pitch
-        let mainType, mainCommonality;
-        if (commonThemes.length > 0) {
-            mainType = 'theme';
-            mainCommonality = commonThemes[0].commonality;
-        } else if (commonCharacters.length > 0) {
-            mainType = 'character';
-            mainCommonality = commonCharacters[0].commonality;
-        } else if (commonEnvironments.length > 0) {
-            mainType = 'environment';
-            mainCommonality = commonEnvironments[0].commonality;
-        } else {
-            mainType = 'theme';
-            mainCommonality = 'Adventure';
-        }
-
-        const title = generateBundleTitle(mainType, mainCommonality);
-        const pitch = generateElevatorPitch(mainType, mainCommonality, results.length, results);
-
-        return {
-            title,
-            pitch,
-            results,
-            type: mainType,
-            commonality: mainCommonality
-        };
+        return options[0];
     }
 
     // Function to find commonalities in results
@@ -299,6 +196,36 @@ document.addEventListener('DOMContentLoaded', function() {
             .map(([commonality, count]) => ({ commonality, count }))
             .filter(item => item.count > 1)
             .sort((a, b) => b.count - a.count);
+    }
+
+    // Function to generate bundle preview
+    function generateBundlePreview(results) {
+        const commonThemes = findCommonalities(results, 'themes');
+        const commonCharacters = findCommonalities(results, 'characters_mentioned');
+        const commonEnvironments = findCommonalities(results, 'environments');
+
+        let mainType = 'theme', mainCommonality = 'Adventure';
+        if (commonThemes.length > 0) {
+            mainType = 'theme';
+            mainCommonality = commonThemes[0].commonality;
+        } else if (commonCharacters.length > 0) {
+            mainType = 'character';
+            mainCommonality = commonCharacters[0].commonality;
+        } else if (commonEnvironments.length > 0) {
+            mainType = 'environment';
+            mainCommonality = commonEnvironments[0].commonality;
+        }
+
+        const title = generateBundleTitle(mainType, mainCommonality);
+        const pitch = generateElevatorPitch(mainType, mainCommonality, results.length, results);
+
+        return {
+            title,
+            pitch,
+            results,
+            type: mainType,
+            commonality: mainCommonality
+        };
     }
 
     // Function to display bundle preview
@@ -396,6 +323,45 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Normalize and group similar terms
+    function normalizeTerms(items) {
+        const normalized = new Map();
+
+        // Common variations to combine
+        const variations = {
+            'mom': ['mum', 'mommy', 'mummy', 'mother'],
+            'dad': ['daddy', 'father', 'papa'],
+            'grandma': ['grandmother', 'granny', 'nana'],
+            'grandpa': ['grandfather', 'granddad', 'grandpapa'],
+            'house': ['home', 'residence', 'dwelling'],
+            'forest': ['woods', 'woodland', 'grove'],
+            'school': ['classroom', 'schoolhouse', 'academy']
+        };
+
+        items.forEach(item => {
+            if (!item) return; // Skip null/undefined items
+
+            let normalizedTerm = item.toLowerCase().trim();
+            if (!normalizedTerm) return; // Skip empty strings
+
+            // Check if this term is a variation of another
+            for (const [main, variants] of Object.entries(variations)) {
+                if (variants.includes(normalizedTerm) || normalizedTerm === main) {
+                    normalizedTerm = main;
+                    break;
+                }
+            }
+
+            if (!normalized.has(normalizedTerm)) {
+                normalized.set(normalizedTerm, new Set());
+            }
+            normalized.get(normalizedTerm).add(item);
+        });
+
+        return normalized;
+    }
+
+
     // Fetch and populate all available options
     async function loadSearchOptions() {
         try {
@@ -414,11 +380,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const categorizedThemes = categorizeThemes(Array.from(new Set(themes)));
             const categorizedEnvironments = categorizeEnvironments(Array.from(new Set(environments)));
 
-            // Populate the checkboxes with the categorized data
+            // Populate checkboxes with categorized data
             populateCategorizedCheckboxes(themeCheckboxes, categorizedThemes, 'theme');
             populateCategorizedCheckboxes(environmentCheckboxes, categorizedEnvironments, 'environment');
 
-            // For characters, we'll use a simple list for now
+            // For characters, use a simple list
             const charactersList = Array.from(new Set(characters)).sort();
             characterCheckboxes.innerHTML = `
                 <div class="card">
@@ -435,10 +401,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
             `;
-
-            // Initialize tooltips
-            const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-            tooltips.forEach(tooltip => new bootstrap.Tooltip(tooltip));
 
         } catch (error) {
             console.error('Error loading search options:', error);
