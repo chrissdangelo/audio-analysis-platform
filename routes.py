@@ -8,6 +8,7 @@ from database import db
 from models import AudioAnalysis
 from gemini_analyzer import GeminiAnalyzer
 from batch_manager import BatchUploadManager
+from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
 batch_manager = BatchUploadManager()
@@ -416,7 +417,7 @@ def register_routes(app):
             'message': 'Batch processing restarted',
             'status_url': f'/api/upload/batch/{batch_id}/status'
         }), 202
-    
+
     @app.route('/api/upload/batch/<batch_id>/cancel', methods=['POST'])
     def cancel_batch(batch_id):
         """Cancel a batch upload."""
@@ -529,6 +530,43 @@ def register_routes(app):
             logger.error(f"Error in regenerate_summary endpoint: {str(e)}", exc_info=True)
             return jsonify({'error': 'Error processing request'}), 500
 
+    @app.route('/api/reassign_ids', methods=['POST'])
+    def reassign_ids():
+        """Reassign IDs to be sequential starting from 1."""
+        try:
+            # Create a temporary table to store the mapping
+            db.session.execute(text("""
+                CREATE TEMPORARY TABLE id_mapping AS
+                SELECT id as old_id,
+                       ROW_NUMBER() OVER (ORDER BY created_at, id) as new_id
+                FROM audio_analysis;
+            """))
+
+            # Update the IDs using the mapping
+            db.session.execute(text("""
+                UPDATE audio_analysis a
+                SET id = m.new_id
+                FROM id_mapping m
+                WHERE a.id = m.old_id;
+            """))
+
+            # Reset the sequence to the next available ID
+            max_id = db.session.execute(text("""
+                SELECT COALESCE(MAX(id), 0) + 1 FROM audio_analysis;
+            """)).scalar()
+            db.session.execute(text(f"""
+                ALTER SEQUENCE audio_analysis_id_seq RESTART WITH {max_id};
+            """))
+
+            db.session.commit()
+            logger.info("Successfully reassigned IDs")
+            return jsonify({'message': 'IDs reassigned successfully'}), 200
+
+        except Exception as e:
+            logger.error(f"Error reassigning IDs: {str(e)}")
+            db.session.rollback()
+            return jsonify({'error': 'Failed to reassign IDs'}), 500
+
     def process_batch(app, batch_id):
         """Process each file in the batch sequentially."""
         logger.info(f"Starting batch processing for batch {batch_id}")
@@ -548,6 +586,13 @@ def register_routes(app):
                         batch_manager.mark_file_failed(batch_id, filename, "File not found before processing")
                         continue
 
+                    # Check for duplicate before starting processing
+                    existing = AudioAnalysis.query.filter_by(filename=filename).first()
+                    if existing:
+                        logger.warning(f"File {filename} already processed, skipping")
+                        batch_manager.mark_file_failed(batch_id, filename, "File already processed")
+                        continue
+
                     batch_manager.mark_file_started(batch_id, filename)
                     analyzer = None
 
@@ -560,7 +605,6 @@ def register_routes(app):
                         mime_type = 'audio/wav' if file_ext == '.wav' else 'audio/mpeg'
                         if file_ext in ['.jpg', '.jpeg', '.png', '.gif']:
                             mime_type = 'image/' + file_ext[1:]
-
 
                         # Process with Gemini
                         analysis_result = analyzer.upload_to_gemini(filepath, mime_type)
@@ -585,6 +629,7 @@ def register_routes(app):
                             characters_mentioned=analysis_result.get('characters_mentioned', '[]'),
                             speaking_characters=analysis_result.get('speaking_characters', '[]'),
                             themes=analysis_result.get('themes', '[]'),
+                            transcript=analysis_result.get('transcript', ''),
                             summary=analysis_result.get('summary', ''),
                             emotion_scores=json.dumps(analysis_result.get('emotion_scores', {
                                 'joy': 0, 'sadness': 0, 'anger': 0,

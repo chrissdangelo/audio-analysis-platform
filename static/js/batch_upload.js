@@ -3,18 +3,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const fileInput = document.getElementById('audioFile');
     const uploadBtn = document.getElementById('uploadBtn');
     const batchStatus = document.getElementById('batchStatus');
-    const progressModal = new bootstrap.Modal(document.getElementById('uploadProgressModal'));
 
     async function uploadFiles(files) {
-        const totalFiles = files.length;
-        if (totalFiles === 0) {
+        if (files.length === 0) {
             batchStatus.innerHTML = '<div class="alert alert-warning">Please select at least one file.</div>';
             return;
         }
 
-        // Show progress modal
-        progressModal.show();
-        batchStatus.innerHTML = `Preparing to upload ${totalFiles} file${totalFiles > 1 ? 's' : ''}...`;
+        batchStatus.innerHTML = `<div class="alert alert-info">Starting upload of ${files.length} file${files.length > 1 ? 's' : ''}...</div>`;
 
         // Create FormData with all files
         const formData = new FormData();
@@ -39,19 +35,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 batchStatus.innerHTML += `<div class="alert alert-warning">
                     Some files were skipped (duplicates): ${result.duplicates.join(', ')}
                 </div>`;
-                await new Promise(resolve => setTimeout(resolve, 3000));
             }
 
+            // Poll for status updates
             const batchId = result.batch_id;
-            const statusUrl = result.status_url;
-
-            // Start polling for status
-            await pollBatchStatus(batchId, statusUrl);
+            await pollBatchStatus(batchId, result.status_url);
 
         } catch (error) {
-            batchStatus.innerHTML = `<div class="alert alert-danger">Error starting batch upload: ${error.message}</div>`;
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            progressModal.hide();
+            batchStatus.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
         }
     }
 
@@ -64,15 +55,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 const status = await response.json();
-                updateBatchProgress(status);
+                updateBatchStatus(status);
 
-                // Check if batch is complete
-                const isComplete = status.completed_at != null;
-                const totalFiles = status.total_files;
-                const processedFiles = status.processed_files + status.failed_files;
-
-                if (isComplete || processedFiles === totalFiles) {
-                    // Show completion message with retry option for failed files
+                if (status.is_complete || status.completed_at) {
                     showCompletionStatus(status);
                     break;
                 }
@@ -82,21 +67,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
             } catch (error) {
                 batchStatus.innerHTML = `<div class="alert alert-danger">Error checking status: ${error.message}</div>`;
-                await new Promise(resolve => setTimeout(resolve, 5000));
+                break;
             }
         }
     }
 
-    function updateBatchProgress(status) {
+    function updateBatchStatus(status) {
         const totalFiles = status.total_files;
         const processedFiles = status.processed_files + status.failed_files;
 
-        // Update status display
-        let statusHtml = `<div class="mb-3">
+        let statusHtml = `<div class="alert alert-info">
             Processing ${processedFiles}/${totalFiles} files
         </div>`;
 
-        // Show current file status
         if (status.files) {
             statusHtml += '<div class="file-status-container">';
             Object.entries(status.files).forEach(([filename, fileStatus]) => {
@@ -161,12 +144,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         batchStatus.innerHTML = message;
-        setTimeout(() => {
-            progressModal.hide();
-            if (failedFiles === 0) {
-                window.location.reload();
-            }
-        }, 2000);
+        if (failedFiles === 0) {
+            setTimeout(() => window.location.reload(), 2000);
+        }
     }
 
     window.retryBatch = async function(batchId) {
@@ -176,13 +156,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error('Failed to retry batch');
             }
             const result = await response.json();
-
-            // Reset status display
             batchStatus.innerHTML = 'Retrying failed files...';
-
-            // Start polling for status again
             await pollBatchStatus(batchId, result.status_url);
-
         } catch (error) {
             batchStatus.innerHTML = `<div class="alert alert-danger">Error retrying batch: ${error.message}</div>`;
         }
