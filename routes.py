@@ -71,6 +71,12 @@ def register_routes(app):
                 filename = secure_filename(file.filename)
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
 
+                # Check for existing analysis
+                existing = AudioAnalysis.query.filter_by(filename=filename).first()
+                if existing:
+                    logger.warning(f"File {filename} already processed")
+                    return jsonify({'error': 'File has already been processed'}), 400
+
                 # Ensure upload directory exists
                 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
@@ -83,7 +89,14 @@ def register_routes(app):
 
                 # Determine MIME type based on file extension
                 file_ext = os.path.splitext(filename)[1].lower()
-                mime_type = 'audio/wav' if file_ext == '.wav' else 'audio/mpeg'
+                if file_ext in ['.mp3', '.wav']:
+                    mime_type = 'audio/wav' if file_ext == '.wav' else 'audio/mpeg'
+                elif file_ext in ['.jpg', '.jpeg', '.png', '.gif']:
+                    mime_type = 'image/' + file_ext[1:]
+                elif file_ext in ['.mp4', '.avi', '.mov']:
+                    mime_type = 'video/' + file_ext[1:]
+                else:
+                    raise ValueError(f"Unsupported file type: {file_ext}")
 
                 analysis_result = analyzer.upload_to_gemini(filepath, mime_type)
                 logger.debug(f"Raw analysis result: {analysis_result}")
@@ -97,7 +110,7 @@ def register_routes(app):
                 analysis = AudioAnalysis(
                     title=title_case(os.path.splitext(filename)[0]),
                     filename=filename,
-                    file_type='Audio',
+                    file_type='Audio' if file_ext in ['.mp3', '.wav', '.mp4', '.avi', '.mov'] else 'Image',
                     format=analysis_result.get('format', 'narrated episode'),
                     duration=analysis_result.get('duration', '00:00:00'),
                     has_narration=analysis_result.get('has_narration', False),
@@ -108,27 +121,20 @@ def register_routes(app):
                     characters_mentioned=analysis_result.get('characters_mentioned', '[]'),
                     speaking_characters=analysis_result.get('speaking_characters', '[]'),
                     themes=analysis_result.get('themes', '[]'),
-                    transcript=analysis_result.get('transcript', ''),  # Make sure to store the transcript
+                    transcript=analysis_result.get('transcript', ''),
                     summary=analysis_result.get('summary', ''),
                     emotion_scores=json.dumps(analysis_result.get('emotion_scores', {
-                        'joy': 0,
-                        'sadness': 0,
-                        'anger': 0,
-                        'fear': 0,
-                        'surprise': 0
+                        'joy': 0, 'sadness': 0, 'anger': 0,
+                        'fear': 0, 'surprise': 0
                     })),
                     dominant_emotion=analysis_result.get('dominant_emotion', ''),
                     tone_analysis=json.dumps(analysis_result.get('tone_analysis', {})),
                     confidence_score=analysis_result.get('confidence_score', 0.0)
                 )
 
-                try:
-                    db.session.add(analysis)
-                    db.session.commit()
-                    logger.info(f"Analysis saved to database for {filename}")
-                except Exception as e:
-                    logger.error(f"Database error: {str(e)}")
-                    return jsonify({'error': 'Error saving analysis results'}), 500
+                db.session.add(analysis)
+                db.session.commit()
+                logger.info(f"Analysis saved to database for {filename}")
 
                 # Convert to dict for response
                 response_data = analysis.to_dict()
@@ -142,14 +148,14 @@ def register_routes(app):
                     return jsonify({'error': 'Content analysis service unavailable. Please try again later.'}), 503
                 else:
                     logger.error(f"Error analyzing content: {str(e)}")
-                    return jsonify({'error': 'Error analyzing audio content. Please ensure the file is not corrupted.'}), 400
+                    return jsonify({'error': f'Error analyzing content: {str(e)}'}), 400
 
         except RequestEntityTooLarge:
             logger.error("File too large")
             return jsonify({'error': 'File too large. Maximum file size is 100MB'}), 413
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}", exc_info=True)
-            return jsonify({'error': 'An unexpected error occurred'}), 500
+            return jsonify({'error': f'An unexpected error occurred: {str(e)}'}), 500
         finally:
             # Clean up resources
             if analyzer:
