@@ -19,16 +19,34 @@ google_drive = Blueprint('google_drive', __name__)
 # OAuth 2.0 configuration
 SCOPES = ['https://www.googleapis.com/auth/drive.readonly', 'https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email']
 
+def get_replit_domain():
+    """Get the Replit domain for this project."""
+    repl_slug = os.environ.get('REPL_SLUG', '')
+    repl_owner = os.environ.get('REPL_OWNER', '')
+    return f"{repl_slug}.{repl_owner}.repl.co"
+
 def get_google_client_config():
+    domain = get_replit_domain()
     return {
         "web": {
             "client_id": os.environ.get("GOOGLE_CLIENT_ID"),
             "client_secret": os.environ.get("GOOGLE_CLIENT_SECRET"),
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
-            "redirect_uris": [f"https://{os.environ.get('REPL_SLUG')}.{os.environ.get('REPL_OWNER')}.repl.co/oauth2callback"]
+            "redirect_uris": [f"https://{domain}/oauth2callback"]
         }
     }
+
+# Print setup instructions
+print(f"""
+Google OAuth Setup Instructions:
+1. Go to https://console.cloud.google.com/apis/credentials
+2. Edit your OAuth 2.0 Client ID
+3. Add these to Authorized JavaScript origins:
+   https://{get_replit_domain()}
+4. Add these to Authorized redirect URIs:
+   https://{get_replit_domain()}/oauth2callback
+""")
 
 @google_drive.route('/authorize')
 def authorize():
@@ -36,7 +54,7 @@ def authorize():
         flow = Flow.from_client_config(
             get_google_client_config(),
             scopes=SCOPES,
-            redirect_uri=url_for('google_drive.oauth2callback', _external=True)
+            redirect_uri=f"https://{get_replit_domain()}/oauth2callback"
         )
         authorization_url, state = flow.authorization_url(
             access_type='offline',
@@ -55,7 +73,7 @@ def oauth2callback():
             get_google_client_config(),
             scopes=SCOPES,
             state=session['state'],
-            redirect_uri=url_for('google_drive.oauth2callback', _external=True)
+            redirect_uri=f"https://{get_replit_domain()}/oauth2callback"
         )
 
         flow.fetch_token(authorization_response=request.url)
