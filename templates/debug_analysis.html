@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html data-bs-theme="dark">
+<head>
+    <title>Debug Analysis</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Analysis Debug View</h1>
+        <div class="card mb-4">
+            <div class="card-body">
+                <h4 class="card-title">Basic Info</h4>
+                <p><strong>Title:</strong> {{ analysis.title }}</p>
+                <p><strong>Format:</strong> {{ analysis.format }}</p>
+                <p><strong>Duration:</strong> {{ analysis.duration }}</p>
+                <p><strong>Has Narration:</strong> {{ analysis.has_narration }}</p>
+                <p><strong>Has Underscore:</strong> {{ analysis.has_underscore }}</p>
+                <p><strong>Has Sound Effects:</strong> {{ analysis.has_sound_effects }}</p>
+                <p><strong>Songs Count:</strong> {{ analysis.songs_count }}</p>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h4 class="card-title">Raw Data</h4>
+                <div class="mb-3">
+                    <h5>Characters Mentioned:</h5>
+                    <pre class="bg-dark text-light p-2">{{ analysis.characters_mentioned | tojson }}</pre>
+                </div>
+                <div class="mb-3">
+                    <h5>Speaking Characters:</h5>
+                    <pre class="bg-dark text-light p-2">{{ analysis.speaking_characters | tojson }}</pre>
+                </div>
+                <div class="mb-3">
+                    <h5>Environments:</h5>
+                    <pre class="bg-dark text-light p-2">{{ analysis.environments | tojson }}</pre>
+                </div>
+                <div class="mb-3">
+                    <h5>Themes:</h5>
+                    <pre class="bg-dark text-light p-2">{{ analysis.themes | tojson }}</pre>
+                </div>
+            </div>
+        </div>
+
+        <a href="/" class="btn btn-primary">Back to Home</a>
+    </div>
+</body>
+</html>

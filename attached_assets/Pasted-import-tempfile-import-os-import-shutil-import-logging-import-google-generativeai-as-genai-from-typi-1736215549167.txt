@@ -1,0 +1,242 @@
+import tempfile
+import os
+import shutil
+import logging
+import google.generativeai as genai
+from typing import Dict, Any, Optional
+from moviepy.editor import AudioFileClip, VideoFileClip
+from replit import db
+import io
+from flask import Flask, render_template
+import csv
+
+app = Flask(__name__)
+app.static_folder = 'static'
+
+# Configure logging with detailed format
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+class AudioAnalyzer:
+    def __init__(self):
+        """Initialize AudioAnalyzer with enhanced error handling"""
+        self.temp_dir = tempfile.mkdtemp()
+        logger.info("AudioAnalyzer initialized with temporary directory: %s", self.temp_dir)
+        self._initialize_gemini()
+
+    def _initialize_gemini(self):
+        """Initialize Gemini API with latest version compatible configuration"""
+        try:
+            # Configure API key
+            gemini_key = db.get("GEMINI_API_KEY")
+            if not gemini_key:
+                logger.error("GEMINI_API_KEY not found in Replit database")
+                raise ValueError("GEMINI_API_KEY not found. Please ensure it is properly set in the environment.")
+
+            # Configure API key and model settings
+            genai.configure(api_key=gemini_key)
+            self.generation_config = {
+                "temperature": 0.9,
+                "top_p": 1,
+                "top_k": 1,
+                "max_output_tokens": 8192,
+            }
+            self.model = genai.GenerativeModel(model_name='gemini-pro', generation_config=self.generation_config)
+
+            logger.info("Gemini initialization completed successfully")
+
+        except Exception as e:
+            logger.error("Failed to initialize Gemini: %s", str(e))
+            raise
+
+    def upload_to_gemini(self, path: str, mime_type: str = None) -> Dict:
+      """Upload file to Gemini using the new api"""
+      try:
+            with open(path, 'rb') as file:
+                file_data = file.read()
+            file = genai.Blob(data=file_data, mime_type=mime_type)
+            logger.info(f"Uploaded file {path}")
+            return file
+      except Exception as e:
+            logger.error(f"Error uploading file to Gemini: {str(e)}")
+            raise
+
+    def analyze_content(self, file_path: str) -> Dict[str, Any]:
+        """Analyze audio content using Gemini AI with improved error handling"""
+        try:
+            logger.info("Starting content analysis for: %s", file_path)
+            if not os.path.exists(file_path):
+                raise FileNotFoundError(f"File not found: {file_path}")
+
+            # Extract audio and get duration
+            duration = 0
+            temp_audio = None
+            try:
+                file_ext = os.path.splitext(file_path)[1].lower()
+                if file_ext in ['.mp4', '.avi', '.mov']:
+                    logger.info("Processing video file...")
+                    with VideoFileClip(file_path) as video_clip:
+                        temp_audio = os.path.join(self.temp_dir, 'temp_audio.wav')
+                        video_clip.audio.write_audiofile(temp_audio)
+                        duration = video_clip.duration
+                        file_path = temp_audio
+                else:
+                    with AudioFileClip(file_path) as audio_clip:
+                        duration = audio_clip.duration
+            except Exception as e:
+                logger.error("Failed to process audio/video: %s", str(e))
+                return self._get_default_analysis(0)
+
+            mime_type = "audio/wav" if file_path.endswith('.wav') else "audio/mpeg"
+            uploaded_file = self.upload_to_gemini(file_path, mime_type=mime_type)
+
+            prompt = (
+             "You are an audio analysis AI. Listen to the attached audio and provide a structured metadata output suitable for import into a spreadsheet, in the exact following format:\n"
+            "Format: [narrated episode/radio play].  This describes if the audio is of a narration or is like a radio play.\n"
+            "Narration: [yes/no]. Does the file have a narration track?\n"
+            "Underscore: [yes/no]. Does the audio have underscore music?\n"
+            "Sound Effects: [yes/no].  Are there sound effects in the file?\n"
+            "Song: [yes/no]. Is there a dedicated song in the file\n"
+            "Characters Mentioned: [comma separated list]. A list of all of the names of the characters mentioned in the file\n"
+            "Characters Speaking: [comma separated list]. A list of the names of the characters that speak in the audio.\n"
+            "Themes: [comma separated list]. A list of any reoccurring ideas or concepts mentioned in the audio\n"
+            "Environments: [comma separated list]. A list of all the environments or places the audio takes place in.\n"
+            )
+
+            try:
+              
+                response = self.model.generate_content(
+                   [prompt, uploaded_file])
+
+
+                logger.info("Successfully received response from Gemini")
+                response_text = response.text
+
+                if not response_text:
+                    logger.error("Empty response from Gemini")
+                    return self._get_default_analysis(duration)
+
+                # Parse response
+                result = self.extract_json_from_text(response_text)
+                if not result:
+                    logger.error("Failed to parse Gemini response")
+                    return self._get_default_analysis(duration)
+
+                # Add duration
+                result['length'] = duration
+                return result
+
+            except Exception as e:
+                logger.error("Error in Gemini text generation: %s", str(e))
+                return self._get_default_analysis(duration)
+
+        except Exception as e:
+            logger.error("Error in analyze_content: %s", str(e))
+            return self._get_default_analysis(0)
+
+    def extract_json_from_text(self, text: str) -> Optional[Dict]:
+        """Extract structured data from Gemini response"""
+        try:
+            logger.debug("Raw response from Gemini: %s", text)
+            result = {
+                'format': 'unknown',
+                'has_underscore': False,
+                'sound_effects_count': 0,
+                'songs_count': 0,
+                'characters_mentioned': [],
+                'speaking_characters': [],
+                'themes': [],
+                'environments': []
+            }
+            # Correct handling of lists
+            def parse_list(line):
+                try:
+                  parts = line.split(':', 1)
+                  if len(parts) > 1:
+                    return [item.strip() for item in parts[1].strip().strip('[]').split(',') if item.strip()]
+                  return []
+                except:
+                  return []
+
+            lines = [line.strip().lower() for line in text.split('\n') if line.strip()]
+            
+            for line in lines:
+                if 'format:' in line:
+                    if 'narrated episode' in line:
+                        result['format'] = 'narrated episode'
+                    elif 'radio play' in line:
+                        result['format'] = 'radio play'
+                if 'narration:' in line:
+                    result['narration'] = 'yes' in line
+                if 'underscore:' in line:
+                     result['has_underscore'] = 'yes' in line
+                if 'sound effects:' in line:
+                    result['sound_effects_count'] = 1 if 'yes' in line else 0
+                if 'song:' in line:
+                   result['songs_count'] = 1 if 'yes' in line else 0
+                if 'characters mentioned:' in line:
+                    result['characters_mentioned'] = parse_list(line)
+                if 'characters speaking:' in line:
+                     result['speaking_characters'] = parse_list(line)
+                if 'themes:' in line:
+                    result['themes'] = parse_list(line)
+                if 'environments:' in line:
+                     result['environments'] = parse_list(line)
+
+            logger.info(f"Extracted analysis results: {result}")
+            return result
+
+        except Exception as e:
+            logger.error("Error extracting data from response: %s", str(e))
+            return None
+
+
+    def _get_default_analysis(self, duration: float = 0) -> Dict[str, Any]:
+        """Return default analysis structure when errors occur"""
+        return {
+            'length': duration,
+            'format': 'unknown',
+            'has_underscore': False,
+            'sound_effects_count': 0,
+            'songs_count': 0,
+            'characters_mentioned': [],
+            'speaking_characters': [],
+            'themes': [],
+            'environments': []
+        }
+
+    def cleanup(self):
+        """Clean up temporary files and resources"""
+        try:
+            if os.path.exists(self.temp_dir):
+                shutil.rmtree(self.temp_dir)
+                logger.info("Cleaned up temporary directory: %s", self.temp_dir)
+        except Exception as e:
+            logger.error("Error cleaning up temporary directory: %s", str(e))
+
+    def __del__(self):
+        """Ensure cleanup on object destruction"""
+        self.cleanup()
+
+
+def load_csv_data(filepath):
+    """Loads CSV data from a file."""
+    data = []
+    with open(filepath, 'r', encoding='utf-8') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            data.append(row)
+    return data
+
+@app.route("/")
+def index():
+    """Renders the main page with CSV data."""
+    data = load_csv_data("data/data.csv")
+    headers = data[0].keys() if data else []
+    return render_template('index.html', data=data, headers=headers)
+
+if __name__ == '__main__':
+    app.run(debug=True)

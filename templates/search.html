@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Search Analyses</h5>
+        <form id="searchForm">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Themes</label>
+                    <input type="text" class="form-control" id="themeSearch" placeholder="Enter themes">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Characters</label>
+                    <input type="text" class="form-control" id="characterSearch" placeholder="Enter characters">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Environments</label>
+                    <input type="text" class="form-control" id="environmentSearch" placeholder="Enter environments">
+                </div>
+            </div>
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">Search</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">Search Results</h5>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Filename</th>
+                        <th>Format</th>
+                        <th>Characters</th>
+                        <th>Themes</th>
+                        <th>Environments</th>
+                    </tr>
+                </thead>
+                <tbody id="searchResults">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/search.js') }}"></script>
+{% endblock %}

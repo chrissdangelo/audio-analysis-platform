@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Upload Audio File</h5>
+                <form id="uploadForm">
+                    <div class="mb-3">
+                        <input type="file" class="form-control" id="audioFile" accept=".mp3,.wav,.mp4,.avi,.mov" required>
+                    </div>
+                    <div id="waveformContainer" class="mb-3" style="display: none;">
+                        <div id="waveform"></div>
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-sm btn-secondary" id="playBtn">
+                                <i data-feather="play"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-secondary" id="pauseBtn">
+                                <i data-feather="pause"></i>
+                            </button>
+                            <span id="currentTime" class="ms-2">0:00</span>
+                            <span>/</span>
+                            <span id="totalDuration">0:00</span>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="uploadBtn">
+                        <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                        Upload and Analyze
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Audio Insights</h5>
+                <div id="insightsDashboard">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="card bg-dark">
+                                <div class="card-body">
+                                    <h6 class="card-subtitle mb-2">Format Distribution</h6>
+                                    <canvas id="formatChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-dark">
+                                <div class="card-body">
+                                    <h6 class="card-subtitle mb-2">Content Types</h6>
+                                    <canvas id="contentChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="card bg-dark">
+                                <div class="card-body">
+                                    <h6 class="card-subtitle mb-2">Popular Themes</h6>
+                                    <div id="themeCloud" class="text-center"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">Analysis Results</h5>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Title</th>
+                        <th>Filename</th>
+                        <th>Type</th>
+                        <th>Format</th>
+                        <th>Duration</th>
+                        <th>Environments</th>
+                        <th>Characters</th>
+                        <th>Speaking</th>
+                        <th>Underscore</th>
+                        <th>SFX</th>
+                        <th>Songs</th>
+                        <th>Themes</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="analysisTable">
+                    {% for analysis in analyses %}
+                    <tr data-id="{{ analysis.id }}">
+                        <td>{{ analysis.id }}</td>
+                        <td>{{ analysis.title or "Untitled" }}</td>
+                        <td>{{ analysis.filename }}</td>
+                        <td>{{ analysis.file_type }}</td>
+                        <td>{{ analysis.format }}</td>
+                        <td>{{ analysis.duration }}</td>
+                        <td>{{ analysis.environments | join | replace('[', '') | replace(']', '') if analysis.environments else '-' }}</td>
+                        <td>{{ analysis.characters_mentioned | join | replace('[', '') | replace(']', '') if analysis.characters_mentioned else '-' }}</td>
+                        <td>{{ analysis.speaking_characters | join | replace('[', '') | replace(']', '') if analysis.speaking_characters else '-' }}</td>
+                        <td>{{ "Yes" if analysis.has_underscore else "No" }}</td>
+                        <td>{{ "Yes" if analysis.has_sound_effects else "No" }}</td>
+                        <td>{{ analysis.songs_count }}</td>
+                        <td>{{ analysis.themes | join | replace('[', '') | replace(']', '') if analysis.themes else '-' }}</td>
+                        <td>
+                            <a href="{{ url_for('debug_analysis', analysis_id=analysis.id) }}" class="btn btn-sm btn-info mb-1" target="_blank">
+                                Debug
+                            </a>
+                            <button class="btn btn-sm btn-danger delete-btn" data-id="{{ analysis.id }}">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}
