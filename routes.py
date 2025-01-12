@@ -596,17 +596,19 @@ def register_routes(app):
                 for filename in pending_files:
                     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
 
+                    # First check for duplicate before any other processing
+                    existing = AudioAnalysis.query.filter_by(filename=filename).first()
+                    if existing:
+                        logger.info(f"File {filename} already processed, marking as complete")
+                        batch_manager.mark_file_complete(batch_id, filename, existing.id)
+                        batch_manager.save_batch_status(batch_id)
+                        continue
+
                     # Check if file exists before starting processing
                     if not os.path.exists(filepath):
                         logger.error(f"File not found before processing: {filepath}")
                         batch_manager.mark_file_failed(batch_id, filename, "File not found before processing")
-                        continue
-
-                    # Check for duplicate before starting processing
-                    existing = AudioAnalysis.query.filter_by(filename=filename).first()
-                    if existing:
-                        logger.warning(f"File {filename} already processed, skipping")
-                        batch_manager.mark_file_failed(batch_id, filename, "File already processed")
+                        batch_manager.save_batch_status(batch_id)
                         continue
 
                     batch_manager.mark_file_started(batch_id, filename)
@@ -616,8 +618,7 @@ def register_routes(app):
                         # Create analyzer instance
                         analyzer = GeminiAnalyzer()
 
-                        # Determine MIME type
-                        file_ext = os.path.splitext(filename)[1].lower()
+                        # Get MIME type
                         mime_type = get_mime_type(filename)
 
 
