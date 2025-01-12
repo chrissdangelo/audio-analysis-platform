@@ -4,7 +4,7 @@
 <div class="container-fluid">
     <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload" type="button" role="tab">Upload</button>
+            <button class="nav-link active" id="content-tab" data-bs-toggle="tab" data-bs-target="#content" type="button" role="tab">Content</button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="analysis-tab" data-bs-toggle="tab" data-bs-target="#analysis" type="button" role="tab">Content Analysis</button>
@@ -18,8 +18,8 @@
     </ul>
 
     <div class="tab-content" id="mainTabsContent">
-        <!-- Upload Tab -->
-        <div class="tab-pane fade show active" id="upload" role="tabpanel">
+        <!-- Upload Tab (renamed to Content) -->
+        <div class="tab-pane fade show active" id="content" role="tabpanel">
             <div class="row mb-4">
                 <div class="col-md-12">
                     <div class="card">
@@ -252,7 +252,9 @@
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/colreorder/1.5.4/js/dataTables.colReorder.min.js"></script>
 <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+<link href="https://cdn.datatables.net/colreorder/1.5.4/css/colReorder.bootstrap5.min.css" rel="stylesheet">
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 <script src="{{ url_for('static', filename='js/batch_upload.js') }}"></script>

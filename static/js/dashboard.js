@@ -16,15 +16,53 @@ document.addEventListener('DOMContentLoaded', function() {
         dataTable = $('#analysisTable').DataTable({
             scrollX: true,
             autoWidth: false,
+            colReorder: true,
             pageLength: 10,
-            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+            lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "All"]],
             dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
                  '<"row"<"col-sm-12"tr>>' +
                  '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
             language: {
                 search: "Filter records:",
-                lengthMenu: "Show _MENU_ entries per page"
+                lengthMenu: "Show _MENU_ entries per page",
+                info: "Showing _START_ to _END_ of _TOTAL_ entries",
+                infoEmpty: "No entries found",
+                infoFiltered: "(filtered from _MAX_ total entries)"
+            },
+            columnDefs: [
+                {
+                    targets: '_all',
+                    render: function(data, type, row) {
+                        if (type === 'display' && data != null) {
+                            return '<div class="text-truncate" style="max-width: 150px;" title="' + data + '">' + data + '</div>';
+                        }
+                        return data;
+                    }
+                }
+            ],
+            initComplete: function() {
+                // Add column resizing functionality
+                new $.fn.dataTable.ColResize(dataTable, {
+                    isEnabled: true,
+                    hoverClass: 'dt-colresizable-hover',
+                    hasBoundCheck: true,
+                    minBoundClass: 'dt-colresizable-bound-min',
+                    maxBoundClass: 'dt-colresizable-bound-max',
+                    saveState: true,
+                    isResizable: function(column) {
+                        return true;
+                    }
+                });
             }
+        });
+
+        // Add double-click to fit content
+        $('#analysisTable thead th').dblclick(function() {
+            var idx = $(this).index();
+            dataTable.column(idx).nodes().each(function(node, index, dt) {
+                dataTable.column(idx).nodes().to$().css('width', 'auto');
+            });
+            dataTable.columns.adjust().draw();
         });
     }
 
