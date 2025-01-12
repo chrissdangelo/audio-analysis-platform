@@ -107,14 +107,47 @@ document.addEventListener('DOMContentLoaded', function() {
         return options[index];
     }
 
-    function generateElevatorPitch(type, commonality, count) {
+    function generateElevatorPitch(type, commonality, count, items) {
+        // Extract some example titles or names to make the pitch more specific
+        const examples = items
+            .slice(0, 3)
+            .map(item => item.title || 'Untitled')
+            .filter(title => title !== 'Untitled');
+
+        // Get example characters if available (for character-based bundles)
+        const speakingCharacters = items
+            .flatMap(item => item.speaking_characters || [])
+            .filter(Boolean)
+            .slice(0, 3);
+
+        // Get example themes if available
+        const relatedThemes = items
+            .flatMap(item => item.themes || [])
+            .filter(Boolean)
+            .filter(theme => theme !== commonality)
+            .slice(0, 2);
+
         const pitches = {
-            theme: `A carefully curated collection of ${count} stories exploring the theme of ${commonality}. Immerse yourself in this thematic journey.`,
-            character: `Join ${commonality} in ${count} unforgettable adventures. Experience the magic of this character's world.`,
-            environment: `Explore the enchanting ${commonality} through ${count} unique stories. Let these tales transport you.`
+            theme: [
+                `Explore ${count} captivating stories centered around "${commonality}", including "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''}. ${relatedThemes.length ? `These stories also touch on themes of ${relatedThemes.join(' and ')}.` : ''}`,
+                `Dive into a collection of ${count} handpicked tales exploring "${commonality}". Featured stories include "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''}.`,
+                `Experience the power of "${commonality}" through ${count} unique perspectives, showcasing stories like "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''}.`
+            ],
+            character: [
+                `Join ${commonality} in ${count} unforgettable adventures${speakingCharacters.length ? `, alongside ${speakingCharacters.join(', ')}` : ''}. Start with "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''}.`,
+                `Experience ${count} magical stories featuring ${commonality}${speakingCharacters.length ? ` and friends like ${speakingCharacters.join(' and ')}` : ''}. Begin your journey with "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''}.`,
+                `Discover the world of ${commonality} through ${count} enchanting tales${speakingCharacters.length ? `, featuring appearances by ${speakingCharacters.join(', ')}` : ''}.`
+            ],
+            environment: [
+                `Transport yourself to the ${commonality} in ${count} immersive stories, including "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''}${relatedThemes.length ? `. Experience themes of ${relatedThemes.join(' and ')}.` : ''}`,
+                `Explore the magical ${commonality} setting across ${count} unique adventures. Featured stories include "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''}.`,
+                `Journey through ${count} tales set in the enchanting ${commonality}, beginning with "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''}.`
+            ]
         };
 
-        return pitches[type] || pitches.theme;
+        const options = pitches[type] || pitches.theme;
+        const index = Math.floor(Math.random() * options.length);
+        return options[index];
     }
 
     function displayBundleSuggestions(themeGroups, characterGroups, environmentGroups) {
@@ -148,7 +181,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <h6 class="mb-3">${title}</h6>
                 ${groups.slice(0, 5).map(group => {
                     const bundleTitle = generateBundleTitle(type, group.commonality);
-                    const elevatorPitch = generateElevatorPitch(type, group.commonality, group.count);
+                    const elevatorPitch = generateElevatorPitch(type, group.commonality, group.count, group.items);
 
                     return `
                     <div class="card mb-3">
