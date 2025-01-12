@@ -380,8 +380,6 @@ def register_routes(app):
             # Get all records missing transcripts, summaries or emotion scores
             analyses = AudioAnalysis.query.filter(
                 db.or_(
-                    AudioAnalysis.transcript.is_(None),
-                    AudioAnalysis.transcript == '',
                     AudioAnalysis.summary.is_(None),
                     AudioAnalysis.summary == '',
                     AudioAnalysis.emotion_scores == '{}',
@@ -401,16 +399,8 @@ def register_routes(app):
                 try:
                     analysis_dict = analysis.to_dict()
 
-                    # Check if we need to generate a summary
-                    if not analysis.summary or not analysis.transcript:
-                        # For existing files without transcripts, we need to handle this case
-                        # by informing the user that we can't generate new summaries without
-                        # the original audio files
-                        if not analysis.transcript:
-                            logger.warning(f"Cannot generate summary for analysis {analysis.id} - no transcript available")
-                            continue
-
-                        # If we have a transcript but no summary, generate one
+                    # Only generate summary if we have a transcript
+                    if (not analysis.summary or analysis.summary == '') and analysis.transcript:
                         summary_result = analyzer.regenerate_summary(analysis_dict)
                         analysis.summary = summary_result.get('summary', '')
                         logger.info(f"Generated summary from transcript for analysis {analysis.id}")

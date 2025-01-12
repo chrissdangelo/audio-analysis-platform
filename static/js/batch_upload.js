@@ -2,8 +2,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('uploadForm');
     const fileInput = document.getElementById('audioFile');
     const uploadBtn = document.getElementById('uploadBtn');
-    const progressBar = document.querySelector('#uploadProgress .progress-bar');
-    const progressDiv = document.getElementById('uploadProgress');
     const batchStatus = document.getElementById('batchStatus');
     const progressModal = new bootstrap.Modal(document.getElementById('uploadProgressModal'));
 
@@ -16,7 +14,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Show progress modal
         progressModal.show();
-        progressDiv.classList.remove('d-none');
         batchStatus.innerHTML = `Preparing to upload ${totalFiles} file${totalFiles > 1 ? 's' : ''}...`;
 
         // Create FormData with all files
@@ -53,7 +50,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         } catch (error) {
             batchStatus.innerHTML = `<div class="alert alert-danger">Error starting batch upload: ${error.message}</div>`;
-            progressDiv.classList.add('d-none');
             await new Promise(resolve => setTimeout(resolve, 3000));
             progressModal.hide();
         }
@@ -85,7 +81,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 await new Promise(resolve => setTimeout(resolve, 2000));
 
             } catch (error) {
-                batchStatus.innerHTML += `<div class="alert alert-warning">Error checking status: ${error.message}</div>`;
+                batchStatus.innerHTML = `<div class="alert alert-danger">Error checking status: ${error.message}</div>`;
                 await new Promise(resolve => setTimeout(resolve, 5000));
             }
         }
@@ -94,15 +90,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateBatchProgress(status) {
         const totalFiles = status.total_files;
         const processedFiles = status.processed_files + status.failed_files;
-        const progress = status.overall_progress || 0;
-
-        // Animate progress bar
-        progressBar.style.width = `${progress}%`;
-        progressBar.setAttribute('aria-valuenow', progress);
 
         // Update status display
         let statusHtml = `<div class="mb-3">
-            Processing ${processedFiles}/${totalFiles} files (${Math.round(progress)}% complete)
+            Processing ${processedFiles}/${totalFiles} files
         </div>`;
 
         // Show current file status
@@ -117,7 +108,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }[fileStatus.status] || 'text-muted';
 
                 const operation = fileStatus.current_operation || 'waiting';
-                const progress = Math.round((fileStatus.upload_progress + fileStatus.processing_progress) / 2);
 
                 statusHtml += `
                     <div class="file-status ${fileStatus.status} mb-2">
@@ -125,7 +115,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             <span class="filename">${filename}</span>
                             <span class="${statusClass}">
                                 ${fileStatus.status.toUpperCase()}
-                                ${progress < 100 && fileStatus.status === 'processing' ? ` (${progress}%)` : ''}
                                 ${fileStatus.error ? `<i class="fas fa-exclamation-circle" title="${fileStatus.error}"></i>` : ''}
                             </span>
                         </div>
@@ -174,8 +163,6 @@ document.addEventListener('DOMContentLoaded', function() {
         batchStatus.innerHTML = message;
         setTimeout(() => {
             progressModal.hide();
-            progressDiv.classList.add('d-none');
-            progressBar.style.width = '0%';
             if (failedFiles === 0) {
                 window.location.reload();
             }
@@ -190,9 +177,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             const result = await response.json();
 
-            // Reset progress display
-            progressDiv.classList.remove('d-none');
-            progressBar.style.width = '0%';
+            // Reset status display
             batchStatus.innerHTML = 'Retrying failed files...';
 
             // Start polling for status again
