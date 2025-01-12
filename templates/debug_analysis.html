@@ -19,9 +19,9 @@
                 <p><strong>Title:</strong> {{ analysis.title }}</p>
                 <p><strong>Format:</strong> {{ analysis.format }}</p>
                 <p><strong>Duration:</strong> {{ analysis.duration }}</p>
-                <p><strong>Has Narration:</strong> {{ analysis.has_narration }}</p>
-                <p><strong>Has Underscore:</strong> {{ analysis.has_underscore }}</p>
-                <p><strong>Has Sound Effects:</strong> {{ analysis.has_sound_effects }}</p>
+                <p><strong>Has Narration:</strong> {{ 'Yes' if analysis.has_narration else 'No' }}</p>
+                <p><strong>Has Underscore:</strong> {{ 'Yes' if analysis.has_underscore else 'No' }}</p>
+                <p><strong>Has Sound Effects:</strong> {{ 'Yes' if analysis.has_sound_effects else 'No' }}</p>
                 <p><strong>Songs Count:</strong> {{ analysis.songs_count }}</p>
             </div>
         </div>

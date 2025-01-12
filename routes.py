@@ -104,7 +104,18 @@ def register_routes(app):
                     environments=analysis_result.get('environments', '[]'),
                     characters_mentioned=analysis_result.get('characters_mentioned', '[]'),
                     speaking_characters=analysis_result.get('speaking_characters', '[]'),
-                    themes=analysis_result.get('themes', '[]')
+                    themes=analysis_result.get('themes', '[]'),
+                    summary=analysis_result.get('summary', ''),
+                    emotion_scores=json.dumps(analysis_result.get('emotion_scores', {
+                        'joy': 0,
+                        'sadness': 0,
+                        'anger': 0,
+                        'fear': 0,
+                        'surprise': 0
+                    })),
+                    dominant_emotion=analysis_result.get('dominant_emotion', ''),
+                    tone_analysis=json.dumps(analysis_result.get('tone_analysis', {})),
+                    confidence_score=analysis_result.get('confidence_score', 0.0)
                 )
 
                 try:
