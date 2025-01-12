@@ -3,7 +3,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const themeCheckboxes = document.getElementById('themeCheckboxes');
     const characterCheckboxes = document.getElementById('characterCheckboxes');
     const environmentCheckboxes = document.getElementById('environmentCheckboxes');
-    const resultsDiv = document.getElementById('searchResults');
+    const bundlePreview = document.getElementById('bundlePreview');
+    const bundlePitch = document.getElementById('bundlePitch');
+    const bundleContent = document.getElementById('bundleContent');
+    const reprocessBtn = document.getElementById('reprocessBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const savedBundlesTable = document.getElementById('savedBundlesTable').getElementsByTagName('tbody')[0];
+
+    // Keep track of current bundle
+    let currentBundle = null;
 
     // Normalize and group similar terms
     function normalizeTerms(items) {
@@ -171,6 +179,221 @@ document.addEventListener('DOMContentLoaded', function() {
         `).join('');
     }
 
+    // Function to generate bundle title (similar to bundle.js)
+    function generateBundleTitle(type, commonality) {
+        const titles = {
+            theme: [
+                `✨ Tales of ${commonality}: Where Magic Begins`,
+                `🌟 The ${commonality} Chronicles: Untold Wonders`,
+                `🎭 Once Upon a ${commonality}`,
+                `💫 Whispers of ${commonality}`,
+                `🌈 ${commonality}: A Tapestry of Tales`,
+                `✨ Through the Lens of ${commonality}`
+            ],
+            character: [
+                `🦸 ${commonality}'s Epic Adventures`,
+                `⚔️ ${commonality}: Legend in the Making`,
+                `🎭 The ${commonality} Saga: Heroes Rise`,
+                `✨ ${commonality}'s Magical Moments`,
+                `🌟 Legends of ${commonality}`,
+                `💫 ${commonality}: Beyond the Story`
+            ],
+            environment: [
+                `🏰 Secrets of the ${commonality}`,
+                `🌌 ${commonality}: A World of Wonder`,
+                `🌳 Hidden Tales of the ${commonality}`,
+                `🌊 The Magic of ${commonality}`,
+                `🗺️ Lost in the ${commonality}`,
+                `✨ ${commonality}: Realm of Dreams`
+            ]
+        };
+
+        const options = titles[type] || titles.theme;
+        return options[Math.floor(Math.random() * options.length)];
+    }
+
+    // Function to generate elevator pitch (similar to bundle.js)
+    function generateElevatorPitch(type, commonality, count, items) {
+        const examples = items
+            .slice(0, 3)
+            .map(item => item.title || 'Untitled')
+            .filter(title => title !== 'Untitled');
+
+        const speakingCharacters = items
+            .flatMap(item => item.speaking_characters || [])
+            .filter(Boolean)
+            .slice(0, 3);
+
+        const relatedThemes = items
+            .flatMap(item => item.themes || [])
+            .filter(Boolean)
+            .filter(theme => theme !== commonality)
+            .slice(0, 2);
+
+        const pitches = {
+            theme: [
+                `🎭 Step into a realm of wonder with ${count} enchanted tales that weave the magic of "${commonality}"! From the spellbinding "${examples[0]}"${examples[1] ? ` to the mesmerizing "${examples[1]}"` : ''}${relatedThemes.length ? `, where themes of ${relatedThemes.join(' and ')} dance together in perfect harmony` : ''}.`,
+                `✨ Discover a treasure trove of ${count} magical stories that bring "${commonality}" to vivid life. Journey from the captivating "${examples[0]}"${examples[1] ? ` through the enchanted world of "${examples[1]}"` : ''}, where every tale is a doorway to adventure.`
+            ],
+            character: [
+                `⚔️ Join the legendary ${commonality} on ${count} epic quests${speakingCharacters.length ? `, alongside beloved heroes ${speakingCharacters.join(', ')}` : ''}! Your adventure begins with the thrilling "${examples[0]}"${examples[1] ? ` and soars through "${examples[1]}"` : ''}.`,
+                `🦸 Experience ${count} legendary tales where ${commonality} becomes a beacon of hope${speakingCharacters.length ? `. Stand with ${speakingCharacters.join(' and ')} as they` : ''}. The saga unfolds in "${examples[0]}"${examples[1] ? ` and reaches new heights in "${examples[1]}"` : ''}!`
+            ],
+            environment: [
+                `🏰 Unlock the mysteries of the ${commonality} in ${count} breathtaking tales! Your journey begins with "${examples[0]}"${examples[1] ? ` and ventures deep into "${examples[1]}"` : ''}${relatedThemes.length ? `. Each step reveals ${relatedThemes.join(' and ')}` : ''}.`,
+                `🌌 Step through the gateway to the enchanted ${commonality}, where ${count} remarkable stories await. From the wondrous "${examples[0]}"${examples[1] ? ` to the magical "${examples[1]}"` : ''}, each tale holds secrets yearning to be discovered.`
+            ]
+        };
+
+        const options = pitches[type] || pitches.theme;
+        return options[Math.floor(Math.random() * options.length)];
+    }
+
+    // Function to generate bundle preview
+    function generateBundlePreview(results) {
+        const commonThemes = findCommonalities(results, 'themes');
+        const commonCharacters = findCommonalities(results, 'characters_mentioned');
+        const commonEnvironments = findCommonalities(results, 'environments');
+
+        // Select the most prominent commonality for the main pitch
+        let mainType, mainCommonality;
+        if (commonThemes.length > 0) {
+            mainType = 'theme';
+            mainCommonality = commonThemes[0].commonality;
+        } else if (commonCharacters.length > 0) {
+            mainType = 'character';
+            mainCommonality = commonCharacters[0].commonality;
+        } else if (commonEnvironments.length > 0) {
+            mainType = 'environment';
+            mainCommonality = commonEnvironments[0].commonality;
+        } else {
+            mainType = 'theme';
+            mainCommonality = 'Adventure';
+        }
+
+        const title = generateBundleTitle(mainType, mainCommonality);
+        const pitch = generateElevatorPitch(mainType, mainCommonality, results.length, results);
+
+        return {
+            title,
+            pitch,
+            results,
+            type: mainType,
+            commonality: mainCommonality
+        };
+    }
+
+    // Function to find commonalities in results
+    function findCommonalities(results, field) {
+        const counts = {};
+        results.forEach(result => {
+            const items = result[field] || [];
+            items.forEach(item => {
+                counts[item] = (counts[item] || 0) + 1;
+            });
+        });
+
+        return Object.entries(counts)
+            .map(([commonality, count]) => ({ commonality, count }))
+            .filter(item => item.count > 1)
+            .sort((a, b) => b.count - a.count);
+    }
+
+    // Function to display bundle preview
+    function displayBundlePreview(bundle) {
+        currentBundle = bundle;
+        bundlePreview.classList.remove('d-none');
+
+        bundlePitch.innerHTML = `
+            <div class="alert alert-info">
+                <h4 class="alert-heading">${bundle.title}</h4>
+                <p>${bundle.pitch}</p>
+            </div>
+        `;
+
+        bundleContent.innerHTML = `
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Format</th>
+                            <th>Characters</th>
+                            <th>Themes</th>
+                            <th>Environments</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${bundle.results.map(result => `
+                            <tr>
+                                <td>${result.title}</td>
+                                <td>${result.format}</td>
+                                <td>${(result.characters_mentioned || []).join(', ') || '-'}</td>
+                                <td>${(result.themes || []).join(', ') || '-'}</td>
+                                <td>${(result.environments || []).join(', ') || '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    // Function to save bundle
+    function saveBundle(bundle) {
+        const savedBundles = JSON.parse(localStorage.getItem('savedBundles') || '[]');
+        const newBundle = {
+            ...bundle,
+            id: Date.now(),
+            dateCreated: new Date().toISOString()
+        };
+        savedBundles.unshift(newBundle);
+        localStorage.setItem('savedBundles', JSON.stringify(savedBundles));
+        displaySavedBundles();
+    }
+
+    // Function to delete bundle
+    function deleteBundle(id) {
+        const savedBundles = JSON.parse(localStorage.getItem('savedBundles') || '[]');
+        const updatedBundles = savedBundles.filter(bundle => bundle.id !== id);
+        localStorage.setItem('savedBundles', JSON.stringify(updatedBundles));
+        displaySavedBundles();
+    }
+
+    // Function to display saved bundles
+    function displaySavedBundles() {
+        const savedBundles = JSON.parse(localStorage.getItem('savedBundles') || '[]');
+        savedBundlesTable.innerHTML = savedBundles.map(bundle => `
+            <tr>
+                <td>${new Date(bundle.dateCreated).toLocaleString()}</td>
+                <td>${bundle.title}</td>
+                <td>${bundle.results.length} items</td>
+                <td>
+                    <button class="btn btn-sm btn-info me-2 view-bundle" data-id="${bundle.id}">View</button>
+                    <button class="btn btn-sm btn-danger delete-bundle" data-id="${bundle.id}">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+
+        // Add event listeners for view and delete buttons
+        document.querySelectorAll('.view-bundle').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const bundle = savedBundles.find(b => b.id === parseInt(btn.dataset.id));
+                if (bundle) {
+                    displayBundlePreview(bundle);
+                }
+            });
+        });
+
+        document.querySelectorAll('.delete-bundle').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (confirm('Are you sure you want to delete this bundle?')) {
+                    deleteBundle(parseInt(btn.dataset.id));
+                }
+            });
+        });
+    }
+
     // Fetch and populate all available options
     async function loadSearchOptions() {
         try {
@@ -217,6 +440,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Event listeners
     searchForm.addEventListener('submit', async function(e) {
         e.preventDefault();
 
@@ -245,47 +469,36 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             const results = await response.json();
-            displaySearchResults(results);
+            if (results.length === 0) {
+                alert('No results found matching your criteria');
+                return;
+            }
+
+            const bundle = generateBundlePreview(results);
+            displayBundlePreview(bundle);
 
         } catch (error) {
             console.error('Error:', error);
-            resultsDiv.innerHTML = '<div class="alert alert-danger">Error performing search</div>';
+            alert('Error performing search');
         }
     });
 
-    function displaySearchResults(results) {
-        if (results.length === 0) {
-            resultsDiv.innerHTML = '<div class="alert alert-info">No results found matching your criteria</div>';
-            return;
+    reprocessBtn.addEventListener('click', function() {
+        if (currentBundle) {
+            const bundle = generateBundlePreview(currentBundle.results);
+            displayBundlePreview(bundle);
         }
+    });
 
-        resultsDiv.innerHTML = `
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Title</th>
-                            <th>Format</th>
-                            <th>Characters</th>
-                            <th>Themes</th>
-                            <th>Environments</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${results.map(result => `
-                            <tr>
-                                <td>${result.title}</td>
-                                <td>${result.format}</td>
-                                <td>${(result.characters_mentioned || []).join(', ') || '-'}</td>
-                                <td>${(result.themes || []).join(', ') || '-'}</td>
-                                <td>${(result.environments || []).join(', ') || '-'}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-        `;
-    }
+    saveBtn.addEventListener('click', function() {
+        if (currentBundle) {
+            saveBundle(currentBundle);
+            alert('Bundle saved successfully!');
+        }
+    });
+
+    // Load saved bundles when the page loads
+    displaySavedBundles();
 
     // Load search options when the page loads
     loadSearchOptions();
