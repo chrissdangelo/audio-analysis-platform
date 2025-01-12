@@ -86,19 +86,28 @@ document.addEventListener('DOMContentLoaded', function() {
     function generateBundleTitle(type, commonality) {
         const titles = {
             theme: [
-                `${commonality} Collection`,
-                `${commonality} Series`,
-                `The ${commonality} Experience`
+                `Epic ${commonality} Collection`,
+                `The Ultimate ${commonality} Series`,
+                `The Extraordinary World of ${commonality}`,
+                `${commonality}: A Magical Journey`,
+                `Discover the Power of ${commonality}`,
+                `${commonality}: Beyond Imagination`
             ],
             character: [
-                `Adventures with ${commonality}`,
-                `${commonality}'s Story Collection`,
-                `The World of ${commonality}`
+                `The Legendary Tales of ${commonality}`,
+                `${commonality}'s Greatest Adventures`,
+                `${commonality}: Hero's Journey Collection`,
+                `The Incredible Saga of ${commonality}`,
+                `${commonality}'s Magical Chronicles`,
+                `${commonality}: Untold Stories`
             ],
             environment: [
-                `Tales from the ${commonality}`,
-                `${commonality} Stories`,
-                `Journey to the ${commonality}`
+                `Mysteries of the ${commonality}`,
+                `Enchanted Tales from the ${commonality}`,
+                `${commonality}: A Magical Realm`,
+                `Secrets of the ${commonality} Revealed`,
+                `The Wondrous ${commonality} Collection`,
+                `${commonality}: Where Magic Lives`
             ]
         };
 
@@ -114,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .map(item => item.title || 'Untitled')
             .filter(title => title !== 'Untitled');
 
-        // Get example characters if available (for character-based bundles)
+        // Get example characters if available
         const speakingCharacters = items
             .flatMap(item => item.speaking_characters || [])
             .filter(Boolean)
@@ -129,19 +138,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const pitches = {
             theme: [
-                `Explore ${count} captivating stories centered around "${commonality}", including "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''}. ${relatedThemes.length ? `These stories also touch on themes of ${relatedThemes.join(' and ')}.` : ''}`,
-                `Dive into a collection of ${count} handpicked tales exploring "${commonality}". Featured stories include "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''}.`,
-                `Experience the power of "${commonality}" through ${count} unique perspectives, showcasing stories like "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''}.`
+                `Embark on an extraordinary journey through ${count} spellbinding stories that bring "${commonality}" to life! Discover magical tales like "${examples[0]}"${examples[1] ? ` and the enchanting "${examples[1]}"` : ''}${relatedThemes.length ? `. Let yourself be swept away by themes of ${relatedThemes.join(' and ')}.` : ''}`,
+                `Unleash your imagination with ${count} handpicked masterpieces exploring the power of "${commonality}". From the mesmerizing "${examples[0]}"${examples[1] ? ` to the unforgettable "${examples[1]}"` : ''}, each story weaves a unique tapestry of wonder.`,
+                `Step into a world where "${commonality}" comes alive through ${count} captivating adventures! Experience the magic in "${examples[0]}"${examples[1] ? ` and lose yourself in "${examples[1]}"` : ''}${relatedThemes.length ? `. These tales beautifully interweave themes of ${relatedThemes.join(' and ')}.` : ''}`
             ],
             character: [
-                `Join ${commonality} in ${count} unforgettable adventures${speakingCharacters.length ? `, alongside ${speakingCharacters.join(', ')}` : ''}. Start with "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''}.`,
-                `Experience ${count} magical stories featuring ${commonality}${speakingCharacters.length ? ` and friends like ${speakingCharacters.join(' and ')}` : ''}. Begin your journey with "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''}.`,
-                `Discover the world of ${commonality} through ${count} enchanting tales${speakingCharacters.length ? `, featuring appearances by ${speakingCharacters.join(', ')}` : ''}.`
+                `Follow the incredible ${commonality} on ${count} thrilling quests${speakingCharacters.length ? `, alongside beloved companions ${speakingCharacters.join(', ')}` : ''}! Begin your adventure with the spectacular "${examples[0]}"${examples[1] ? ` and the spellbinding "${examples[1]}"` : ''}.`,
+                `Discover the legendary tales of ${commonality} in this collection of ${count} magical stories${speakingCharacters.length ? `. Join an unforgettable cast including ${speakingCharacters.join(' and ')}` : ''}. Your journey begins with "${examples[0]}"${examples[1] ? ` and continues through "${examples[1]}"` : ''}!`,
+                `Experience the extraordinary world of ${commonality} through ${count} mesmerizing adventures${speakingCharacters.length ? `. Share the journey with ${speakingCharacters.join(', ')} and more` : ''}! Dive into "${examples[0]}"${examples[1] ? ` and uncover the mysteries in "${examples[1]}"` : ''}.`
             ],
             environment: [
-                `Transport yourself to the ${commonality} in ${count} immersive stories, including "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''}${relatedThemes.length ? `. Experience themes of ${relatedThemes.join(' and ')}.` : ''}`,
-                `Explore the magical ${commonality} setting across ${count} unique adventures. Featured stories include "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''}.`,
-                `Journey through ${count} tales set in the enchanting ${commonality}, beginning with "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''}.`
+                `Journey to the mystical ${commonality} in ${count} spellbinding tales, where wonder awaits at every turn! Begin with "${examples[0]}"${examples[1] ? ` and venture forth into "${examples[1]}"` : ''}${relatedThemes.length ? `. Each story weaves together enchanting themes of ${relatedThemes.join(' and ')}.` : ''}`,
+                `Unlock the secrets of the majestic ${commonality} through ${count} extraordinary adventures. From the breathtaking "${examples[0]}"${examples[1] ? ` to the magical "${examples[1]}"` : ''}, each tale reveals new wonders waiting to be discovered.`,
+                `Step into the enchanted realm of the ${commonality}, where ${count} remarkable stories come to life! Your magical journey begins with "${examples[0]}"${examples[1] ? ` and leads you through "${examples[1]}"` : ''}${relatedThemes.length ? `, exploring fascinating themes of ${relatedThemes.join(' and ')}.` : ''}`
             ]
         };
 
@@ -210,7 +219,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                         </div>
                     </div>
-                `}).join('')}
+                    `}).join('')}
             </div>
         `;
     }
