@@ -51,14 +51,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
             analyses.forEach(analysis => {
                 // Handle potential null/undefined values
-                let items = [];
-                try {
-                    items = JSON.parse(analysis[field] || '[]');
-                } catch (e) {
-                    console.warn(`Failed to parse ${field} for analysis:`, analysis);
-                    items = [];
-                }
+                let items = analysis[field] || [];
 
+                // Ensure items is an array
                 if (!Array.isArray(items)) {
                     console.warn(`${field} is not an array:`, items);
                     items = [items].filter(Boolean);
