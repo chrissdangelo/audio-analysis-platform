@@ -53,29 +53,40 @@ class GeminiAnalyzer:
             raise
 
     def extract_transcript(self, file_path: str, mime_type: str = None) -> str:
-        """Extract transcript from an audio file using Gemini."""
+        """Extract transcript or description from a file using Gemini."""
         try:
-            logger.info(f"Starting transcript extraction for: {file_path}")
+            logger.info(f"Starting content extraction for: {file_path}")
             file = genai.upload_file(file_path, mime_type=mime_type)
 
-            prompt = (
-                "Please provide a detailed transcript of this audio content.\n"
-                "Focus on capturing all spoken dialogue, narration, and significant "
-                "sound effects. Format the transcript in a clear, readable manner.\n"
-                "Include speaker labels where possible."
-            )
+            # Different prompts based on file type
+            if mime_type and mime_type.startswith('image/'):
+                prompt = (
+                    "Please provide a detailed description of this image.\n"
+                    "Focus on:\n"
+                    "1. Visual elements and composition\n"
+                    "2. Characters or objects present\n"
+                    "3. Setting and environment\n"
+                    "4. Overall mood and atmosphere"
+                )
+            else:
+                prompt = (
+                    "Please provide a detailed transcript of this audio content.\n"
+                    "Focus on capturing all spoken dialogue, narration, and significant "
+                    "sound effects. Format the transcript in a clear, readable manner.\n"
+                    "Include speaker labels where possible."
+                )
 
             response = self.chat.send_message([file, prompt])
-            transcript = response.text.strip()
+            content = response.text.strip()
 
-            logger.info("Successfully extracted transcript")
-            logger.debug(f"Transcript content: {transcript[:200]}...")  # Log first 200 chars
+            logger.info("Successfully extracted content")
+            logger.debug(f"Content: {content[:200]}...")  # Log first 200 chars
 
-            return transcript
+            return content
 
         except Exception as e:
-            logger.error(f"Error extracting transcript: {str(e)}")
-            raise ValueError(f"Error extracting transcript: {str(e)}")
+            logger.error(f"Error extracting content: {str(e)}")
+            raise ValueError(f"Error extracting content: {str(e)}")
 
     def generate_summary_from_transcript(self, transcript: str) -> Dict[str, str]:
         """Generate a summary specifically from the transcript."""
@@ -103,49 +114,72 @@ class GeminiAnalyzer:
             raise ValueError(f"Error generating summary: {str(e)}")
 
     def upload_to_gemini(self, file_path: str, mime_type: str = None) -> Dict[str, Any]:
-        """Upload and analyze an audio file using Gemini"""
+        """Upload and analyze a file using Gemini"""
         try:
             logger.info(f"Starting analysis of file: {file_path}")
 
-            # First get the transcript
+            # First get the transcript or description
             transcript = self.extract_transcript(file_path, mime_type)
 
             # Then proceed with metadata analysis
             file = genai.upload_file(file_path, mime_type=mime_type)
             logger.info(f"Successfully uploaded file '{file.display_name}' as: {file.uri}")
 
-            prompt = (
-                "Analyze this audio file and provide detailed information in these categories:\n"
-                "1. Format: Is this narrated (single narrator) or radio play (multiple actors)?\n"
-                "2. Narration: Is there a narrator? (Yes/No)\n"
-                "3. Underscore: Is there background music? (Yes/No)\n"
-                "4. Sound Effects: Are there sound effects? (Yes/No)\n"
-                "5. Songs: Total number of complete songs\n"
-                "6. Characters Mentioned: List ALL character names (comma-separated)\n"
-                "7. Speaking Characters: List only characters with speaking lines (comma-separated)\n"
-                "8. Environments: List physical locations only (comma-separated, e.g. house, forest)\n"
-                "9. Themes: List abstract concepts only (comma-separated, e.g. friendship, bravery)\n"
-                "10. Duration: Total length in HH:MM:SS format\n"
-                "11. Emotions: Rate each emotion (joy, sadness, anger, fear, surprise) from 0.0 to 1.0\n"
-                "12. Tone Analysis: Describe the overall tone (formal, informal, playful, serious, etc)\n"
-                "13. Dominant Emotion: Which emotion is most prevalent?\n"
-                "14. Confidence: Rate analysis confidence from 0.0 to 1.0\n\n"
-                "Format your response with labels:\n"
-                "Format: [answer]\n"
-                "Narration: [yes/no]\n"
-                "Underscore: [yes/no]\n"
-                "Sound Effects: [yes/no]\n"
-                "Songs Count: [number]\n"
-                "Characters Mentioned: [comma-separated list]\n"
-                "Speaking Characters: [comma-separated list]\n"
-                "Environments: [comma-separated list]\n"
-                "Themes: [comma-separated list]\n"
-                "Duration: [HH:MM:SS]\n"
-                "Emotions: {'joy': [0-1], 'sadness': [0-1], 'anger': [0-1], 'fear': [0-1], 'surprise': [0-1]}\n"
-                "Tone Analysis: [description]\n"
-                "Dominant Emotion: [emotion]\n"
-                "Confidence: [0-1]\n"
-            )
+            # Different prompts based on file type
+            if mime_type and mime_type.startswith('image/'):
+                prompt = (
+                    "Analyze this image and provide detailed information in these categories:\n"
+                    "1. Format: What type of image is this (e.g., illustration, photograph)?\n"
+                    "2. Characters: List all characters or people visible (comma-separated)\n"
+                    "3. Environments: List physical locations/settings visible (comma-separated)\n"
+                    "4. Themes: List abstract concepts represented (comma-separated)\n"
+                    "5. Emotions: Rate each emotion (joy, sadness, anger, fear, surprise) from 0.0 to 1.0\n"
+                    "6. Tone Analysis: Describe the overall visual tone (bright, dark, dramatic, etc)\n"
+                    "7. Dominant Emotion: Which emotion is most prevalent?\n"
+                    "8. Confidence: Rate analysis confidence from 0.0 to 1.0\n\n"
+                    "Format your response with labels:\n"
+                    "Format: [answer]\n"
+                    "Characters Mentioned: [comma-separated list]\n"
+                    "Environments: [comma-separated list]\n"
+                    "Themes: [comma-separated list]\n"
+                    "Emotions: {'joy': [0-1], 'sadness': [0-1], 'anger': [0-1], 'fear': [0-1], 'surprise': [0-1]}\n"
+                    "Tone Analysis: [description]\n"
+                    "Dominant Emotion: [emotion]\n"
+                    "Confidence: [0-1]"
+                )
+            else:
+                prompt = (
+                    "Analyze this audio file and provide detailed information in these categories:\n"
+                    "1. Format: Is this narrated (single narrator) or radio play (multiple actors)?\n"
+                    "2. Narration: Is there a narrator? (Yes/No)\n"
+                    "3. Underscore: Is there background music? (Yes/No)\n"
+                    "4. Sound Effects: Are there sound effects? (Yes/No)\n"
+                    "5. Songs: Total number of complete songs\n"
+                    "6. Characters Mentioned: List ALL character names (comma-separated)\n"
+                    "7. Speaking Characters: List only characters with speaking lines (comma-separated)\n"
+                    "8. Environments: List physical locations only (comma-separated)\n"
+                    "9. Themes: List abstract concepts only (comma-separated)\n"
+                    "10. Duration: Total length in HH:MM:SS format\n"
+                    "11. Emotions: Rate each emotion (joy, sadness, anger, fear, surprise) from 0.0 to 1.0\n"
+                    "12. Tone Analysis: Describe the overall tone\n"
+                    "13. Dominant Emotion: Which emotion is most prevalent?\n"
+                    "14. Confidence: Rate analysis confidence from 0.0 to 1.0\n\n"
+                    "Format your response with labels:\n"
+                    "Format: [answer]\n"
+                    "Narration: [yes/no]\n"
+                    "Underscore: [yes/no]\n"
+                    "Sound Effects: [yes/no]\n"
+                    "Songs Count: [number]\n"
+                    "Characters Mentioned: [comma-separated list]\n"
+                    "Speaking Characters: [comma-separated list]\n"
+                    "Environments: [comma-separated list]\n"
+                    "Themes: [comma-separated list]\n"
+                    "Duration: [HH:MM:SS]\n"
+                    "Emotions: {'joy': [0-1], 'sadness': [0-1], 'anger': [0-1], 'fear': [0-1], 'surprise': [0-1]}\n"
+                    "Tone Analysis: [description]\n"
+                    "Dominant Emotion: [emotion]\n"
+                    "Confidence: [0-1]"
+                )
 
             logger.info("Sending analysis request to Gemini")
             response = self.chat.send_message([file, prompt])
@@ -157,18 +191,27 @@ class GeminiAnalyzer:
             # Process the response
             analysis = self._parse_gemini_response(response.text)
 
-            # Generate summary from transcript
-            summary_result = self.generate_summary_from_transcript(transcript)
+            # Set default values for audio-specific fields if processing an image
+            if mime_type and mime_type.startswith('image/'):
+                analysis.update({
+                    'has_narration': False,
+                    'has_underscore': False,
+                    'has_sound_effects': False,
+                    'songs_count': 0,
+                    'speaking_characters': [],
+                    'duration': '00:00:00'
+                })
 
-            # Add transcript and summary to the analysis results
+            # Add transcript and generate summary
             analysis['transcript'] = transcript
+            summary_result = self.generate_summary_from_transcript(transcript)
             analysis['summary'] = summary_result['summary']
 
             return analysis
 
         except Exception as e:
             logger.error(f"Error in upload_to_gemini: {str(e)}")
-            raise ValueError(f"Error analyzing audio content: {str(e)}")
+            raise ValueError(f"Error analyzing content: {str(e)}")
 
     def _clean_list_string(self, value_str: str) -> list:
         """Clean and parse a string into a list, handling various formats."""

@@ -39,6 +39,20 @@ def prepare_list_for_storage(value):
     # For any other type, wrap in a list
     return json.dumps([str(value)])
 
+def get_mime_type(filename):
+    """Helper function to determine MIME type based on file extension"""
+    file_ext = os.path.splitext(filename)[1].lower()
+    if file_ext == '.wav':
+        return 'audio/wav'
+    elif file_ext == '.mp3':
+        return 'audio/mpeg'
+    elif file_ext in ['.jpg', '.jpeg', '.png', '.gif']:
+        return 'image/' + file_ext[1:]
+    elif file_ext in ['.mp4', '.avi', '.mov']:
+        return 'video/' + file_ext[1:]
+    else:
+        raise ValueError(f"Unsupported file type: {file_ext}")
+
 def register_routes(app):
     @app.route('/')
     def index():
@@ -87,16 +101,12 @@ def register_routes(app):
                 analyzer = GeminiAnalyzer()
                 logger.info("Starting content analysis with Gemini")
 
-                # Determine MIME type based on file extension
-                file_ext = os.path.splitext(filename)[1].lower()
-                if file_ext in ['.mp3', '.wav']:
-                    mime_type = 'audio/wav' if file_ext == '.wav' else 'audio/mpeg'
-                elif file_ext in ['.jpg', '.jpeg', '.png', '.gif']:
-                    mime_type = 'image/' + file_ext[1:]
-                elif file_ext in ['.mp4', '.avi', '.mov']:
-                    mime_type = 'video/' + file_ext[1:]
-                else:
-                    raise ValueError(f"Unsupported file type: {file_ext}")
+                # Get MIME type
+                try:
+                    mime_type = get_mime_type(filename)
+                    logger.info(f"Determined MIME type: {mime_type}")
+                except ValueError as e:
+                    return jsonify({'error': str(e)}), 400
 
                 analysis_result = analyzer.upload_to_gemini(filepath, mime_type)
                 logger.debug(f"Raw analysis result: {analysis_result}")
@@ -110,7 +120,7 @@ def register_routes(app):
                 analysis = AudioAnalysis(
                     title=title_case(os.path.splitext(filename)[0]),
                     filename=filename,
-                    file_type='Audio' if file_ext in ['.mp3', '.wav', '.mp4', '.avi', '.mov'] else 'Image',
+                    file_type='Audio' if mime_type.startswith(('audio/', 'video/')) else 'Image',
                     format=analysis_result.get('format', 'narrated episode'),
                     duration=analysis_result.get('duration', '00:00:00'),
                     has_narration=analysis_result.get('has_narration', False),
@@ -147,7 +157,7 @@ def register_routes(app):
                     logger.error(f"Gemini API error: {str(e)}")
                     return jsonify({'error': 'Content analysis service unavailable. Please try again later.'}), 503
                 else:
-                    logger.error(f"Error analyzing content: {str(e)}")
+                    logger.error(f"Error analyzing content: {str(e)}", exc_info=True)
                     return jsonify({'error': f'Error analyzing content: {str(e)}'}), 400
 
         except RequestEntityTooLarge:
@@ -608,9 +618,8 @@ def register_routes(app):
 
                         # Determine MIME type
                         file_ext = os.path.splitext(filename)[1].lower()
-                        mime_type = 'audio/wav' if file_ext == '.wav' else 'audio/mpeg'
-                        if file_ext in ['.jpg', '.jpeg', '.png', '.gif']:
-                            mime_type = 'image/' + file_ext[1:]
+                        mime_type = get_mime_type(filename)
+
 
                         # Process with Gemini
                         analysis_result = analyzer.upload_to_gemini(filepath, mime_type)
@@ -624,7 +633,7 @@ def register_routes(app):
                         analysis = AudioAnalysis(
                             title=title_case(os.path.splitext(filename)[0]),
                             filename=filename,
-                            file_type='Audio' if file_ext in ['.mp3', '.wav', '.mp4', '.avi', '.mov'] else 'Image',
+                            file_type='Audio' if mime_type.startswith(('audio/', 'video/')) else 'Image',
                             format=analysis_result.get('format', 'narrated episode'),
                             duration=analysis_result.get('duration', '00:00:00'),
                             has_narration=analysis_result.get('has_narration', False),
