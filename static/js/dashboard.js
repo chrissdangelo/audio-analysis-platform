@@ -42,28 +42,93 @@ document.addEventListener('DOMContentLoaded', function() {
             ],
             initComplete: function() {
                 // Add column resizing functionality
-                new $.fn.dataTable.ColResize(dataTable, {
-                    isEnabled: true,
-                    hoverClass: 'dt-colresizable-hover',
-                    hasBoundCheck: true,
-                    minBoundClass: 'dt-colresizable-bound-min',
-                    maxBoundClass: 'dt-colresizable-bound-max',
-                    saveState: true,
-                    isResizable: function(column) {
-                        return true;
+                const table = this;
+                const thead = $(table.nTable).find('thead');
+
+                // Add resize handles to all headers
+                thead.find('th').each(function() {
+                    $(this).css('position', 'relative')
+                        .append($('<div>')
+                            .addClass('resize-handle')
+                            .css({
+                                position: 'absolute',
+                                right: 0,
+                                top: 0,
+                                bottom: 0,
+                                width: '5px',
+                                cursor: 'col-resize'
+                            })
+                        );
+                });
+
+                // Implement column resizing
+                let isResizing = false;
+                let startX, startWidth, currentTh;
+
+                thead.on('mousedown', '.resize-handle', function(e) {
+                    isResizing = true;
+                    currentTh = $(this).parent();
+                    startX = e.pageX;
+                    startWidth = currentTh.width();
+
+                    // Add visual feedback
+                    $('body').css('cursor', 'col-resize');
+                    currentTh.addClass('resizing');
+                });
+
+                $(document).on('mousemove', function(e) {
+                    if (!isResizing) return;
+
+                    const width = startWidth + (e.pageX - startX);
+                    if (width > 50) { // Minimum width
+                        currentTh.width(width);
+                        // Adjust the column width in DataTables
+                        dataTable.columns.adjust();
                     }
                 });
+
+                $(document).on('mouseup', function() {
+                    if (!isResizing) return;
+
+                    isResizing = false;
+                    $('body').css('cursor', '');
+                    if (currentTh) {
+                        currentTh.removeClass('resizing');
+                    }
+
+                    // Save column widths to localStorage
+                    const columnWidths = {};
+                    thead.find('th').each(function(index) {
+                        columnWidths[index] = $(this).width();
+                    });
+                    localStorage.setItem('columnWidths', JSON.stringify(columnWidths));
+                });
+
+                // Restore saved column widths
+                const savedWidths = localStorage.getItem('columnWidths');
+                if (savedWidths) {
+                    const widths = JSON.parse(savedWidths);
+                    thead.find('th').each(function(index) {
+                        $(this).width(widths[index]);
+                    });
+                    dataTable.columns.adjust();
+                }
             }
         });
 
         // Add double-click to fit content
         $('#analysisTable thead th').dblclick(function() {
-            var idx = $(this).index();
-            dataTable.column(idx).nodes().each(function(node, index, dt) {
-                dataTable.column(idx).nodes().to$().css('width', 'auto');
+            const idx = $(this).index();
+            // Remove any fixed width
+            $(this).css('width', 'auto');
+            // Let DataTables calculate the optimal width
+            dataTable.column(idx).nodes().each(function(node) {
+                $(node).css('width', 'auto');
             });
-            dataTable.columns.adjust().draw();
+            dataTable.columns.adjust();
         });
+
+        return dataTable;
     }
 
     function initializeCharts() {
@@ -377,14 +442,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 if (analysis.dominant_emotion) {
-                    dominantEmotions[analysis.dominant_emotion] = 
+                    dominantEmotions[analysis.dominant_emotion] =
                         (dominantEmotions[analysis.dominant_emotion] || 0) + 1;
                 }
             });
 
             // Update emotion radar chart
             if (emotionChart) {
-                const avgEmotions = Object.values(totalEmotions).map(score => 
+                const avgEmotions = Object.values(totalEmotions).map(score =>
                     score / Math.max(1, data.length));
                 emotionChart.data.datasets[0].data = avgEmotions;
                 emotionChart.update();
@@ -585,9 +650,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     tooltip.style('left', (event.pageX + 10) + 'px')
                         .style('top', (event.pageY + 10) + 'px');
                 })
-                .on('mouseout', function() {
-                    d3.selectAll('.tooltip').remove();
-                });
+                    .on('mouseout', function() {
+                        d3.selectAll('.tooltip').remove();
+                    });
             });
         } catch (error) {
             console.error('Error updating theme cloud:', error);

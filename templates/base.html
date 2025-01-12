@@ -42,6 +42,24 @@
             cursor: pointer;
             background-color: var(--bs-dark);
         }
+
+        /* Column resize styles */
+        .resize-handle {
+            background: rgba(255, 255, 255, 0.1);
+            transition: background 0.2s;
+        }
+        .resize-handle:hover,
+        th.resizing .resize-handle {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        th.resizing {
+            background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
+        }
+        .table th {
+            position: relative;
+            min-width: 50px;
+            padding-right: 15px !important;
+        }
     </style>
 </head>
 <body>
