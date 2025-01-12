@@ -7,28 +7,18 @@ document.addEventListener('DOMContentLoaded', function() {
     let confidenceChart = null;
     let dataTable = null;
 
-    // Initialize DataTable with column resizing
     function initializeDataTable() {
+        // If DataTable already exists, destroy it
         if ($.fn.DataTable.isDataTable('#analysisTable')) {
             $('#analysisTable').DataTable().destroy();
         }
 
+        // Initialize DataTable with columns configuration
         dataTable = $('#analysisTable').DataTable({
-            colResize: {
-                isEnabled: true,
-                hoverClass: 'dt-colresizable-hover',
-                hasBoundCheck: true,
-                minBoundClass: 'dt-colresizable-bound-min',
-                maxBoundClass: 'dt-colresizable-bound-max',
-                saveState: true,
-                isResizable: function(column) {
-                    return true;
-                }
-            },
-            scrollX: true,
-            autoWidth: false,
             pageLength: 10,
             lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+            autoWidth: false,
+            scrollX: true,
             dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
                  '<"row"<"col-sm-12"tr>>' +
                  '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
@@ -38,8 +28,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 info: "Showing _START_ to _END_ of _TOTAL_ entries",
                 infoEmpty: "No entries found",
                 infoFiltered: "(filtered from _MAX_ total entries)"
+            },
+            columnDefs: [
+                { 
+                    targets: [9, 10], // Yes/No columns
+                    className: 'text-center'
+                },
+                {
+                    targets: -1, // Last column (actions)
+                    orderable: false,
+                    className: 'text-center'
+                }
+            ]
+        });
+
+        // Initialize ColResize after DataTable is created
+        new $.fn.dataTable.ColResize(dataTable, {
+            isEnabled: true,
+            hoverClass: 'dt-colresizable-hover',
+            hasBoundCheck: true,
+            minBoundClass: 'dt-colresizable-bound-min',
+            maxBoundClass: 'dt-colresizable-bound-max',
+            saveState: true,
+            isResizable: function(column) {
+                return true;
             }
         });
+
+        return dataTable;
     }
 
     function initializeCharts() {
@@ -237,11 +253,39 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch('/api/analyses')
             .then(response => response.json())
             .then(data => {
-                // Reinitialize DataTable with new data if needed
-                if (dataTable) {
-                    dataTable.clear().draw();
-                    // Add your data update logic here
-                }
+                const tableBody = $('#analysisTable tbody');
+                tableBody.empty();
+
+                // Add rows to table
+                data.forEach(analysis => {
+                    const row = `
+                        <tr data-id="${analysis.id}">
+                            <td>${analysis.id}</td>
+                            <td>${analysis.title || "Untitled"}</td>
+                            <td>${analysis.filename}</td>
+                            <td>${analysis.file_type}</td>
+                            <td>${analysis.format}</td>
+                            <td>${analysis.duration}</td>
+                            <td>${analysis.environments ? analysis.environments.join(', ') : '-'}</td>
+                            <td>${analysis.characters_mentioned ? analysis.characters_mentioned.join(', ') : '-'}</td>
+                            <td>${analysis.speaking_characters ? analysis.speaking_characters.join(', ') : '-'}</td>
+                            <td>${analysis.has_underscore ? "Yes" : "No"}</td>
+                            <td>${analysis.has_sound_effects ? "Yes" : "No"}</td>
+                            <td>${analysis.songs_count}</td>
+                            <td>${analysis.themes ? analysis.themes.join(', ') : '-'}</td>
+                            <td>
+                                <a href="/debug_analysis/${analysis.id}" class="btn btn-sm btn-info mb-1">Info</a>
+                                <button class="btn btn-sm btn-danger delete-btn" data-id="${analysis.id}">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                    tableBody.append(row);
+                });
+
+                // Re-initialize DataTable with new data
+                initializeDataTable();
+
+                // Update other visualizations
                 updateFormatDistribution(data);
                 updateContentTypes(data);
                 updateThemeCloud(data);
@@ -555,6 +599,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     }
+
 
 
     // Initialize everything
