@@ -5,27 +5,18 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title">Upload Audio File</h5>
+                <h5 class="card-title">Upload Audio Files</h5>
                 <form id="uploadForm">
                     <div class="mb-3">
-                        <input type="file" class="form-control" id="audioFile" accept=".mp3,.wav,.mp4,.avi,.mov" required>
+                        <input type="file" class="form-control" id="audioFile" accept=".mp3,.wav,.mp4,.avi,.mov" multiple required>
+                        <div class="form-text">Select multiple files to analyze them in batch</div>
                     </div>
-                    <div id="waveformContainer" class="mb-3" style="display: none;">
-                        <div id="waveform"></div>
-                        <div class="mt-2">
-                            <button type="button" class="btn btn-sm btn-secondary" id="playBtn">
-                                <i data-feather="play"></i>
-                            </button>
-                            <button type="button" class="btn btn-sm btn-secondary" id="pauseBtn">
-                                <i data-feather="pause"></i>
-                            </button>
-                            <span id="currentTime" class="ms-2">0:00</span>
-                            <span>/</span>
-                            <span id="totalDuration">0:00</span>
-                        </div>
+                    <div id="uploadProgress" class="progress mb-3 d-none">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"></div>
                     </div>
+                    <div id="batchStatus" class="mb-3"></div>
                     <button type="submit" class="btn btn-primary" id="uploadBtn">
-                        <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                        <span class="spinner-border spinner-border-sm d-none" role="progressbar"></span>
                         Upload and Analyze
                     </button>
                 </form>
@@ -130,4 +121,5 @@
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='js/batch_upload.js') }}"></script>
 {% endblock %}
