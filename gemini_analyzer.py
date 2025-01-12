@@ -83,11 +83,10 @@ class GeminiAnalyzer:
             logger.info("Generating summary from transcript")
 
             prompt = (
-                "Generate a detailed summary of this audio transcript. Focus on:\n"
-                "1. Main narrative events and key plot points\n"
-                "2. Character interactions and development\n"
-                "3. Important themes and messages\n"
-                "4. Notable emotional moments\n\n"
+                "Generate a concise, focused summary of this audio transcript (max 3-4 sentences). Focus on:\n"
+                "1. Core narrative elements\n"
+                "2. Key character moments\n"
+                "3. Central theme or message\n\n"
                 f"Transcript:\n{transcript}\n\n"
                 "Provide a natural, flowing summary that captures the essence of the content."
             )
@@ -96,10 +95,11 @@ class GeminiAnalyzer:
             summary = response.text.strip()
 
             logger.info("Successfully generated summary from transcript")
+            logger.debug(f"Generated summary: {summary[:200]}...")  # Log first 200 chars
             return {'summary': summary}
 
         except Exception as e:
-            logger.error(f"Error generating summary from transcript: {str(e)}")
+            logger.error(f"Error generating summary from transcript: {str(e)}", exc_info=True)
             raise ValueError(f"Error generating summary: {str(e)}")
 
     def upload_to_gemini(self, file_path: str, mime_type: str = None) -> Dict[str, Any]:
@@ -204,74 +204,6 @@ class GeminiAnalyzer:
             logger.error(f"Error cleaning list string: {str(e)}")
             logger.error(f"Problematic value: {value_str}")
             return []
-
-    def upload_to_gemini(self, file_path: str, mime_type: str = None) -> Dict[str, Any]:
-        """Upload and analyze an audio file using Gemini"""
-        try:
-            logger.info(f"Starting analysis of file: {file_path}")
-
-            # First get the transcript
-            transcript = self.extract_transcript(file_path, mime_type)
-
-            # Then proceed with metadata analysis
-            file = genai.upload_file(file_path, mime_type=mime_type)
-            logger.info(f"Successfully uploaded file '{file.display_name}' as: {file.uri}")
-
-            prompt = (
-                "Analyze this audio file and provide detailed information in these categories:\n"
-                "1. Format: Is this narrated (single narrator) or radio play (multiple actors)?\n"
-                "2. Narration: Is there a narrator? (Yes/No)\n"
-                "3. Underscore: Is there background music? (Yes/No)\n"
-                "4. Sound Effects: Are there sound effects? (Yes/No)\n"
-                "5. Songs: Total number of complete songs\n"
-                "6. Characters Mentioned: List ALL character names (comma-separated)\n"
-                "7. Speaking Characters: List only characters with speaking lines (comma-separated)\n"
-                "8. Environments: List physical locations only (comma-separated, e.g. house, forest)\n"
-                "9. Themes: List abstract concepts only (comma-separated, e.g. friendship, bravery)\n"
-                "10. Duration: Total length in HH:MM:SS format\n"
-                "11. Emotions: Rate each emotion (joy, sadness, anger, fear, surprise) from 0.0 to 1.0\n"
-                "12. Tone Analysis: Describe the overall tone (formal, informal, playful, serious, etc)\n"
-                "13. Dominant Emotion: Which emotion is most prevalent?\n"
-                "14. Confidence: Rate analysis confidence from 0.0 to 1.0\n\n"
-                "Format your response with labels:\n"
-                "Format: [answer]\n"
-                "Narration: [yes/no]\n"
-                "Underscore: [yes/no]\n"
-                "Sound Effects: [yes/no]\n"
-                "Songs Count: [number]\n"
-                "Characters Mentioned: [comma-separated list]\n"
-                "Speaking Characters: [comma-separated list]\n"
-                "Environments: [comma-separated list]\n"
-                "Themes: [comma-separated list]\n"
-                "Duration: [HH:MM:SS]\n"
-                "Emotions: {'joy': [0-1], 'sadness': [0-1], 'anger': [0-1], 'fear': [0-1], 'surprise': [0-1]}\n"
-                "Tone Analysis: [description]\n"
-                "Dominant Emotion: [emotion]\n"
-                "Confidence: [0-1]\n"
-            )
-
-            logger.info("Sending analysis request to Gemini")
-            response = self.chat.send_message([file, prompt])
-
-            # Log the raw response
-            logger.info("Received response from Gemini")
-            logger.debug(f"Raw response:\n{response.text}")
-
-            # Process the response
-            analysis = self._parse_gemini_response(response.text)
-
-            # Generate summary from transcript
-            summary_result = self.generate_summary_from_transcript(transcript)
-
-            # Add transcript and summary to the analysis results
-            analysis['transcript'] = transcript
-            analysis['summary'] = summary_result['summary']
-
-            return analysis
-
-        except Exception as e:
-            logger.error(f"Error in upload_to_gemini: {str(e)}")
-            raise ValueError(f"Error analyzing audio content: {str(e)}")
 
     def _parse_gemini_response(self, response_text: str) -> Dict[str, Any]:
         """Parse Gemini's response into our standard format"""
@@ -494,3 +426,19 @@ class GeminiAnalyzer:
         except Exception as e:
             logger.error(f"Error in analyze_emotions: {str(e)}")
             raise ValueError(f"Error analyzing emotions: {str(e)}")
+
+    def regenerate_summary(self, analysis_dict: Dict[str, Any]) -> Dict[str, str]:
+        """Regenerate summary from existing transcript."""
+        try:
+            logger.info(f"Regenerating summary for analysis ID: {analysis_dict.get('id')}")
+
+            transcript = analysis_dict.get('transcript')
+            if not transcript:
+                logger.warning(f"No transcript available for analysis ID: {analysis_dict.get('id')}")
+                return {'summary': ''}
+
+            return self.generate_summary_from_transcript(transcript)
+
+        except Exception as e:
+            logger.error(f"Error regenerating summary: {str(e)}", exc_info=True)
+            raise ValueError(f"Error regenerating summary: {str(e)}")

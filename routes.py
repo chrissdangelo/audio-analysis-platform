@@ -411,7 +411,7 @@ def register_routes(app):
                             continue
 
                         # If we have a transcript but no summary, generate one
-                        summary_result = analyzer.generate_summary_from_transcript(analysis.transcript)
+                        summary_result = analyzer.regenerate_summary(analysis_dict)
                         analysis.summary = summary_result.get('summary', '')
                         logger.info(f"Generated summary from transcript for analysis {analysis.id}")
 
@@ -449,6 +449,38 @@ def register_routes(app):
         except Exception as e:
             logger.error(f"Error in update_missing_analysis: {str(e)}")
             return jsonify({'error': 'Error updating records'}), 500
+
+    @app.route('/api/regenerate_summary/<int:analysis_id>', methods=['POST'])
+    def regenerate_summary(analysis_id):
+        """Regenerate summary for a specific analysis using its transcript."""
+        try:
+            analysis = AudioAnalysis.query.get_or_404(analysis_id)
+
+            if not analysis.transcript:
+                logger.warning(f"Cannot regenerate summary for analysis {analysis_id} - no transcript available")
+                return jsonify({'error': 'No transcript available for this analysis'}), 400
+
+            analyzer = GeminiAnalyzer()
+            analysis_dict = analysis.to_dict()
+
+            try:
+                summary_result = analyzer.regenerate_summary(analysis_dict)
+                analysis.summary = summary_result.get('summary', '')
+                db.session.commit()
+                logger.info(f"Successfully regenerated summary for analysis {analysis_id}")
+
+                return jsonify({
+                    'message': 'Summary regenerated successfully',
+                    'summary': analysis.summary
+                }), 200
+
+            except Exception as e:
+                logger.error(f"Error regenerating summary for analysis {analysis_id}: {str(e)}", exc_info=True)
+                return jsonify({'error': f'Error regenerating summary: {str(e)}'}), 500
+
+        except Exception as e:
+            logger.error(f"Error in regenerate_summary endpoint: {str(e)}", exc_info=True)
+            return jsonify({'error': 'Error processing request'}), 500
 
     def process_batch(app, batch_id):
         """Process each file in the batch sequentially."""
