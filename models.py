@@ -20,6 +20,11 @@ class AudioAnalysis(db.Model):
     characters_mentioned = db.Column(db.Text)  # Store as JSON string
     speaking_characters = db.Column(db.Text)  # Store as JSON string
     themes = db.Column(db.Text)  # Store as JSON string
+    # New fields for emotion analysis
+    emotion_scores = db.Column(db.Text)  # Store as JSON string with scores for each emotion
+    dominant_emotion = db.Column(db.String(50))  # Primary detected emotion
+    tone_analysis = db.Column(db.Text)  # Store as JSON string with tone characteristics
+    confidence_score = db.Column(db.Float)  # Analysis confidence level
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def _parse_list_field(self, value):
@@ -33,6 +38,17 @@ class AudioAnalysis(db.Model):
             return parsed if isinstance(parsed, list) else [parsed]
         except (json.JSONDecodeError, TypeError):
             return []
+
+    def _parse_json_field(self, value):
+        """Parse a field that should contain a JSON object."""
+        if not value:
+            return {}
+        try:
+            if isinstance(value, dict):
+                return value
+            return json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return {}
 
     def to_dict(self):
         """Convert model instance to dictionary."""
@@ -52,6 +68,10 @@ class AudioAnalysis(db.Model):
                 'characters_mentioned': self._parse_list_field(self.characters_mentioned),
                 'speaking_characters': self._parse_list_field(self.speaking_characters),
                 'themes': self._parse_list_field(self.themes),
+                'emotion_scores': self._parse_json_field(self.emotion_scores),
+                'dominant_emotion': self.dominant_emotion,
+                'tone_analysis': self._parse_json_field(self.tone_analysis),
+                'confidence_score': self.confidence_score,
                 'created_at': self.created_at.isoformat() if self.created_at else None
             }
         except Exception as e:
@@ -71,5 +91,9 @@ class AudioAnalysis(db.Model):
                 'characters_mentioned': [],
                 'speaking_characters': [],
                 'themes': [],
+                'emotion_scores': {},
+                'dominant_emotion': None,
+                'tone_analysis': {},
+                'confidence_score': None,
                 'created_at': self.created_at.isoformat() if self.created_at else None
             }

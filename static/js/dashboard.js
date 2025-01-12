@@ -3,6 +3,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let contentChart = null;
     let environmentChart = null;
     let characterNetworkChart = null;
+    let emotionChart = null;
+    let confidenceChart = null;
 
     function initializeCharts() {
         // Format distribution chart (existing)
@@ -120,6 +122,79 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Initialize character network
         initializeCharacterNetwork();
+
+        // Initialize emotion radar chart
+        const emotionCtx = document.getElementById('emotionChart').getContext('2d');
+        emotionChart = new Chart(emotionCtx, {
+            type: 'radar',
+            data: {
+                labels: ['Joy', 'Sadness', 'Anger', 'Fear', 'Surprise'],
+                datasets: [{
+                    label: 'Emotion Scores',
+                    data: [0, 0, 0, 0, 0],
+                    backgroundColor: 'rgba(74, 158, 255, 0.2)',
+                    borderColor: 'rgba(74, 158, 255, 1)',
+                    pointBackgroundColor: 'rgba(74, 158, 255, 1)',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgba(74, 158, 255, 1)'
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    r: {
+                        angleLines: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        pointLabels: {
+                            color: '#fff'
+                        },
+                        ticks: {
+                            color: '#fff',
+                            backdropColor: 'transparent'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+
+        // Initialize confidence gauge chart
+        const confidenceCtx = document.getElementById('confidenceChart').getContext('2d');
+        confidenceChart = new Chart(confidenceCtx, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [0, 100],
+                    backgroundColor: [
+                        'rgba(74, 158, 255, 0.8)',
+                        'rgba(255, 255, 255, 0.1)'
+                    ],
+                    circumference: 180,
+                    rotation: 270
+                }]
+            },
+            options: {
+                responsive: true,
+                cutout: '80%',
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: false
+                    }
+                }
+            }
+        });
     }
 
     function updateDashboard() {
@@ -131,6 +206,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateThemeCloud(data);
                 updateEnvironmentDistribution(data);
                 updateCharacterNetwork(data);
+                updateEmotionAnalysis(data);
             })
             .catch(error => {
                 console.error('Error updating dashboard:', error);
@@ -368,10 +444,77 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function generateColors(count) {
-        return Array.from({length: count}, (_, i) => 
+        return Array.from({length: count}, (_, i) =>
             `hsl(${(i * 360) / count}, 70%, 60%)`
         );
     }
+
+    function updateEmotionAnalysis(analyses) {
+        // Calculate average emotion scores
+        const totalEmotions = {
+            joy: 0,
+            sadness: 0,
+            anger: 0,
+            fear: 0,
+            surprise: 0
+        };
+        let totalConfidence = 0;
+        let dominantEmotions = {};
+
+        analyses.forEach(analysis => {
+            const emotions = analysis.emotion_scores || {};
+            Object.keys(totalEmotions).forEach(emotion => {
+                totalEmotions[emotion] += emotions[emotion] || 0;
+            });
+
+            if (analysis.confidence_score) {
+                totalConfidence += analysis.confidence_score;
+            }
+
+            if (analysis.dominant_emotion) {
+                dominantEmotions[analysis.dominant_emotion] =
+                    (dominantEmotions[analysis.dominant_emotion] || 0) + 1;
+            }
+        });
+
+        // Update emotion radar chart
+        if (analyses.length > 0) {
+            emotionChart.data.datasets[0].data = Object.values(totalEmotions)
+                .map(score => score / analyses.length);
+            emotionChart.update();
+
+            // Update confidence gauge
+            const avgConfidence = totalConfidence / analyses.length;
+            confidenceChart.data.datasets[0].data = [
+                avgConfidence * 100,
+                100 - (avgConfidence * 100)
+            ];
+            confidenceChart.update();
+
+            // Update dominant emotion display
+            const dominantEmotion = Object.entries(dominantEmotions)
+                .sort((a, b) => b[1] - a[1])[0];
+            if (dominantEmotion) {
+                document.getElementById('dominantEmotion').textContent =
+                    dominantEmotion[0].charAt(0).toUpperCase() +
+                    dominantEmotion[0].slice(1);
+            }
+
+            // Update tone analysis
+            const toneDiv = document.getElementById('toneAnalysis');
+            const lastAnalysis = analyses[analyses.length - 1];
+            if (lastAnalysis && lastAnalysis.tone_analysis) {
+                const toneAnalysis = typeof lastAnalysis.tone_analysis === 'string'
+                    ? JSON.parse(lastAnalysis.tone_analysis)
+                    : lastAnalysis.tone_analysis;
+                toneDiv.innerHTML = Object.entries(toneAnalysis)
+                    .map(([key, value]) =>
+                        `<span class="badge bg-secondary me-2">${key}: ${value}</span>`
+                    ).join('');
+            }
+        }
+    }
+
 
     // Initialize charts
     initializeCharts();
