@@ -59,6 +59,11 @@ def create_app():
             register_routes(app)
             logger.info("Registered routes")
 
+            # Register Google Drive blueprint
+            from google_drive import google_drive
+            app.register_blueprint(google_drive)
+            logger.info("Registered Google Drive blueprint")
+
         logger.info("Application setup completed successfully")
         return app
 

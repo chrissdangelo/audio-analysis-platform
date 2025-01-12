@@ -11,6 +11,11 @@
                         <input type="file" class="form-control" id="audioFile" accept=".mp3,.wav,.mp4,.avi,.mov" multiple required>
                         <div class="form-text">Select multiple files to analyze them in batch</div>
                     </div>
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-secondary" id="googleDriveBtn">
+                            <i class="fas fa-cloud"></i> Select from Google Drive
+                        </button>
+                    </div>
                     <div id="uploadProgress" class="progress mb-3 d-none">
                         <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"></div>
                     </div>
@@ -55,6 +60,27 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Google Drive File Selection Modal -->
+<div class="modal fade" id="driveFileModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Select Files from Google Drive</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="driveFileList" class="list-group">
+                    <!-- Files will be listed here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="selectDriveFiles">Select Files</button>
             </div>
         </div>
     </div>
@@ -122,4 +148,5 @@
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 <script src="{{ url_for('static', filename='js/batch_upload.js') }}"></script>
+<script src="{{ url_for('static', filename='js/google_drive.js') }}"></script>
 {% endblock %}
