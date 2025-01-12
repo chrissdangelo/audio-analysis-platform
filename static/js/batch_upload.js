@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Create FormData with all files
         const formData = new FormData();
         for (let i = 0; i < files.length; i++) {
-            formData.append('files', files[i]);  // Changed from 'files[]' to 'files'
+            formData.append('files[]', files[i]);
         }
 
         try {

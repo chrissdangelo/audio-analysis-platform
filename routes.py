@@ -263,7 +263,7 @@ def register_routes(app):
     @app.route('/api/upload/batch', methods=['POST'])
     def upload_batch():
         try:
-            files = request.files.getlist('files')  # Changed from 'files[]'
+            files = request.files.getlist('files[]')
             if not files:
                 logger.error("No files received in request")
                 return jsonify({'error': 'No files uploaded'}), 400
@@ -330,6 +330,9 @@ def register_routes(app):
                 'duplicates': duplicates
             }), 202
 
+        except RequestEntityTooLarge:
+            logger.error("File too large")
+            return jsonify({'error': 'File too large. Maximum file size is 100MB'}), 413
         except Exception as e:
             logger.error(f"Unexpected error in batch upload: {str(e)}", exc_info=True)
             return jsonify({'error': 'An unexpected error occurred'}), 500
