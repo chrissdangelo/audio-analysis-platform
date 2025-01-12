@@ -8,7 +8,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             const analyses = await response.json();
-            console.log('Fetched analyses:', analyses);
 
             if (!Array.isArray(analyses)) {
                 throw new Error('Expected analyses to be an array');
@@ -21,15 +20,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Group by themes
             const themeGroups = groupByCommonality(analyses, 'themes');
-            console.log('Theme groups:', themeGroups);
 
             // Group by characters
             const characterGroups = groupByCommonality(analyses, 'characters_mentioned');
-            console.log('Character groups:', characterGroups);
 
             // Group by environments
             const environmentGroups = groupByCommonality(analyses, 'environments');
-            console.log('Environment groups:', environmentGroups);
 
             displayBundleSuggestions(themeGroups, characterGroups, environmentGroups);
 
@@ -87,7 +83,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function generateBundleTitle(type, commonality, count) {
+    function generateBundleTitle(type, commonality) {
         const titles = {
             theme: [
                 `${commonality} Collection`,
@@ -106,43 +102,19 @@ document.addEventListener('DOMContentLoaded', function() {
             ]
         };
 
-        // Pick a title format based on the commonality
         const options = titles[type] || titles.theme;
         const index = Math.floor(Math.random() * options.length);
         return options[index];
     }
 
-    function generateElevatorPitch(type, commonality, items) {
-        const totalDuration = items.reduce((acc, item) => {
-            const duration = item.duration || '00:00:00';
-            const [hours, minutes, seconds] = duration.split(':').map(Number);
-            return acc + hours * 3600 + minutes * 60 + seconds;
-        }, 0);
-
-        const formattedDuration = new Date(totalDuration * 1000)
-            .toISOString()
-            .substr(11, 8);
-
+    function generateElevatorPitch(type, commonality, count) {
         const pitches = {
-            theme: `Dive into ${items.length} captivating stories exploring the theme of ${commonality}. This carefully curated collection spans ${formattedDuration} of engaging content that will inspire and entertain.`,
-            character: `Join ${commonality} in ${items.length} unforgettable adventures. This character-driven collection offers ${formattedDuration} of magical storytelling.`,
-            environment: `Explore the enchanting ${commonality} through ${items.length} unique stories. ${formattedDuration} of immersive content awaits in this atmospheric collection.`
+            theme: `A carefully curated collection of ${count} stories exploring the theme of ${commonality}. Immerse yourself in this thematic journey.`,
+            character: `Join ${commonality} in ${count} unforgettable adventures. Experience the magic of this character's world.`,
+            environment: `Explore the enchanting ${commonality} through ${count} unique stories. Let these tales transport you.`
         };
 
         return pitches[type] || pitches.theme;
-    }
-
-    function formatDuration(duration) {
-        if (!duration) return '00:00:00';
-        try {
-            const [hours, minutes, seconds] = duration.split(':').map(num => 
-                String(parseInt(num || '0')).padStart(2, '0')
-            );
-            return `${hours}:${minutes}:${seconds}`;
-        } catch (error) {
-            console.warn('Error formatting duration:', error);
-            return '00:00:00';
-        }
     }
 
     function displayBundleSuggestions(themeGroups, characterGroups, environmentGroups) {
@@ -175,8 +147,8 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="col-12 mb-4">
                 <h6 class="mb-3">${title}</h6>
                 ${groups.slice(0, 5).map(group => {
-                    const bundleTitle = generateBundleTitle(type, group.commonality, group.count);
-                    const elevatorPitch = generateElevatorPitch(type, group.commonality, group.items);
+                    const bundleTitle = generateBundleTitle(type, group.commonality);
+                    const elevatorPitch = generateElevatorPitch(type, group.commonality, group.count);
 
                     return `
                     <div class="card mb-3">
@@ -198,7 +170,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <div class="list-group-item">
                                             <div class="d-flex justify-content-between align-items-center">
                                                 <span>${item.title || 'Untitled'}</span>
-                                                <span class="badge bg-secondary">${formatDuration(item.duration)}</span>
                                             </div>
                                         </div>
                                     `).join('')}
