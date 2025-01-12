@@ -72,8 +72,8 @@ class AudioAnalyzer:
             if file_size == 0:
                 raise ValueError("File is empty")
 
-            if file_size > 100 * 1024 * 1024:  # 100MB limit
-                raise ValueError("File size exceeds 100MB limit")
+            if file_size > 500 * 1024 * 1024:  # 500MB limit
+                raise ValueError("File size exceeds 500MB limit")
 
             file_ext = os.path.splitext(file_path)[1].lower()
             if not file_ext:
