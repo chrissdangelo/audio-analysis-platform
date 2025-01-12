@@ -107,6 +107,7 @@ def register_routes(app):
                     characters_mentioned=analysis_result.get('characters_mentioned', '[]'),
                     speaking_characters=analysis_result.get('speaking_characters', '[]'),
                     themes=analysis_result.get('themes', '[]'),
+                    transcript=analysis_result.get('transcript', ''),  # Make sure to store the transcript
                     summary=analysis_result.get('summary', ''),
                     emotion_scores=json.dumps(analysis_result.get('emotion_scores', {
                         'joy': 0,
