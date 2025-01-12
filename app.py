@@ -2,6 +2,7 @@ import os
 import logging
 from flask import Flask
 from flask_migrate import Migrate
+from flask_login import LoginManager
 from database import db
 
 # Configure logging
@@ -45,9 +46,19 @@ def create_app():
         migrate = Migrate(app, db)
         logger.info("Initialized database and migrations")
 
+        # Initialize LoginManager
+        login_manager = LoginManager()
+        login_manager.init_app(app)
+        login_manager.login_view = 'google_drive.authorize'
+
+        @login_manager.user_loader
+        def load_user(user_id):
+            from models import User
+            return User.query.get(int(user_id))
+
         with app.app_context():
             # Import models here to ensure they're registered with SQLAlchemy
-            from models import AudioAnalysis  # noqa: F401
+            from models import AudioAnalysis, User  # noqa: F401
             logger.info("Imported models")
 
             # Create tables if they don't exist
