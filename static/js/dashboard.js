@@ -16,12 +16,16 @@ document.addEventListener('DOMContentLoaded', function() {
         dataTable = $('#analysisTable').DataTable({
             scrollX: true,
             autoWidth: false,
-            colReorder: true,
+            colReorder: {
+                realtime: false,
+                fixedColumnsLeft: 1
+            },
             pageLength: 10,
             lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "All"]],
             dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
                  '<"row"<"col-sm-12"tr>>' +
                  '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+            order: [[0, 'desc']], // Sort by ID by default
             language: {
                 search: "Filter records:",
                 lengthMenu: "Show _MENU_ entries per page",
@@ -42,6 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 {
                     targets: -1, // Last column (actions)
                     orderable: false,
+                    width: '120px',
                     render: function(data, type, row) {
                         return `<div class="btn-group" role="group">
                             <a href="/debug_analysis/${row[0]}" class="btn btn-sm btn-info">Info</a>
@@ -83,8 +88,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
 
                     if (!response.ok) {
-                        const data = await response.json();
-                        throw new Error(data.error || 'Delete failed');
+                        throw new Error('Delete failed');
                     }
 
                     dataTable.row($(this).closest('tr')).remove().draw();
@@ -104,8 +108,8 @@ document.addEventListener('DOMContentLoaded', function() {
         let currentHeader = null;
         let startX, startWidth;
 
-        // Add resize handles to all headers
-        $headers.each(function() {
+        // Add resize handles to all headers except the last one (actions)
+        $headers.not(':last').each(function() {
             const $handle = $('<div class="resize-handle"></div>');
             $(this).append($handle);
         });
@@ -117,38 +121,43 @@ document.addEventListener('DOMContentLoaded', function() {
             startX = e.pageX;
             startWidth = currentHeader.width();
             currentHeader.addClass('resizing');
+            $('body').css('cursor', 'col-resize');
             e.preventDefault();
         });
 
         $(document).on('mousemove', function(e) {
             if (!isResizing) return;
 
-            const width = startWidth + (e.pageX - startX);
-            if (width > 50) { // Minimum width
-                const colIdx = currentHeader.index();
-                dataTable.column(colIdx).nodes().each(function(cell) {
-                    $(cell).css('width', width + 'px');
-                });
-                currentHeader.width(width);
-                dataTable.columns.adjust();
-            }
+            const width = Math.max(50, startWidth + (e.pageX - startX));
+            const colIdx = currentHeader.index();
+
+            // Update column width
+            currentHeader.width(width);
+            table.column(colIdx).nodes().each(function(cell) {
+                $(cell).css('width', width + 'px');
+            });
+
+            // Force DataTables to recalculate column widths
+            table.columns.adjust();
         });
 
         $(document).on('mouseup', function() {
             if (!isResizing) return;
 
             isResizing = false;
+            $('body').css('cursor', '');
             if (currentHeader) {
                 currentHeader.removeClass('resizing');
+
+                // Save column widths
+                const widths = {};
+                $headers.each(function(i) {
+                    widths[i] = $(this).width();
+                });
+                localStorage.setItem('columnWidths', JSON.stringify(widths));
+
                 currentHeader = null;
             }
-
-            // Save column widths
-            const widths = {};
-            $headers.each(function(i) {
-                widths[i] = $(this).width();
-            });
-            localStorage.setItem('columnWidths', JSON.stringify(widths));
         });
 
         // Restore saved widths
@@ -159,27 +168,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 const width = widths[i];
                 if (width) {
                     $(this).width(width);
-                    dataTable.column(i).nodes().each(function(cell) {
+                    table.column(i).nodes().each(function(cell) {
                         $(cell).css('width', width + 'px');
                     });
                 }
             });
-            dataTable.columns.adjust();
+            table.columns.adjust();
         }
 
         // Double-click to auto-fit
         $headers.on('dblclick', function() {
             const colIdx = $(this).index();
-            const column = dataTable.column(colIdx);
+            const column = table.column(colIdx);
 
             // Reset width to auto
+            $(this).css('width', 'auto');
             column.nodes().each(function() {
                 $(this).css('width', 'auto');
             });
-            $(this).css('width', 'auto');
 
             // Let DataTables calculate optimal width
-            dataTable.columns.adjust();
+            table.columns.adjust();
         });
     }
 
