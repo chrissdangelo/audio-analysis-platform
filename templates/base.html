@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
-    <script src="https://cdn.datatables.net/colresize/3.0.1/dataTables.colResize.min.js"></script>
+    <script src="https://cdn.datatables.net/colreorder/1.5.4/js/dataTables.colReorder.min.js"></script>
     <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
     <style>
         .file-status {
@@ -43,22 +43,52 @@
             background-color: var(--bs-dark);
         }
 
-        /* Column resize styles */
-        .resize-handle {
-            background: rgba(255, 255, 255, 0.1);
-            transition: background 0.2s;
-        }
-        .resize-handle:hover,
-        th.resizing .resize-handle {
-            background: rgba(255, 255, 255, 0.3);
-        }
-        th.resizing {
-            background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
-        }
+        /* Enhanced column resize styles */
         .table th {
             position: relative;
             min-width: 50px;
-            padding-right: 15px !important;
+            padding-right: 20px !important;
+            user-select: none;
+        }
+
+        .resize-handle {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 8px;
+            cursor: col-resize;
+            background: rgba(255, 255, 255, 0.1);
+            transition: background 0.2s, width 0.2s;
+        }
+
+        .resize-handle:hover,
+        th.resizing .resize-handle {
+            background: rgba(255, 255, 255, 0.3);
+            width: 4px;
+        }
+
+        th.resizing {
+            background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
+        }
+
+        /* Ensure table scrolls horizontally on small screens */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Improve button group spacing */
+        .btn-group .btn {
+            margin: 0 2px;
+        }
+
+        /* Truncate long content */
+        .text-truncate {
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
     </style>
 </head>

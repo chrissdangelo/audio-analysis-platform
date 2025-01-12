@@ -38,302 +38,164 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                         return data;
                     }
+                },
+                {
+                    targets: -1, // Last column (actions)
+                    orderable: false,
+                    render: function(data, type, row) {
+                        return `<div class="btn-group" role="group">
+                            <a href="/debug_analysis/${row[0]}" class="btn btn-sm btn-info">Info</a>
+                            <button class="btn btn-sm btn-danger delete-btn" data-id="${row[0]}">Delete</button>
+                        </div>`;
+                    }
                 }
             ],
+            drawCallback: function() {
+                // Attach event handlers after each draw
+                attachTableEventHandlers();
+            },
             initComplete: function() {
-                // Add column resizing functionality
-                const table = this;
-                const thead = $(table.nTable).find('thead');
-
-                // Add resize handles to all headers
-                thead.find('th').each(function() {
-                    $(this).css('position', 'relative')
-                        .append($('<div>')
-                            .addClass('resize-handle')
-                            .css({
-                                position: 'absolute',
-                                right: 0,
-                                top: 0,
-                                bottom: 0,
-                                width: '5px',
-                                cursor: 'col-resize'
-                            })
-                        );
-                });
-
-                // Implement column resizing
-                let isResizing = false;
-                let startX, startWidth, currentTh;
-
-                thead.on('mousedown', '.resize-handle', function(e) {
-                    isResizing = true;
-                    currentTh = $(this).parent();
-                    startX = e.pageX;
-                    startWidth = currentTh.width();
-
-                    // Add visual feedback
-                    $('body').css('cursor', 'col-resize');
-                    currentTh.addClass('resizing');
-                });
-
-                $(document).on('mousemove', function(e) {
-                    if (!isResizing) return;
-
-                    const width = startWidth + (e.pageX - startX);
-                    if (width > 50) { // Minimum width
-                        currentTh.width(width);
-                        // Adjust the column width in DataTables
-                        dataTable.columns.adjust();
-                    }
-                });
-
-                $(document).on('mouseup', function() {
-                    if (!isResizing) return;
-
-                    isResizing = false;
-                    $('body').css('cursor', '');
-                    if (currentTh) {
-                        currentTh.removeClass('resizing');
-                    }
-
-                    // Save column widths to localStorage
-                    const columnWidths = {};
-                    thead.find('th').each(function(index) {
-                        columnWidths[index] = $(this).width();
-                    });
-                    localStorage.setItem('columnWidths', JSON.stringify(columnWidths));
-                });
-
-                // Restore saved column widths
-                const savedWidths = localStorage.getItem('columnWidths');
-                if (savedWidths) {
-                    const widths = JSON.parse(savedWidths);
-                    thead.find('th').each(function(index) {
-                        $(this).width(widths[index]);
-                    });
-                    dataTable.columns.adjust();
-                }
-
-                // Handle Info button clicks
-                $('#analysisTable').on('click', '.btn-info', function(e) {
-                    e.preventDefault();
-                    const analysisId = $(this).closest('tr').data('id');
-                    window.location.href = `/debug_analysis/${analysisId}`;
-                });
-
-                // Handle Delete button clicks
-                $('#analysisTable').on('click', '.delete-btn', async function(e) {
-                    e.preventDefault();
-                    const id = $(this).data('id');
-
-                    if (confirm('Are you sure you want to delete this analysis?')) {
-                        try {
-                            const response = await fetch(`/api/analysis/${id}`, {
-                                method: 'DELETE'
-                            });
-
-                            if (!response.ok) {
-                                const data = await response.json();
-                                throw new Error(data.error || 'Delete failed');
-                            }
-
-                            // Remove row from DataTable
-                            dataTable.row($(this).closest('tr')).remove().draw();
-
-                            // Trigger dashboard update
-                            document.dispatchEvent(new CustomEvent('analysisDeleted'));
-
-                        } catch (error) {
-                            console.error('Error:', error);
-                            // Show error message
-                            const errorDiv = document.createElement('div');
-                            errorDiv.className = 'alert alert-danger';
-                            errorDiv.textContent = `Failed to delete analysis: ${error.message}`;
-                            const analysisTab = document.querySelector('#analysis');
-                            if (analysisTab) {
-                                const existingErrors = analysisTab.querySelectorAll('.alert-danger');
-                                existingErrors.forEach(err => err.remove());
-                                analysisTab.prepend(errorDiv);
-                            }
-                        }
-                    }
-                });
+                // Initialize column resizing
+                initializeColumnResizing(this);
             }
-        });
-
-        // Add double-click to fit content
-        $('#analysisTable thead th').dblclick(function() {
-            const idx = $(this).index();
-            // Remove any fixed width
-            $(this).css('width', 'auto');
-            // Let DataTables calculate the optimal width
-            dataTable.column(idx).nodes().each(function(node) {
-                $(node).css('width', 'auto');
-            });
-            dataTable.columns.adjust();
         });
 
         return dataTable;
     }
 
-    function initializeCharts() {
-        try {
-            width = document.getElementById('characterNetwork')?.offsetWidth || 800;
+    function attachTableEventHandlers() {
+        // Handle Info button clicks
+        $('#analysisTable').off('click', '.btn-info').on('click', '.btn-info', function(e) {
+            e.preventDefault();
+            const row = dataTable.row($(this).closest('tr'));
+            const id = row.data()[0];
+            window.location.href = `/debug_analysis/${id}`;
+        });
 
-            // Format Chart
-            const formatCtx = document.getElementById('formatChart');
-            if (formatCtx?.getContext('2d')) {
-                formatChart = new Chart(formatCtx.getContext('2d'), {
-                    type: 'doughnut',
-                    data: {
-                        labels: [],
-                        datasets: [{
-                            data: [],
-                            backgroundColor: [
-                                'rgba(74, 158, 255, 0.8)',
-                                'rgba(255, 99, 132, 0.8)',
-                                'rgba(255, 205, 86, 0.8)'
-                            ]
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: { color: '#fff' }
-                            }
-                        }
+        // Handle Delete button clicks
+        $('#analysisTable').off('click', '.delete-btn').on('click', '.delete-btn', async function(e) {
+            e.preventDefault();
+            const id = $(this).data('id');
+            if (confirm('Are you sure you want to delete this analysis?')) {
+                try {
+                    const response = await fetch(`/api/analysis/${id}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (!response.ok) {
+                        const data = await response.json();
+                        throw new Error(data.error || 'Delete failed');
                     }
+
+                    dataTable.row($(this).closest('tr')).remove().draw();
+                    document.dispatchEvent(new CustomEvent('analysisDeleted'));
+                } catch (error) {
+                    console.error('Error:', error);
+                    showError(`Failed to delete analysis: ${error.message}`);
+                }
+            }
+        });
+    }
+
+    function initializeColumnResizing(table) {
+        const $table = $(table.table().node());
+        const $headers = $table.find('thead th');
+        let isResizing = false;
+        let currentHeader = null;
+        let startX, startWidth;
+
+        // Add resize handles to all headers
+        $headers.each(function() {
+            const $handle = $('<div class="resize-handle"></div>');
+            $(this).append($handle);
+        });
+
+        // Mouse events for resize handles
+        $table.on('mousedown', '.resize-handle', function(e) {
+            isResizing = true;
+            currentHeader = $(this).parent();
+            startX = e.pageX;
+            startWidth = currentHeader.width();
+            currentHeader.addClass('resizing');
+            e.preventDefault();
+        });
+
+        $(document).on('mousemove', function(e) {
+            if (!isResizing) return;
+
+            const width = startWidth + (e.pageX - startX);
+            if (width > 50) { // Minimum width
+                const colIdx = currentHeader.index();
+                dataTable.column(colIdx).nodes().each(function(cell) {
+                    $(cell).css('width', width + 'px');
                 });
+                currentHeader.width(width);
+                dataTable.columns.adjust();
+            }
+        });
+
+        $(document).on('mouseup', function() {
+            if (!isResizing) return;
+
+            isResizing = false;
+            if (currentHeader) {
+                currentHeader.removeClass('resizing');
+                currentHeader = null;
             }
 
-            // Content Chart
-            const contentCtx = document.getElementById('contentChart');
-            if (contentCtx?.getContext('2d')) {
-                contentChart = new Chart(contentCtx.getContext('2d'), {
-                    type: 'bar',
-                    data: {
-                        labels: ['Narration', 'Background Music', 'Sound Effects', 'Songs'],
-                        datasets: [{
-                            data: [0, 0, 0, 0],
-                            backgroundColor: [
-                                'rgba(74, 158, 255, 0.8)',
-                                'rgba(255, 99, 132, 0.8)',
-                                'rgba(255, 205, 86, 0.8)',
-                                'rgba(153, 102, 255, 0.8)'
-                            ]
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: { color: '#fff' }
-                            }
-                        }
-                    }
-                });
-            }
+            // Save column widths
+            const widths = {};
+            $headers.each(function(i) {
+                widths[i] = $(this).width();
+            });
+            localStorage.setItem('columnWidths', JSON.stringify(widths));
+        });
 
-            // Environment Chart
-            const environmentCtx = document.getElementById('environmentChart');
-            if (environmentCtx?.getContext('2d')) {
-                environmentChart = new Chart(environmentCtx.getContext('2d'), {
-                    type: 'polarArea',
-                    data: {
-                        labels: [],
-                        datasets: [{
-                            data: [],
-                            backgroundColor: []
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: {
-                                position: 'right',
-                                labels: { color: '#fff' }
-                            }
-                        }
-                    }
-                });
-            }
+        // Restore saved widths
+        const savedWidths = localStorage.getItem('columnWidths');
+        if (savedWidths) {
+            const widths = JSON.parse(savedWidths);
+            $headers.each(function(i) {
+                const width = widths[i];
+                if (width) {
+                    $(this).width(width);
+                    dataTable.column(i).nodes().each(function(cell) {
+                        $(cell).css('width', width + 'px');
+                    });
+                }
+            });
+            dataTable.columns.adjust();
+        }
 
-            // Emotion Chart
-            const emotionCtx = document.getElementById('emotionChart');
-            if (emotionCtx?.getContext('2d')) {
-                emotionChart = new Chart(emotionCtx.getContext('2d'), {
-                    type: 'radar',
-                    data: {
-                        labels: ['Joy', 'Sadness', 'Anger', 'Fear', 'Surprise'],
-                        datasets: [{
-                            label: 'Emotion Scores',
-                            data: [0, 0, 0, 0, 0],
-                            backgroundColor: 'rgba(74, 158, 255, 0.2)',
-                            borderColor: 'rgba(74, 158, 255, 1)',
-                            pointBackgroundColor: 'rgba(74, 158, 255, 1)',
-                            pointBorderColor: '#fff'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            r: {
-                                angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
-                                grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                                pointLabels: { color: '#fff' },
-                                ticks: {
-                                    color: '#fff',
-                                    backdropColor: 'transparent'
-                                }
-                            }
-                        }
-                    }
-                });
-            }
+        // Double-click to auto-fit
+        $headers.on('dblclick', function() {
+            const colIdx = $(this).index();
+            const column = dataTable.column(colIdx);
 
-            // Confidence Chart
-            const confidenceCtx = document.getElementById('confidenceChart');
-            if (confidenceCtx?.getContext('2d')) {
-                confidenceChart = new Chart(confidenceCtx.getContext('2d'), {
-                    type: 'doughnut',
-                    data: {
-                        datasets: [{
-                            data: [0, 100],
-                            backgroundColor: [
-                                'rgba(74, 158, 255, 0.8)',
-                                'rgba(255, 255, 255, 0.1)'
-                            ],
-                            circumference: 180,
-                            rotation: 270
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        cutout: '80%',
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: { enabled: false }
-                        }
-                    }
-                });
-            }
+            // Reset width to auto
+            column.nodes().each(function() {
+                $(this).css('width', 'auto');
+            });
+            $(this).css('width', 'auto');
 
-            // Initialize character network
-            initializeCharacterNetwork();
+            // Let DataTables calculate optimal width
+            dataTable.columns.adjust();
+        });
+    }
 
-            return true;
-        } catch (error) {
-            console.error('Error initializing charts:', error);
-            return false;
+    function showError(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'alert alert-danger';
+        errorDiv.textContent = message;
+        const analysisTab = document.querySelector('#analysis');
+        if (analysisTab) {
+            const existingErrors = analysisTab.querySelectorAll('.alert-danger');
+            existingErrors.forEach(err => err.remove());
+            analysisTab.prepend(errorDiv);
         }
     }
 
-    async function updateDashboard() {
+    function updateDashboard() {
         try {
             const response = await fetch('/api/analyses');
             if (!response.ok) {
@@ -363,8 +225,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         analysis.has_sound_effects ? "Yes" : "No",
                         analysis.songs_count,
                         (analysis.themes || []).join(', ') || '-',
-                        `<a href="/debug_analysis/${analysis.id}" class="btn btn-sm btn-info mb-1">Info</a>
-                         <button class="btn btn-sm btn-danger delete-btn" data-id="${analysis.id}">Delete</button>`
+                        `<div class="btn-group" role="group">
+                            <a href="/debug_analysis/${analysis.id}" class="btn btn-sm btn-info">Info</a>
+                            <button class="btn btn-sm btn-danger delete-btn" data-id="${analysis.id}">Delete</button>
+                        </div>`
                     ]);
                 });
                 dataTable.draw();
@@ -727,6 +591,164 @@ document.addEventListener('DOMContentLoaded', function() {
             .map(([theme, count]) => `${theme} (${count})`)
             .join('<br>');
     }
+
+    function initializeCharts() {
+        try {
+            width = document.getElementById('characterNetwork')?.offsetWidth || 800;
+
+            // Format Chart
+            const formatCtx = document.getElementById('formatChart');
+            if (formatCtx?.getContext('2d')) {
+                formatChart = new Chart(formatCtx.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            data: [],
+                            backgroundColor: [
+                                'rgba(74, 158, 255, 0.8)',
+                                'rgba(255, 99, 132, 0.8)',
+                                'rgba(255, 205, 86, 0.8)'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { color: '#fff' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Content Chart
+            const contentCtx = document.getElementById('contentChart');
+            if (contentCtx?.getContext('2d')) {
+                contentChart = new Chart(contentCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['Narration', 'Background Music', 'Sound Effects', 'Songs'],
+                        datasets: [{
+                            data: [0, 0, 0, 0],
+                            backgroundColor: [
+                                'rgba(74, 158, 255, 0.8)',
+                                'rgba(255, 99, 132, 0.8)',
+                                'rgba(255, 205, 86, 0.8)',
+                                'rgba(153, 102, 255, 0.8)'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { color: '#fff' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Environment Chart
+            const environmentCtx = document.getElementById('environmentChart');
+            if (environmentCtx?.getContext('2d')) {
+                environmentChart = new Chart(environmentCtx.getContext('2d'), {
+                    type: 'polarArea',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            data: [],
+                            backgroundColor: []
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                                labels: { color: '#fff' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Emotion Chart
+            const emotionCtx = document.getElementById('emotionChart');
+            if (emotionCtx?.getContext('2d')) {
+                emotionChart = new Chart(emotionCtx.getContext('2d'), {
+                    type: 'radar',
+                    data: {
+                        labels: ['Joy', 'Sadness', 'Anger', 'Fear', 'Surprise'],
+                        datasets: [{
+                            label: 'Emotion Scores',
+                            data: [0, 0, 0, 0, 0],
+                            backgroundColor: 'rgba(74, 158, 255, 0.2)',
+                            borderColor: 'rgba(74, 158, 255, 1)',
+                            pointBackgroundColor: 'rgba(74, 158, 255, 1)',
+                            pointBorderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            r: {
+                                angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                                pointLabels: { color: '#fff' },
+                                ticks: {
+                                    color: '#fff',
+                                    backdropColor: 'transparent'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Confidence Chart
+            const confidenceCtx = document.getElementById('confidenceChart');
+            if (confidenceCtx?.getContext('2d')) {
+                confidenceChart = new Chart(confidenceCtx.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        datasets: [{
+                            data: [0, 100],
+                            backgroundColor: [
+                                'rgba(74, 158, 255, 0.8)',
+                                'rgba(255, 255, 255, 0.1)'
+                            ],
+                            circumference: 180,
+                            rotation: 270
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        cutout: '80%',
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { enabled: false }
+                        }
+                    }
+                });
+            }
+
+            // Initialize character network
+            initializeCharacterNetwork();
+
+            return true;
+        } catch (error) {
+            console.error('Error initializing charts:', error);
+            return false;
+        }
+    }
+
 
     // Initialize components
     document.querySelector('#analysis-tab').addEventListener('shown.bs.tab', updateDashboard);
