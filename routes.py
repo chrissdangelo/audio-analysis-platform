@@ -163,7 +163,23 @@ def register_routes(app):
     def debug_analysis(analysis_id):
         try:
             analysis = AudioAnalysis.query.get_or_404(analysis_id)
-            return render_template('debug_analysis.html', analysis=analysis.to_dict())
+            analysis_dict = analysis.to_dict()
+
+            # Ensure emotion_scores is a dict
+            if not analysis_dict.get('emotion_scores'):
+                analysis_dict['emotion_scores'] = {
+                    'joy': 0,
+                    'sadness': 0,
+                    'anger': 0,
+                    'fear': 0,
+                    'surprise': 0
+                }
+
+            # Ensure tone_analysis is a dict
+            if not analysis_dict.get('tone_analysis'):
+                analysis_dict['tone_analysis'] = {}
+
+            return render_template('debug_analysis.html', analysis=analysis_dict)
         except Exception as e:
             logger.error(f"Error fetching analysis debug: {str(e)}")
             return jsonify({'error': 'Error fetching analysis debug info'}), 500

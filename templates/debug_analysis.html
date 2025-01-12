@@ -33,7 +33,7 @@
                         <div class="row">
                             <div class="col-md-6 text-center">
                                 <h5>Dominant Emotion</h5>
-                                <p class="display-6">{{ analysis.dominant_emotion or 'N/A' }}</p>
+                                <p class="display-6">{{ analysis.dominant_emotion|title if analysis.dominant_emotion else 'N/A' }}</p>
                             </div>
                             <div class="col-md-6 text-center">
                                 <h5>Confidence Score</h5>
@@ -44,7 +44,7 @@
                             <h5>Tone Analysis</h5>
                             <div id="toneAnalysis">
                                 {% if analysis.tone_analysis %}
-                                    {% for key, value in analysis.tone_analysis|tojson|from_json|dictsort %}
+                                    {% for key, value in analysis.tone_analysis.items() %}
                                         <span class="badge bg-secondary me-2 mb-2">{{ key }}: {{ value }}</span>
                                     {% endfor %}
                                 {% else %}
@@ -86,7 +86,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize emotion radar chart
             const emotionCtx = document.getElementById('emotionChart').getContext('2d');
-            const emotionScores = {{ analysis.emotion_scores|tojson|safe if analysis.emotion_scores else '{}' }};
+            const emotionScores = {{ analysis.emotion_scores|tojson|safe }};
 
             new Chart(emotionCtx, {
                 type: 'radar',
