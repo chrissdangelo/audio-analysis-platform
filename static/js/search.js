@@ -89,6 +89,9 @@ document.addEventListener('DOMContentLoaded', function() {
     async function loadSearchOptions() {
         try {
             const response = await fetch('/api/analyses');
+            if (!response.ok) {
+                throw new Error('Failed to load search options');
+            }
             const analyses = await response.json();
 
             const themes = analyses.flatMap(a => a.themes || []);
@@ -101,18 +104,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
         } catch (error) {
             console.error('Error loading search options:', error);
-            alert('Error loading search options');
         }
     }
 
     let currentSearchResults = [];
 
+    // Handle form submission
     bundleCreatorForm.addEventListener('submit', async function(e) {
         e.preventDefault();
 
         const criteria = {
             themes: Array.from(document.querySelectorAll('input[name="theme"]:checked')).map(cb => cb.value),
-            characters: Array.from(document.querySelectorAll('input[name="character"]:checked')).map(cb => cb.value),
+            characters: Array.from(document.querySelectorAll('input[name="character"]:checked')).map(cb => {
+                const variants = JSON.parse(cb.dataset.variants || '[]');
+                return variants.length > 0 ? variants : [cb.value];
+            }).flat(),
             environments: Array.from(document.querySelectorAll('input[name="environment"]:checked')).map(cb => cb.value)
         };
 
@@ -143,86 +149,6 @@ document.addEventListener('DOMContentLoaded', function() {
             resultsDiv.innerHTML = '<div class="alert alert-danger">Error performing search</div>';
             createBundleBtn.disabled = true;
         }
-    });
-
-    createBundleBtn.addEventListener('click', function() {
-        if (currentSearchResults.length === 0) return;
-
-        const criteria = {
-            themes: Array.from(document.querySelectorAll('input[name="theme"]:checked')).map(cb => cb.value),
-            characters: Array.from(document.querySelectorAll('input[name="character"]:checked')).map(cb => cb.value),
-            environments: Array.from(document.querySelectorAll('input[name="environment"]:checked')).map(cb => cb.value)
-        };
-
-        // Generate bundle title and description
-        const bundleType = criteria.characters.length ? 'character' : 
-                          criteria.themes.length ? 'theme' : 'environment';
-        const commonality = criteria.characters[0] || criteria.themes[0] || criteria.environments[0];
-
-        const titles = {
-            theme: [
-                `✨ Tales of ${commonality}: Where Magic Begins`,
-                `🌟 The ${commonality} Chronicles: Untold Wonders`,
-                `🎭 Once Upon a ${commonality}`
-            ],
-            character: [
-                `🦸 ${commonality}'s Epic Adventures`,
-                `⚔️ ${commonality}: Legend in the Making`,
-                `🎭 The ${commonality} Saga: Heroes Rise`
-            ],
-            environment: [
-                `🏰 Secrets of the ${commonality}`,
-                `🌌 ${commonality}: A World of Wonder`,
-                `🌳 Hidden Tales of the ${commonality}`
-            ]
-        };
-
-        const bundleTitle = titles[bundleType][Math.floor(Math.random() * titles[bundleType].length)];
-
-        // Generate marketing pitch
-        const examples = currentSearchResults
-            .slice(0, 3)
-            .map(item => item.title || 'Untitled')
-            .filter(title => title !== 'Untitled');
-
-        const pitches = [
-            `🎭 Step into a realm of wonder with ${currentSearchResults.length} enchanted tales that weave the magic of "${commonality}"! Starting with "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''}, each story opens a new door to adventure.`,
-            `✨ Discover a treasure trove of ${currentSearchResults.length} magical stories featuring "${commonality}". Journey from "${examples[0]}"${examples[1] ? ` through "${examples[1]}"` : ''}, where every tale is a new discovery.`,
-            `🌟 Embark on an extraordinary voyage through ${currentSearchResults.length} handpicked gems exploring "${commonality}". Let "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''} transport you to worlds beyond imagination.`
-        ];
-
-        const marketingPitch = pitches[Math.floor(Math.random() * pitches.length)];
-
-        // Display bundle preview
-        bundleContent.innerHTML = `
-            <h3 class="mb-3">${bundleTitle}</h3>
-            <p class="lead mb-4">${marketingPitch}</p>
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Title</th>
-                            <th>Format</th>
-                            <th>Characters</th>
-                            <th>Themes</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${currentSearchResults.map(result => `
-                            <tr>
-                                <td>${result.title}</td>
-                                <td>${result.format}</td>
-                                <td>${(result.characters_mentioned || []).join(', ') || '-'}</td>
-                                <td>${(result.themes || []).join(', ') || '-'}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-        `;
-
-        bundlePreview.classList.remove('d-none');
-        bundlePreview.scrollIntoView({ behavior: 'smooth' });
     });
 
     function displaySearchResults(results) {
@@ -259,6 +185,6 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
     }
 
-    // Load search options when the page loads
+    // Initialize search options when the page loads
     loadSearchOptions();
 });
