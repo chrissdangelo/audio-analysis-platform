@@ -249,49 +249,61 @@ def register_routes(app):
 
     @app.route('/api/upload/batch', methods=['POST'])
     def upload_batch():
-        if 'files[]' not in request.files:
-            return jsonify({'error': 'No files part'}), 400
-
-        files = request.files.getlist('files[]')
-        if not files:
-            return jsonify({'error': 'No selected files'}), 400
-
-        # Create uploads directory if it doesn't exist
-        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-        os.makedirs('data', exist_ok=True)  # For batch status files
-
-        # Create new batch
-        filenames = [secure_filename(f.filename) for f in files if f.filename and allowed_file(f.filename)]
-        if not filenames:
-            return jsonify({'error': 'No valid files selected'}), 400
-
-        batch_id = batch_manager.create_batch(filenames)
-
-        # Save files
-        saved_files = []
         try:
-            for file in files:
-                if file.filename and allowed_file(file.filename):
-                    filename = secure_filename(file.filename)
-                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                    file.save(filepath)
-                    saved_files.append(filepath)
-                    logger.info(f"Saved file {filename} for batch {batch_id}")
+            files = request.files.getlist('files')  # Changed from 'files[]'
+            if not files:
+                logger.error("No files received in request")
+                return jsonify({'error': 'No files uploaded'}), 400
+
+            # Create uploads directory if it doesn't exist
+            os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+            os.makedirs('data', exist_ok=True)  # For batch status files
+
+            # Create new batch
+            filenames = [secure_filename(f.filename) for f in files if f.filename and allowed_file(f.filename)]
+            if not filenames:
+                logger.error("No valid files found in request")
+                return jsonify({'error': 'No valid files selected'}), 400
+
+            batch_id = batch_manager.create_batch(filenames)
+            logger.info(f"Created batch {batch_id} with {len(filenames)} files")
+
+            # Save files
+            saved_files = []
+            try:
+                for file in files:
+                    if file.filename and allowed_file(file.filename):
+                        filename = secure_filename(file.filename)
+                        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                        file.save(filepath)
+                        saved_files.append(filepath)
+                        logger.info(f"Saved file {filename} for batch {batch_id}")
+            except Exception as e:
+                logger.error(f"Error saving files: {str(e)}")
+                # Clean up any saved files
+                for filepath in saved_files:
+                    try:
+                        if os.path.exists(filepath):
+                            os.remove(filepath)
+                    except Exception as cleanup_error:
+                        logger.error(f"Error cleaning up file {filepath}: {str(cleanup_error)}")
+                return jsonify({'error': 'Error saving files'}), 500
+
+            # Start processing in a separate thread
+            from threading import Thread
+            thread = Thread(target=process_batch, args=(app, batch_id))
+            thread.daemon = True
+            thread.start()
+
+            return jsonify({
+                'batch_id': batch_id,
+                'message': 'Batch upload started',
+                'status_url': f'/api/upload/batch/{batch_id}/status'
+            }), 202
+
         except Exception as e:
-            logger.error(f"Error saving files: {str(e)}")
-            return jsonify({'error': 'Error saving files'}), 500
-
-        # Start processing in a separate thread
-        from threading import Thread
-        thread = Thread(target=process_batch, args=(app, batch_id))
-        thread.daemon = True
-        thread.start()
-
-        return jsonify({
-            'batch_id': batch_id,
-            'message': 'Batch upload started',
-            'status_url': f'/api/upload/batch/{batch_id}/status'
-        }), 202
+            logger.error(f"Unexpected error in batch upload: {str(e)}", exc_info=True)
+            return jsonify({'error': 'An unexpected error occurred'}), 500
 
     @app.route('/api/upload/batch/<batch_id>/status')
     def batch_status(batch_id):
