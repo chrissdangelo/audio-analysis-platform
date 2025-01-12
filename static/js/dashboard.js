@@ -43,205 +43,236 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function initializeCharts() {
-        // Format distribution chart (existing)
-        const formatCtx = document.getElementById('formatChart').getContext('2d');
-        formatChart = new Chart(formatCtx, {
-            type: 'doughnut',
-            data: {
-                labels: [],
-                datasets: [{
-                    data: [],
-                    backgroundColor: [
-                        'rgba(74, 158, 255, 0.8)',
-                        'rgba(255, 99, 132, 0.8)',
-                        'rgba(255, 205, 86, 0.8)'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            color: '#fff'
-                        }
-                    },
-                    title: {
-                        display: true,
-                        text: 'Content Format Distribution',
-                        color: '#fff'
-                    }
-                }
-            }
-        });
-
-        // Enhanced content types chart
-        const contentCtx = document.getElementById('contentChart').getContext('2d');
-        contentChart = new Chart(contentCtx, {
-            type: 'bar',
-            data: {
-                labels: ['Narration', 'Background Music', 'Sound Effects', 'Songs'],
-                datasets: [{
-                    label: 'Content Elements',
-                    data: [0, 0, 0, 0],
-                    backgroundColor: [
-                        'rgba(74, 158, 255, 0.8)',
-                        'rgba(255, 99, 132, 0.8)',
-                        'rgba(255, 205, 86, 0.8)',
-                        'rgba(153, 102, 255, 0.8)'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    title: {
-                        display: true,
-                        text: 'Audio Elements Distribution',
-                        color: '#fff'
-                    }
+        // Format distribution chart
+        const formatCtx = document.getElementById('formatChart')?.getContext('2d');
+        if (formatCtx) {
+            formatChart = new Chart(formatCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: [
+                            'rgba(74, 158, 255, 0.8)',
+                            'rgba(255, 99, 132, 0.8)',
+                            'rgba(255, 205, 86, 0.8)'
+                        ]
+                    }]
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            color: '#fff'
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#fff'
+                            }
                         },
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        }
-                    },
-                    x: {
-                        ticks: {
+                        title: {
+                            display: true,
+                            text: 'Content Format Distribution',
                             color: '#fff'
-                        },
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
                         }
                     }
                 }
-            }
-        });
+            });
+        }
+
+        // Content types chart
+        const contentCtx = document.getElementById('contentChart')?.getContext('2d');
+        if (contentCtx) {
+            contentChart = new Chart(contentCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Narration', 'Background Music', 'Sound Effects', 'Songs'],
+                    datasets: [{
+                        label: 'Content Elements',
+                        data: [0, 0, 0, 0],
+                        backgroundColor: [
+                            'rgba(74, 158, 255, 0.8)',
+                            'rgba(255, 99, 132, 0.8)',
+                            'rgba(255, 205, 86, 0.8)',
+                            'rgba(153, 102, 255, 0.8)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Audio Elements Distribution',
+                            color: '#fff'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#fff'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#fff'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
 
         // Environment distribution chart
-        const environmentCtx = document.getElementById('environmentChart').getContext('2d');
-        environmentChart = new Chart(environmentCtx, {
-            type: 'polarArea',
-            data: {
-                labels: [],
-                datasets: [{
-                    data: [],
-                    backgroundColor: []
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'right',
-                        labels: {
+        const environmentCtx = document.getElementById('environmentChart')?.getContext('2d');
+        if (environmentCtx) {
+            environmentChart = new Chart(environmentCtx, {
+                type: 'polarArea',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: []
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: '#fff'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Environment Distribution',
                             color: '#fff'
                         }
-                    },
-                    title: {
-                        display: true,
-                        text: 'Environment Distribution',
-                        color: '#fff'
                     }
                 }
-            }
-        });
+            });
+        }
+
+        // Initialize emotion radar chart
+        const emotionCtx = document.getElementById('emotionChart')?.getContext('2d');
+        if (emotionCtx) {
+            emotionChart = new Chart(emotionCtx, {
+                type: 'radar',
+                data: {
+                    labels: ['Joy', 'Sadness', 'Anger', 'Fear', 'Surprise'],
+                    datasets: [{
+                        label: 'Emotion Scores',
+                        data: [0, 0, 0, 0, 0],
+                        backgroundColor: 'rgba(74, 158, 255, 0.2)',
+                        borderColor: 'rgba(74, 158, 255, 1)',
+                        pointBackgroundColor: 'rgba(74, 158, 255, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(74, 158, 255, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        r: {
+                            angleLines: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            pointLabels: {
+                                color: '#fff'
+                            },
+                            ticks: {
+                                color: '#fff',
+                                backdropColor: 'transparent'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initialize confidence gauge chart
+        const confidenceCtx = document.getElementById('confidenceChart')?.getContext('2d');
+        if (confidenceCtx) {
+            confidenceChart = new Chart(confidenceCtx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [0, 100],
+                        backgroundColor: [
+                            'rgba(74, 158, 255, 0.8)',
+                            'rgba(255, 255, 255, 0.1)'
+                        ],
+                        circumference: 180,
+                        rotation: 270
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    cutout: '80%',
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            enabled: false
+                        }
+                    }
+                }
+            });
+        }
 
         // Initialize character network
         initializeCharacterNetwork();
-
-        // Initialize emotion radar chart
-        const emotionCtx = document.getElementById('emotionChart').getContext('2d');
-        emotionChart = new Chart(emotionCtx, {
-            type: 'radar',
-            data: {
-                labels: ['Joy', 'Sadness', 'Anger', 'Fear', 'Surprise'],
-                datasets: [{
-                    label: 'Emotion Scores',
-                    data: [0, 0, 0, 0, 0],
-                    backgroundColor: 'rgba(74, 158, 255, 0.2)',
-                    borderColor: 'rgba(74, 158, 255, 1)',
-                    pointBackgroundColor: 'rgba(74, 158, 255, 1)',
-                    pointBorderColor: '#fff',
-                    pointHoverBackgroundColor: '#fff',
-                    pointHoverBorderColor: 'rgba(74, 158, 255, 1)'
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    r: {
-                        angleLines: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        },
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        },
-                        pointLabels: {
-                            color: '#fff'
-                        },
-                        ticks: {
-                            color: '#fff',
-                            backdropColor: 'transparent'
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                }
-            }
-        });
-
-        // Initialize confidence gauge chart
-        const confidenceCtx = document.getElementById('confidenceChart').getContext('2d');
-        confidenceChart = new Chart(confidenceCtx, {
-            type: 'doughnut',
-            data: {
-                datasets: [{
-                    data: [0, 100],
-                    backgroundColor: [
-                        'rgba(74, 158, 255, 0.8)',
-                        'rgba(255, 255, 255, 0.1)'
-                    ],
-                    circumference: 180,
-                    rotation: 270
-                }]
-            },
-            options: {
-                responsive: true,
-                cutout: '80%',
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        enabled: false
-                    }
-                }
-            }
-        });
     }
 
     function updateDashboard() {
         fetch('/api/analyses')
             .then(response => response.json())
             .then(data => {
-                // Reinitialize DataTable with new data if needed
+                // Update table data
                 if (dataTable) {
-                    dataTable.clear().draw();
-                    // Add your data update logic here
+                    dataTable.clear();
+                    data.forEach(analysis => {
+                        dataTable.row.add([
+                            analysis.id,
+                            analysis.title || "Untitled",
+                            analysis.filename,
+                            analysis.file_type,
+                            analysis.format,
+                            analysis.duration,
+                            (analysis.environments || []).join(', ') || '-',
+                            (analysis.characters_mentioned || []).join(', ') || '-',
+                            (analysis.speaking_characters || []).join(', ') || '-',
+                            analysis.has_underscore ? "Yes" : "No",
+                            analysis.has_sound_effects ? "Yes" : "No",
+                            analysis.songs_count,
+                            (analysis.themes || []).join(', ') || '-',
+                            `<a href="/debug_analysis/${analysis.id}" class="btn btn-sm btn-info mb-1">Info</a>
+                             <button class="btn btn-sm btn-danger delete-btn" data-id="${analysis.id}">Delete</button>`
+                        ]);
+                    });
+                    dataTable.draw();
                 }
+
+                // Update charts
                 updateFormatDistribution(data);
                 updateContentTypes(data);
                 updateThemeCloud(data);
