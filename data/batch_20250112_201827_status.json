@@ -1,0 +1,1 @@
+{"files": {"07_Mechanicals__Jobs_Of_The_Day_Pt_1_MASTER.wav": {"status": "failed", "attempts": 1, "error": "Error analyzing audio content: Error extracting transcript: The read operation timed out", "analysis_id": null, "processed_at": null}}, "total_files": 1, "processed_files": 0, "failed_files": 1, "started_at": "2025-01-12T20:18:27.576733", "completed_at": null}

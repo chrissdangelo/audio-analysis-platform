@@ -9,11 +9,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function uploadFiles(files) {
         const totalFiles = files.length;
+        if (totalFiles === 0) {
+            batchStatus.innerHTML = '<div class="alert alert-warning">Please select at least one file.</div>';
+            return;
+        }
 
         // Show progress modal
         progressModal.show();
         progressDiv.classList.remove('d-none');
-        batchStatus.innerHTML = `Processing 0/${totalFiles} files...`;
+        batchStatus.innerHTML = `Preparing to upload ${totalFiles} file${totalFiles > 1 ? 's' : ''}...`;
 
         // Create FormData with all files
         const formData = new FormData();
@@ -35,7 +39,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             if (result.duplicates && result.duplicates.length > 0) {
-                batchStatus.innerHTML = `<div class="alert alert-warning">
+                batchStatus.innerHTML += `<div class="alert alert-warning">
                     Some files were skipped (duplicates): ${result.duplicates.join(', ')}
                 </div>`;
                 await new Promise(resolve => setTimeout(resolve, 3000));
@@ -90,17 +94,20 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateBatchProgress(status) {
         const totalFiles = status.total_files;
         const processedFiles = status.processed_files + status.failed_files;
-        const progress = (processedFiles / totalFiles) * 100;
+        const progress = status.overall_progress || 0;
 
         // Animate progress bar
         progressBar.style.width = `${progress}%`;
         progressBar.setAttribute('aria-valuenow', progress);
 
         // Update status display
-        let statusHtml = `<div class="mb-3">Processing ${processedFiles}/${totalFiles} files...</div>`;
+        let statusHtml = `<div class="mb-3">
+            Processing ${processedFiles}/${totalFiles} files (${Math.round(progress)}% complete)
+        </div>`;
 
         // Show current file status
         if (status.files) {
+            statusHtml += '<div class="file-status-container">';
             Object.entries(status.files).forEach(([filename, fileStatus]) => {
                 const statusClass = {
                     'pending': 'text-muted',
@@ -109,15 +116,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     'failed': 'text-danger'
                 }[fileStatus.status] || 'text-muted';
 
+                const operation = fileStatus.current_operation || 'waiting';
+                const progress = Math.round((fileStatus.upload_progress + fileStatus.processing_progress) / 2);
+
                 statusHtml += `
-                    <div class="file-status ${fileStatus.status}">
+                    <div class="file-status ${fileStatus.status} mb-2">
                         <div class="d-flex justify-content-between align-items-center">
                             <span class="filename">${filename}</span>
                             <span class="${statusClass}">
                                 ${fileStatus.status.toUpperCase()}
+                                ${progress < 100 && fileStatus.status === 'processing' ? ` (${progress}%)` : ''}
                                 ${fileStatus.error ? `<i class="fas fa-exclamation-circle" title="${fileStatus.error}"></i>` : ''}
                             </span>
                         </div>
+                        ${fileStatus.status === 'processing' ? `
+                            <div class="small text-muted mt-1">
+                                ${operation}...
+                            </div>
+                        ` : ''}
                         ${fileStatus.error ? `
                             <div class="error-message small text-danger mt-1">
                                 ${fileStatus.error}
@@ -126,6 +142,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 `;
             });
+            statusHtml += '</div>';
         }
 
         batchStatus.innerHTML = statusHtml;
