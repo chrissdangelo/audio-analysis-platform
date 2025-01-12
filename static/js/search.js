@@ -79,6 +79,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const other = new Set();
 
         environments.forEach(env => {
+            if (!env) return; // Skip null/undefined
             let matched = false;
             for (const [category, info] of Object.entries(categories)) {
                 if (info.pattern.test(env)) {
@@ -127,6 +128,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const other = new Set();
 
         themes.forEach(theme => {
+            if (!theme) return; // Skip null/undefined
             let matched = false;
             for (const [category, info] of Object.entries(categories)) {
                 if (info.pattern.test(theme)) {
@@ -179,7 +181,7 @@ document.addEventListener('DOMContentLoaded', function() {
         `).join('');
     }
 
-    // Function to generate bundle title (similar to bundle.js)
+    // Function to generate bundle title
     function generateBundleTitle(type, commonality) {
         const titles = {
             theme: [
@@ -212,7 +214,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return options[Math.floor(Math.random() * options.length)];
     }
 
-    // Function to generate elevator pitch (similar to bundle.js)
+    // Function to generate elevator pitch
     function generateElevatorPitch(type, commonality, count, items) {
         const examples = items
             .slice(0, 3)
@@ -326,8 +328,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     <tbody>
                         ${bundle.results.map(result => `
                             <tr>
-                                <td>${result.title}</td>
-                                <td>${result.format}</td>
+                                <td>${result.title || 'Untitled'}</td>
+                                <td>${result.format || '-'}</td>
                                 <td>${(result.characters_mentioned || []).join(', ') || '-'}</td>
                                 <td>${(result.themes || []).join(', ') || '-'}</td>
                                 <td>${(result.environments || []).join(', ') || '-'}</td>
@@ -400,6 +402,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const response = await fetch('/api/analyses');
             const analyses = await response.json();
 
+            if (!Array.isArray(analyses)) {
+                throw new Error('Expected analyses to be an array');
+            }
+
             const themes = analyses.flatMap(a => a.themes || []);
             const characters = analyses.flatMap(a => a.characters_mentioned || []);
             const environments = analyses.flatMap(a => a.environments || []);
@@ -412,7 +418,7 @@ document.addEventListener('DOMContentLoaded', function() {
             populateCategorizedCheckboxes(themeCheckboxes, categorizedThemes, 'theme');
             populateCategorizedCheckboxes(environmentCheckboxes, categorizedEnvironments, 'environment');
 
-            // For characters, we'll just use a simple list for now
+            // For characters, we'll use a simple list for now
             const charactersList = Array.from(new Set(characters)).sort();
             characterCheckboxes.innerHTML = `
                 <div class="card">
