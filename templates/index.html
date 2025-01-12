@@ -84,7 +84,7 @@
                                     <td>{{ analysis.songs_count }}</td>
                                     <td>{{ analysis.themes | join | replace('[', '') | replace(']', '') if analysis.themes else '-' }}</td>
                                     <td>
-                                        <a href="{{ url_for('debug_analysis', analysis_id=analysis.id) }}" class="btn btn-sm btn-info mb-1" target="_blank">Debug</a>
+                                        <a href="{{ url_for('debug_analysis', analysis_id=analysis.id) }}" class="btn btn-sm btn-info mb-1">Info</a>
                                         <button class="btn btn-sm btn-danger delete-btn" data-id="{{ analysis.id }}">Delete</button>
                                     </td>
                                 </tr>

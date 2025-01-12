@@ -38,7 +38,8 @@ class GeminiAnalyzer:
                 generation_config=self.generation_config,
                 system_instruction=(
                     "You are an expert audio content analyzer specializing in children's content. "
-                    "Your task is to analyze audio files and provide detailed, accurate metadata."
+                    "Your task is to analyze audio files and provide detailed, accurate metadata "
+                    "including emotional and tonal analysis."
                 )
             )
             logger.info("Initialized Gemini model")
@@ -112,8 +113,12 @@ class GeminiAnalyzer:
                 "7. Speaking Characters: List only characters with speaking lines (comma-separated)\n"
                 "8. Environments: List physical locations only (comma-separated, e.g. house, forest)\n"
                 "9. Themes: List abstract concepts only (comma-separated, e.g. friendship, bravery)\n"
-                "10. Duration: Total length in HH:MM:SS format\n\n"
-                "Format your response as a simple list with labels:\n"
+                "10. Duration: Total length in HH:MM:SS format\n"
+                "11. Emotions: Rate each emotion (joy, sadness, anger, fear, surprise) from 0.0 to 1.0\n"
+                "12. Tone Analysis: Describe the overall tone (formal, informal, playful, serious, etc)\n"
+                "13. Dominant Emotion: Which emotion is most prevalent?\n"
+                "14. Confidence: Rate analysis confidence from 0.0 to 1.0\n\n"
+                "Format your response with labels:\n"
                 "Format: [answer]\n"
                 "Narration: [yes/no]\n"
                 "Underscore: [yes/no]\n"
@@ -124,6 +129,10 @@ class GeminiAnalyzer:
                 "Environments: [comma-separated list]\n"
                 "Themes: [comma-separated list]\n"
                 "Duration: [HH:MM:SS]\n"
+                "Emotions: {'joy': [0-1], 'sadness': [0-1], 'anger': [0-1], 'fear': [0-1], 'surprise': [0-1]}\n"
+                "Tone Analysis: [description]\n"
+                "Dominant Emotion: [emotion]\n"
+                "Confidence: [0-1]\n"
             )
 
             logger.info("Sending analysis request to Gemini")
@@ -146,18 +155,28 @@ class GeminiAnalyzer:
         try:
             logger.info("Starting to parse Gemini response")
 
-            # Initialize default result
+            # Initialize default result with emotion-related fields
             result = {
                 'format': 'narrated episode',
                 'has_narration': False,
                 'has_underscore': False,
-                'sound_effects_count': 0,
+                'has_sound_effects': False,
                 'songs_count': 0,
                 'characters_mentioned': [],
                 'speaking_characters': [],
                 'environments': [],
                 'themes': [],
-                'duration': '00:00:00'
+                'duration': '00:00:00',
+                'emotion_scores': {
+                    'joy': 0.0,
+                    'sadness': 0.0,
+                    'anger': 0.0,
+                    'fear': 0.0,
+                    'surprise': 0.0
+                },
+                'tone_analysis': {},
+                'dominant_emotion': None,
+                'confidence_score': 0.0
             }
 
             # Parse response line by line
@@ -184,7 +203,7 @@ class GeminiAnalyzer:
                 elif 'underscore' in label or 'background music' in label:
                     result['has_underscore'] = 'yes' in value.lower()
                 elif 'sound effects' in label:
-                    result['sound_effects_count'] = 1 if 'yes' in value.lower() else 0
+                    result['has_sound_effects'] = 'yes' in value.lower()
                 elif 'songs' in label and 'count' in label:
                     try:
                         result['songs_count'] = int(''.join(filter(str.isdigit, value))) if any(c.isdigit() for c in value) else 0
@@ -199,10 +218,26 @@ class GeminiAnalyzer:
                 elif 'themes' in label:
                     result['themes'] = self._clean_list_string(value)
                 elif 'duration' in label:
-                    # Try to extract HH:MM:SS format
                     time_parts = [part for part in value.split() if ':' in part]
                     if time_parts:
                         result['duration'] = time_parts[0]
+                elif 'emotions' in label:
+                    try:
+                        emotions = json.loads(value.replace("'", '"'))
+                        result['emotion_scores'] = {
+                            k: float(v) for k, v in emotions.items()
+                        }
+                    except (json.JSONDecodeError, ValueError):
+                        logger.warning(f"Could not parse emotion scores: {value}")
+                elif 'tone analysis' in label:
+                    result['tone_analysis'] = {'tone': value}
+                elif 'dominant emotion' in label:
+                    result['dominant_emotion'] = value.strip().lower()
+                elif 'confidence' in label:
+                    try:
+                        result['confidence_score'] = float(value)
+                    except ValueError:
+                        result['confidence_score'] = 0.0
 
             logger.info("Finished parsing response")
             logger.debug(f"Final parsed result: {result}")
