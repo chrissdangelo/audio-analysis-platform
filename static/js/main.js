@@ -59,9 +59,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Check file size before uploading
-        const maxSize = 100 * 1024 * 1024; // 100MB
+        const maxSize = 500 * 1024 * 1024; // 500MB
         if (file.size > maxSize) {
-            showError('File is too large. Maximum size is 100MB');
+            showError('File is too large. Maximum size is 500MB');
             return;
         }
 
