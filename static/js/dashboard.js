@@ -8,24 +8,12 @@ document.addEventListener('DOMContentLoaded', function() {
     let dataTable = null;
     let width = 0;
 
-    // Initialize DataTable with column resizing
-    function initializeDataTable() {
+    function createDataTable() {
         if ($.fn.DataTable.isDataTable('#analysisTable')) {
             $('#analysisTable').DataTable().destroy();
         }
 
         dataTable = $('#analysisTable').DataTable({
-            colResize: {
-                isEnabled: true,
-                hoverClass: 'dt-colresizable-hover',
-                hasBoundCheck: true,
-                minBoundClass: 'dt-colresizable-bound-min',
-                maxBoundClass: 'dt-colresizable-bound-max',
-                saveState: true,
-                isResizable: function(column) {
-                    return true;
-                }
-            },
             scrollX: true,
             autoWidth: false,
             pageLength: 10,
@@ -35,23 +23,19 @@ document.addEventListener('DOMContentLoaded', function() {
                  '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
             language: {
                 search: "Filter records:",
-                lengthMenu: "Show _MENU_ entries per page",
-                info: "Showing _START_ to _END_ of _TOTAL_ entries",
-                infoEmpty: "No entries found",
-                infoFiltered: "(filtered from _MAX_ total entries)"
+                lengthMenu: "Show _MENU_ entries per page"
             }
         });
     }
 
     function initializeCharts() {
         try {
-            // Initialize width for character network
             width = document.getElementById('characterNetwork')?.offsetWidth || 800;
 
-            // Format distribution chart
-            const formatCtx = document.getElementById('formatChart')?.getContext('2d');
-            if (formatCtx) {
-                formatChart = new Chart(formatCtx, {
+            // Format Chart
+            const formatCtx = document.getElementById('formatChart');
+            if (formatCtx?.getContext('2d')) {
+                formatChart = new Chart(formatCtx.getContext('2d'), {
                     type: 'doughnut',
                     data: {
                         labels: [],
@@ -70,26 +54,20 @@ document.addEventListener('DOMContentLoaded', function() {
                             legend: {
                                 position: 'bottom',
                                 labels: { color: '#fff' }
-                            },
-                            title: {
-                                display: true,
-                                text: 'Content Format Distribution',
-                                color: '#fff'
                             }
                         }
                     }
                 });
             }
 
-            // Content types chart
-            const contentCtx = document.getElementById('contentChart')?.getContext('2d');
-            if (contentCtx) {
-                contentChart = new Chart(contentCtx, {
+            // Content Chart
+            const contentCtx = document.getElementById('contentChart');
+            if (contentCtx?.getContext('2d')) {
+                contentChart = new Chart(contentCtx.getContext('2d'), {
                     type: 'bar',
                     data: {
                         labels: ['Narration', 'Background Music', 'Sound Effects', 'Songs'],
                         datasets: [{
-                            label: 'Content Elements',
                             data: [0, 0, 0, 0],
                             backgroundColor: [
                                 'rgba(74, 158, 255, 0.8)',
@@ -102,32 +80,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     options: {
                         responsive: true,
                         plugins: {
-                            legend: { display: false },
-                            title: {
-                                display: true,
-                                text: 'Audio Elements Distribution',
-                                color: '#fff'
-                            }
+                            legend: { display: false }
                         },
                         scales: {
                             y: {
                                 beginAtZero: true,
-                                ticks: { color: '#fff' },
-                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
-                            },
-                            x: {
-                                ticks: { color: '#fff' },
-                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                                ticks: { color: '#fff' }
                             }
                         }
                     }
                 });
             }
 
-            // Environment distribution chart
-            const environmentCtx = document.getElementById('environmentChart')?.getContext('2d');
-            if (environmentCtx) {
-                environmentChart = new Chart(environmentCtx, {
+            // Environment Chart
+            const environmentCtx = document.getElementById('environmentChart');
+            if (environmentCtx?.getContext('2d')) {
+                environmentChart = new Chart(environmentCtx.getContext('2d'), {
                     type: 'polarArea',
                     data: {
                         labels: [],
@@ -142,21 +110,16 @@ document.addEventListener('DOMContentLoaded', function() {
                             legend: {
                                 position: 'right',
                                 labels: { color: '#fff' }
-                            },
-                            title: {
-                                display: true,
-                                text: 'Environment Distribution',
-                                color: '#fff'
                             }
                         }
                     }
                 });
             }
 
-            // Emotion radar chart
-            const emotionCtx = document.getElementById('emotionChart')?.getContext('2d');
-            if (emotionCtx) {
-                emotionChart = new Chart(emotionCtx, {
+            // Emotion Chart
+            const emotionCtx = document.getElementById('emotionChart');
+            if (emotionCtx?.getContext('2d')) {
+                emotionChart = new Chart(emotionCtx.getContext('2d'), {
                     type: 'radar',
                     data: {
                         labels: ['Joy', 'Sadness', 'Anger', 'Fear', 'Surprise'],
@@ -166,35 +129,26 @@ document.addEventListener('DOMContentLoaded', function() {
                             backgroundColor: 'rgba(74, 158, 255, 0.2)',
                             borderColor: 'rgba(74, 158, 255, 1)',
                             pointBackgroundColor: 'rgba(74, 158, 255, 1)',
-                            pointBorderColor: '#fff',
-                            pointHoverBackgroundColor: '#fff',
-                            pointHoverBorderColor: 'rgba(74, 158, 255, 1)'
+                            pointBorderColor: '#fff'
                         }]
                     },
                     options: {
                         responsive: true,
+                        plugins: { legend: { display: false } },
                         scales: {
                             r: {
                                 angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
-                                grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                                pointLabels: { color: '#fff' },
-                                ticks: {
-                                    color: '#fff',
-                                    backdropColor: 'transparent'
-                                }
+                                pointLabels: { color: '#fff' }
                             }
-                        },
-                        plugins: {
-                            legend: { display: false }
                         }
                     }
                 });
             }
 
-            // Initialize confidence gauge chart
-            const confidenceCtx = document.getElementById('confidenceChart')?.getContext('2d');
-            if (confidenceCtx) {
-                confidenceChart = new Chart(confidenceCtx, {
+            // Confidence Chart
+            const confidenceCtx = document.getElementById('confidenceChart');
+            if (confidenceCtx?.getContext('2d')) {
+                confidenceChart = new Chart(confidenceCtx.getContext('2d'), {
                     type: 'doughnut',
                     data: {
                         datasets: [{
@@ -218,7 +172,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
 
-            // Initialize character network
+            // Initialize network
             initializeCharacterNetwork();
 
             return true;
@@ -228,18 +182,125 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function updateCharts(data) {
+        try {
+            if (!Array.isArray(data)) {
+                throw new Error('Invalid data format');
+            }
+
+            if (formatChart) {
+                const formats = {};
+                data.forEach(analysis => {
+                    if (analysis.format) {
+                        formats[analysis.format] = (formats[analysis.format] || 0) + 1;
+                    }
+                });
+                formatChart.data.labels = Object.keys(formats);
+                formatChart.data.datasets[0].data = Object.values(formats);
+                formatChart.update();
+            }
+
+            if (contentChart) {
+                const contentTypes = {
+                    narration: 0,
+                    backgroundMusic: 0,
+                    soundEffects: 0,
+                    songs: 0
+                };
+
+                data.forEach(analysis => {
+                    if (analysis.has_narration) contentTypes.narration++;
+                    if (analysis.has_underscore) contentTypes.backgroundMusic++;
+                    if (analysis.has_sound_effects) contentTypes.soundEffects++;
+                    if (analysis.songs_count > 0) contentTypes.songs++;
+                });
+
+                contentChart.data.datasets[0].data = [
+                    contentTypes.narration,
+                    contentTypes.backgroundMusic,
+                    contentTypes.soundEffects,
+                    contentTypes.songs
+                ];
+                contentChart.update();
+            }
+
+            if (environmentChart) {
+                const environments = {};
+                data.forEach(analysis => {
+                    (analysis.environments || []).forEach(env => {
+                        environments[env] = (environments[env] || 0) + 1;
+                    });
+                });
+
+                const colors = Array.from(
+                    { length: Object.keys(environments).length },
+                    (_, i) => `hsl(${(i * 360) / Object.keys(environments).length}, 70%, 60%)`
+                );
+
+                environmentChart.data.labels = Object.keys(environments);
+                environmentChart.data.datasets[0].data = Object.values(environments);
+                environmentChart.data.datasets[0].backgroundColor = colors;
+                environmentChart.update();
+            }
+
+            if (emotionChart) {
+                const emotions = {
+                    joy: 0, sadness: 0, anger: 0, fear: 0, surprise: 0
+                };
+
+                data.forEach(analysis => {
+                    if (analysis.emotion_scores) {
+                        Object.entries(analysis.emotion_scores).forEach(([emotion, score]) => {
+                            if (emotions.hasOwnProperty(emotion)) {
+                                emotions[emotion] += score || 0;
+                            }
+                        });
+                    }
+                });
+
+                if (data.length > 0) {
+                    Object.keys(emotions).forEach(emotion => {
+                        emotions[emotion] /= data.length;
+                    });
+                }
+
+                emotionChart.data.datasets[0].data = Object.values(emotions);
+                emotionChart.update();
+            }
+
+            if (confidenceChart && data.length > 0) {
+                const avgConfidence = data.reduce((sum, analysis) => 
+                    sum + (analysis.confidence_score || 0), 0) / data.length;
+
+                confidenceChart.data.datasets[0].data = [
+                    avgConfidence * 100,
+                    100 - (avgConfidence * 100)
+                ];
+                confidenceChart.update();
+            }
+
+            updateCharacterNetwork(data);
+            updateThemeCloud(data);
+
+        } catch (error) {
+            console.error('Error updating charts:', error);
+            throw error;
+        }
+    }
+
     async function updateDashboard() {
         try {
             const response = await fetch('/api/analyses');
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
+
             const data = await response.json();
             if (!Array.isArray(data)) {
                 throw new Error('Expected array of analyses');
             }
 
-            // Update table data
+            // Update table
             if (dataTable) {
                 dataTable.clear();
                 data.forEach(analysis => {
@@ -264,118 +325,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 dataTable.draw();
             }
 
-            // Ensure charts are initialized
-            if (!formatChart || !contentChart || !environmentChart || !emotionChart || !confidenceChart) {
-                console.log('Reinitializing charts...');
-                if (!initializeCharts()) {
-                    throw new Error('Failed to initialize charts');
-                }
-            }
-
-            // Update charts if they exist
-            if (formatChart) updateFormatDistribution(data);
-            if (contentChart) updateContentTypes(data);
-            if (environmentChart) updateEnvironmentDistribution(data);
-            if (emotionChart) updateEmotionAnalysis(data);
-            if (confidenceChart) updateConfidence(data); // Added confidence chart update
-
-            // Update additional visualizations
-            updateThemeCloud(data);
-            updateCharacterNetwork(data);
+            // Update all charts
+            updateCharts(data);
 
         } catch (error) {
             console.error('Error updating dashboard:', error);
-            // Display error message to user
             const errorDiv = document.createElement('div');
             errorDiv.className = 'alert alert-danger';
             errorDiv.textContent = `Failed to update dashboard: ${error.message}`;
             const analysisTab = document.querySelector('#analysis');
             if (analysisTab) {
-                // Remove any existing error messages
                 const existingErrors = analysisTab.querySelectorAll('.alert-danger');
                 existingErrors.forEach(err => err.remove());
-                // Add new error message
                 analysisTab.prepend(errorDiv);
             }
         }
     }
 
-    // Add tab change listener to refresh data
-    document.querySelector('#analysis-tab').addEventListener('shown.bs.tab', function (e) {
-        console.log('Content Analysis tab activated, updating dashboard...');
-        updateDashboard();
-    });
+    // Initialize components
+    document.querySelector('#analysis-tab').addEventListener('shown.bs.tab', updateDashboard);
 
-    // Initialize everything
-    console.log('Initializing dashboard...');
     if (initializeCharts()) {
-        console.log('Charts initialized successfully');
-        initializeDataTable();
-
-        // Initial dashboard update
+        createDataTable();
         updateDashboard();
-
-        // Set up periodic updates
-        setInterval(updateDashboard, 30000); // Update every 30 seconds
+        setInterval(updateDashboard, 30000);
     }
 
-    // Update dashboard when new analysis is added
-    document.addEventListener('analysisAdded', () => {
-        console.log('New analysis added, updating dashboard...');
-        updateDashboard();
-    });
+    document.addEventListener('analysisAdded', updateDashboard);
 });
-
-function updateFormatDistribution(analyses) {
-    const formats = {};
-    analyses.forEach(analysis => {
-        formats[analysis.format] = (formats[analysis.format] || 0) + 1;
-    });
-
-    formatChart.data.labels = Object.keys(formats);
-    formatChart.data.datasets[0].data = Object.values(formats);
-    formatChart.update();
-}
-
-function updateContentTypes(analyses) {
-    const contentTypes = {
-        narration: 0,
-        backgroundMusic: 0,
-        soundEffects: 0,
-        songs: 0
-    };
-
-    analyses.forEach(analysis => {
-        if (analysis.has_narration) contentTypes.narration++;
-        if (analysis.has_underscore) contentTypes.backgroundMusic++;
-        if (analysis.has_sound_effects) contentTypes.soundEffects++;
-        if (analysis.songs_count > 0) contentTypes.songs++;
-    });
-
-    contentChart.data.datasets[0].data = [
-        contentTypes.narration,
-        contentTypes.backgroundMusic,
-        contentTypes.soundEffects,
-        contentTypes.songs
-    ];
-    contentChart.update();
-}
-
-function updateEnvironmentDistribution(analyses) {
-    const environments = {};
-    analyses.forEach(analysis => {
-        (analysis.environments || []).forEach(env => {
-            environments[env] = (environments[env] || 0) + 1;
-        });
-    });
-
-    const colors = generateColors(Object.keys(environments).length);
-
-    environmentChart.data.labels = Object.keys(environments);
-    environmentChart.data.datasets[0].data = Object.values(environments);
-    environmentChart.data.datasets[0].backgroundColor = colors;
-    environmentChart.update();
-}
 
 function initializeCharacterNetwork() {
     const height = 400;
@@ -631,7 +608,3 @@ function updateConfidenceGauge(avgConfidence) {
     ];
     confidenceChart.update();
 }
-
-// Initialize everything
-    initializeCharts();
-    initializeDataTable();
