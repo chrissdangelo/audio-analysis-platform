@@ -20,7 +20,8 @@ class AudioAnalysis(db.Model):
     characters_mentioned = db.Column(db.Text)  # Store as JSON string
     speaking_characters = db.Column(db.Text)  # Store as JSON string
     themes = db.Column(db.Text)  # Store as JSON string
-    # New fields for emotion analysis
+    summary = db.Column(db.Text)  # Store episode summary
+    # Emotion analysis fields
     emotion_scores = db.Column(db.Text)  # Store as JSON string with scores for each emotion
     dominant_emotion = db.Column(db.String(50))  # Primary detected emotion
     tone_analysis = db.Column(db.Text)  # Store as JSON string with tone characteristics
@@ -68,6 +69,7 @@ class AudioAnalysis(db.Model):
                 'characters_mentioned': self._parse_list_field(self.characters_mentioned),
                 'speaking_characters': self._parse_list_field(self.speaking_characters),
                 'themes': self._parse_list_field(self.themes),
+                'summary': self.summary,
                 'emotion_scores': self._parse_json_field(self.emotion_scores),
                 'dominant_emotion': self.dominant_emotion,
                 'tone_analysis': self._parse_json_field(self.tone_analysis),
@@ -91,6 +93,7 @@ class AudioAnalysis(db.Model):
                 'characters_mentioned': [],
                 'speaking_characters': [],
                 'themes': [],
+                'summary': '',
                 'emotion_scores': {},
                 'dominant_emotion': None,
                 'tone_analysis': {},

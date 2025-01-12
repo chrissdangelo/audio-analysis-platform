@@ -11,6 +11,11 @@
         <div class="card mb-4">
             <div class="card-body">
                 <h4 class="card-title">Basic Info</h4>
+                <div class="mb-4">
+                    <h5>Episode Summary</h5>
+                    <p class="lead">{{ analysis.summary or 'No summary available.' }}</p>
+                </div>
+                <hr>
                 <p><strong>Title:</strong> {{ analysis.title }}</p>
                 <p><strong>Format:</strong> {{ analysis.format }}</p>
                 <p><strong>Duration:</strong> {{ analysis.duration }}</p>
