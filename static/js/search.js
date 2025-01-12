@@ -64,17 +64,19 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         };
 
-        const categorized = {};
+        const categorizedItems = {};
         for (const category in categories) {
-            categorized[category] = new Set();
+            categorizedItems[category] = new Set();
         }
         const other = new Set();
 
         environments.forEach(env => {
+            if (!env) return; // Skip null/undefined values
+
             let matched = false;
             for (const [category, info] of Object.entries(categories)) {
                 if (info.pattern.test(env)) {
-                    categorized[category].add(env);
+                    categorizedItems[category].add(env);
                     matched = true;
                     break;
                 }
@@ -85,10 +87,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         if (other.size > 0) {
-            categorized['Other Locations'] = other;
+            categorizedItems['Other Locations'] = other;
         }
 
-        return categorized;
+        return categorizedItems;
     }
 
     // Create hierarchical structure for themes
@@ -112,17 +114,19 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         };
 
-        const categorized = {};
+        const categorizedItems = {};
         for (const category in categories) {
-            categorized[category] = new Set();
+            categorizedItems[category] = new Set();
         }
         const other = new Set();
 
         themes.forEach(theme => {
+            if (!theme) return; // Skip null/undefined values
+
             let matched = false;
             for (const [category, info] of Object.entries(categories)) {
                 if (info.pattern.test(theme)) {
-                    categorized[category].add(theme);
+                    categorizedItems[category].add(theme);
                     matched = true;
                     break;
                 }
@@ -133,10 +137,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         if (other.size > 0) {
-            categorized['Other Themes'] = other;
+            categorizedItems['Other Themes'] = other;
         }
 
-        return categorized;
+        return categorizedItems;
     }
 
     // Function to create checkboxes from categorized items
@@ -175,15 +179,22 @@ document.addEventListener('DOMContentLoaded', function() {
     async function loadSearchOptions() {
         try {
             const response = await fetch('/api/analyses');
+            if (!response.ok) {
+                throw new Error('Failed to fetch analyses');
+            }
+
             const analyses = await response.json();
+            if (!Array.isArray(analyses)) {
+                throw new Error('Expected analyses to be an array');
+            }
 
             const themes = analyses.flatMap(a => a.themes || []);
             const characters = analyses.flatMap(a => a.characters_mentioned || []);
             const environments = analyses.flatMap(a => a.environments || []);
 
             // Create hierarchical structures
-            const categorizedThemes = categorizeThemes(Array.from(new Set(themes)));
-            const categorizedEnvironments = categorizeEnvironments(Array.from(new Set(environments)));
+            const categorizedThemes = categorizeThemes(themes);
+            const categorizedEnvironments = categorizeEnvironments(environments);
 
             // Populate the checkboxes with the categorized data
             populateCategorizedCheckboxes(themeCheckboxes, categorizedThemes, 'theme');
@@ -213,10 +224,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         } catch (error) {
             console.error('Error loading search options:', error);
-            alert('Error loading search options');
+            const errorMessage = error.message || 'Error loading search options';
+            resultsDiv.innerHTML = `<div class="alert alert-danger">${errorMessage}</div>`;
         }
     }
 
+    // Handle form submission
     searchForm.addEventListener('submit', async function(e) {
         e.preventDefault();
 
@@ -254,6 +267,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function displaySearchResults(results) {
+        if (!Array.isArray(results)) {
+            resultsDiv.innerHTML = '<div class="alert alert-danger">Invalid search results format</div>';
+            return;
+        }
+
         if (results.length === 0) {
             resultsDiv.innerHTML = '<div class="alert alert-info">No results found matching your criteria</div>';
             return;
@@ -274,8 +292,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     <tbody>
                         ${results.map(result => `
                             <tr>
-                                <td>${result.title}</td>
-                                <td>${result.format}</td>
+                                <td>${result.title || 'Untitled'}</td>
+                                <td>${result.format || '-'}</td>
                                 <td>${(result.characters_mentioned || []).join(', ') || '-'}</td>
                                 <td>${(result.themes || []).join(', ') || '-'}</td>
                                 <td>${(result.environments || []).join(', ') || '-'}</td>
