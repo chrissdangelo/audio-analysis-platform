@@ -99,6 +99,7 @@
         <!-- Content Analysis Tab -->
         <div class="tab-pane fade" id="analysis" role="tabpanel">
             <div class="row g-4">
+                <!-- Format Distribution -->
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-body">
@@ -107,34 +108,44 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Audio Elements -->
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-body">
-                            <h5 class="card-title">Content Types</h5>
+                            <h5 class="card-title">Audio Elements</h5>
                             <canvas id="contentChart"></canvas>
                         </div>
                     </div>
                 </div>
+
+                <!-- Theme Analysis -->
                 <div class="col-12">
                     <div class="card">
                         <div class="card-body">
-                            <h5 class="card-title">Popular Themes</h5>
+                            <h5 class="card-title">Theme Analysis</h5>
+                            <p class="card-subtitle mb-2 text-muted">Hover over themes to see correlations</p>
                             <div id="themeCloud" class="text-center"></div>
                         </div>
                     </div>
                 </div>
+
+                <!-- Character Network -->
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-body">
-                            <h5 class="card-title">Character Network</h5>
-                            <canvas id="characterNetwork"></canvas>
+                            <h5 class="card-title">Character Interactions</h5>
+                            <p class="card-subtitle mb-2 text-muted">Network of character co-appearances</p>
+                            <div id="characterNetwork" style="height: 400px;"></div>
                         </div>
                     </div>
                 </div>
+
+                <!-- Environment Distribution -->
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-body">
-                            <h5 class="card-title">Environment Analysis</h5>
+                            <h5 class="card-title">Environment Distribution</h5>
                             <canvas id="environmentChart"></canvas>
                         </div>
                     </div>
