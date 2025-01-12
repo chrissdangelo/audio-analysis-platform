@@ -25,12 +25,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: formData
             });
 
+            const result = await response.json();
+
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Batch upload failed');
+                throw new Error(result.error || 'Batch upload failed');
             }
 
-            const result = await response.json();
+            if (result.duplicates && result.duplicates.length > 0) {
+                batchStatus.innerHTML = `<div class="alert alert-warning">
+                    Some files were skipped (duplicates): ${result.duplicates.join(', ')}
+                </div>`;
+                await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+
             const batchId = result.batch_id;
             const statusUrl = result.status_url;
 

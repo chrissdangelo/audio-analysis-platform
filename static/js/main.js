@@ -106,30 +106,30 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Handle deletion with DataTables
-    document.addEventListener('click', async function(e) {
-        if (e.target.classList.contains('delete-btn')) {
-            const id = e.target.dataset.id;
-            if (confirm('Are you sure you want to delete this analysis?')) {
-                try {
-                    const response = await fetch(`/api/analysis/${id}`, {
-                        method: 'DELETE'
-                    });
+    $('#analysisTable').on('click', '.delete-btn', async function(e) {
+        e.preventDefault();
+        const id = $(this).data('id');
 
-                    if (!response.ok) {
-                        throw new Error('Delete failed');
-                    }
+        if (confirm('Are you sure you want to delete this analysis?')) {
+            try {
+                const response = await fetch(`/api/analysis/${id}`, {
+                    method: 'DELETE'
+                });
 
-                    // Remove row from DataTable
-                    const row = analysisTable.row($(e.target).closest('tr'));
-                    row.remove().draw();
-
-                    // Trigger dashboard update
-                    document.dispatchEvent(new CustomEvent('analysisAdded'));
-
-                } catch (error) {
-                    console.error('Error:', error);
-                    showError('Error deleting analysis');
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Delete failed');
                 }
+
+                // Remove row from DataTable
+                analysisTable.row($(this).closest('tr')).remove().draw();
+
+                // Trigger dashboard update
+                document.dispatchEvent(new CustomEvent('analysisDeleted'));
+
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Error deleting analysis: ' + error.message);
             }
         }
     });
@@ -165,39 +165,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return `${minutes}:${seconds.toString().padStart(2, '0')}`;
     }
 
-    // Load bundle suggestions
-    async function loadBundleSuggestions() {
-        const bundleContainer = document.getElementById('bundleSuggestions');
-
-        try {
-            const response = await fetch('/api/bundles');
-            const bundles = await response.json();
-
-            let html = '';
-            if (bundles.length === 0) {
-                html = '<p>No bundle suggestions available</p>';
-            } else {
-                html = '<ul class="list-group">';
-                bundles.forEach(bundle => {
-                    html += `
-                        <li class="list-group-item">
-                            <h6>${bundle.type}: ${bundle.name}</h6>
-                            <small>${bundle.items.length} items</small>
-                        </li>
-                    `;
-                });
-                html += '</ul>';
-            }
-
-            bundleContainer.innerHTML = html;
-
-        } catch (error) {
-            console.error('Error:', error);
-            bundleContainer.innerHTML = '<p class="text-danger">Error loading suggestions</p>';
-        }
-    }
-
     // Initialize Feather icons
     feather.replace();
-    loadBundleSuggestions();
 });

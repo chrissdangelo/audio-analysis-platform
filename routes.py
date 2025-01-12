@@ -247,6 +247,19 @@ def register_routes(app):
             logger.error(f"Error performing search: {str(e)}")
             return jsonify({"error": "Error performing search"}), 500
 
+    @app.route('/api/analysis/<int:analysis_id>', methods=['DELETE'])
+    def delete_analysis(analysis_id):
+        """Delete an analysis record."""
+        try:
+            analysis = AudioAnalysis.query.get_or_404(analysis_id)
+            db.session.delete(analysis)
+            db.session.commit()
+            logger.info(f"Deleted analysis {analysis_id}")
+            return jsonify({'message': 'Analysis deleted successfully'}), 200
+        except Exception as e:
+            logger.error(f"Error deleting analysis {analysis_id}: {str(e)}")
+            return jsonify({'error': 'Error deleting analysis'}), 500
+
     @app.route('/api/upload/batch', methods=['POST'])
     def upload_batch():
         try:
@@ -259,11 +272,25 @@ def register_routes(app):
             os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
             os.makedirs('data', exist_ok=True)  # For batch status files
 
-            # Create new batch
-            filenames = [secure_filename(f.filename) for f in files if f.filename and allowed_file(f.filename)]
+            # Filter out duplicates
+            filenames = []
+            duplicates = []
+            for file in files:
+                if file.filename and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    # Check if file already exists in database
+                    existing = AudioAnalysis.query.filter_by(filename=filename).first()
+                    if existing:
+                        duplicates.append(filename)
+                    else:
+                        filenames.append(filename)
+
             if not filenames:
-                logger.error("No valid files found in request")
-                return jsonify({'error': 'No valid files selected'}), 400
+                message = "No valid files selected"
+                if duplicates:
+                    message += f". Duplicates found: {', '.join(duplicates)}"
+                logger.error(message)
+                return jsonify({'error': message}), 400
 
             batch_id = batch_manager.create_batch(filenames)
             logger.info(f"Created batch {batch_id} with {len(filenames)} files")
@@ -274,10 +301,11 @@ def register_routes(app):
                 for file in files:
                     if file.filename and allowed_file(file.filename):
                         filename = secure_filename(file.filename)
-                        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                        file.save(filepath)
-                        saved_files.append(filepath)
-                        logger.info(f"Saved file {filename} for batch {batch_id}")
+                        if filename in filenames:  # Only save non-duplicate files
+                            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                            file.save(filepath)
+                            saved_files.append(filepath)
+                            logger.info(f"Saved file {filename} for batch {batch_id}")
             except Exception as e:
                 logger.error(f"Error saving files: {str(e)}")
                 # Clean up any saved files
@@ -298,7 +326,8 @@ def register_routes(app):
             return jsonify({
                 'batch_id': batch_id,
                 'message': 'Batch upload started',
-                'status_url': f'/api/upload/batch/{batch_id}/status'
+                'status_url': f'/api/upload/batch/{batch_id}/status',
+                'duplicates': duplicates
             }), 202
 
         except Exception as e:
