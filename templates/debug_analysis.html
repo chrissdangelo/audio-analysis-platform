@@ -3,6 +3,7 @@
 <head>
     <title>Debug Analysis</title>
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container mt-4">
@@ -17,6 +18,42 @@
                 <p><strong>Has Underscore:</strong> {{ analysis.has_underscore }}</p>
                 <p><strong>Has Sound Effects:</strong> {{ analysis.has_sound_effects }}</p>
                 <p><strong>Songs Count:</strong> {{ analysis.songs_count }}</p>
+            </div>
+        </div>
+
+        <!-- Emotion Analysis Section -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h4 class="card-title">Emotion Analysis</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <canvas id="emotionChart"></canvas>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="row">
+                            <div class="col-md-6 text-center">
+                                <h5>Dominant Emotion</h5>
+                                <p class="display-6">{{ analysis.dominant_emotion or 'N/A' }}</p>
+                            </div>
+                            <div class="col-md-6 text-center">
+                                <h5>Confidence Score</h5>
+                                <p class="display-6">{{ "%.2f"|format(analysis.confidence_score * 100) if analysis.confidence_score else 'N/A' }}%</p>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <h5>Tone Analysis</h5>
+                            <div id="toneAnalysis">
+                                {% if analysis.tone_analysis %}
+                                    {% for key, value in analysis.tone_analysis|tojson|from_json|dictsort %}
+                                        <span class="badge bg-secondary me-2 mb-2">{{ key }}: {{ value }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    <p class="text-muted">No tone analysis available</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -44,5 +81,61 @@
 
         <a href="/" class="btn btn-primary">Back to Home</a>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize emotion radar chart
+            const emotionCtx = document.getElementById('emotionChart').getContext('2d');
+            const emotionScores = {{ analysis.emotion_scores|tojson|safe if analysis.emotion_scores else '{}' }};
+
+            new Chart(emotionCtx, {
+                type: 'radar',
+                data: {
+                    labels: ['Joy', 'Sadness', 'Anger', 'Fear', 'Surprise'],
+                    datasets: [{
+                        label: 'Emotion Scores',
+                        data: [
+                            emotionScores.joy || 0,
+                            emotionScores.sadness || 0,
+                            emotionScores.anger || 0,
+                            emotionScores.fear || 0,
+                            emotionScores.surprise || 0
+                        ],
+                        backgroundColor: 'rgba(74, 158, 255, 0.2)',
+                        borderColor: 'rgba(74, 158, 255, 1)',
+                        pointBackgroundColor: 'rgba(74, 158, 255, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(74, 158, 255, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        r: {
+                            angleLines: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            pointLabels: {
+                                color: '#fff'
+                            },
+                            ticks: {
+                                color: '#fff',
+                                backdropColor: 'transparent'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        });
+    </script>
 </body>
 </html>
