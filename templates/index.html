@@ -1,142 +1,204 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Upload Audio Files</h5>
-                <form id="uploadForm">
-                    <div class="mb-3">
-                        <input type="file" class="form-control" id="audioFile" accept=".mp3,.wav,.mp4,.avi,.mov" multiple required>
-                        <div class="form-text">Select multiple files to analyze them in batch</div>
+<div class="container-fluid">
+    <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload" type="button" role="tab">Upload</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="analysis-tab" data-bs-toggle="tab" data-bs-target="#analysis" type="button" role="tab">Content Analysis</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="search-tab" data-bs-toggle="tab" data-bs-target="#search" type="button" role="tab">Search Criteria</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="bundle-tab" data-bs-toggle="tab" data-bs-target="#bundle" type="button" role="tab">Bundle Opportunities</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="mainTabsContent">
+        <!-- Upload Tab -->
+        <div class="tab-pane fade show active" id="upload" role="tabpanel">
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Upload Audio Files</h5>
+                            <form id="uploadForm">
+                                <div class="mb-3">
+                                    <input type="file" class="form-control" id="audioFile" accept=".mp3,.wav,.mp4,.avi,.mov" multiple required>
+                                    <div class="form-text">Select multiple files to analyze them in batch</div>
+                                </div>
+                                <div id="uploadProgress" class="progress mb-3 d-none">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"></div>
+                                </div>
+                                <div id="batchStatus" class="mb-3"></div>
+                                <button type="submit" class="btn btn-primary" id="uploadBtn">
+                                    <span class="spinner-border spinner-border-sm d-none" role="progressbar"></span>
+                                    Upload and Analyze
+                                </button>
+                            </form>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="googleDriveBtn">
-                            <i class="fas fa-cloud"></i> Select from Google Drive
-                        </button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Analysis Results</h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Title</th>
+                                    <th>Filename</th>
+                                    <th>Type</th>
+                                    <th>Format</th>
+                                    <th>Duration</th>
+                                    <th>Environments</th>
+                                    <th>Characters</th>
+                                    <th>Speaking</th>
+                                    <th>Underscore</th>
+                                    <th>SFX</th>
+                                    <th>Songs</th>
+                                    <th>Themes</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="analysisTable">
+                                {% for analysis in analyses %}
+                                <tr data-id="{{ analysis.id }}">
+                                    <td>{{ analysis.id }}</td>
+                                    <td>{{ analysis.title or "Untitled" }}</td>
+                                    <td>{{ analysis.filename }}</td>
+                                    <td>{{ analysis.file_type }}</td>
+                                    <td>{{ analysis.format }}</td>
+                                    <td>{{ analysis.duration }}</td>
+                                    <td>{{ analysis.environments | join | replace('[', '') | replace(']', '') if analysis.environments else '-' }}</td>
+                                    <td>{{ analysis.characters_mentioned | join | replace('[', '') | replace(']', '') if analysis.characters_mentioned else '-' }}</td>
+                                    <td>{{ analysis.speaking_characters | join | replace('[', '') | replace(']', '') if analysis.speaking_characters else '-' }}</td>
+                                    <td>{{ "Yes" if analysis.has_underscore else "No" }}</td>
+                                    <td>{{ "Yes" if analysis.has_sound_effects else "No" }}</td>
+                                    <td>{{ analysis.songs_count }}</td>
+                                    <td>{{ analysis.themes | join | replace('[', '') | replace(']', '') if analysis.themes else '-' }}</td>
+                                    <td>
+                                        <a href="{{ url_for('debug_analysis', analysis_id=analysis.id) }}" class="btn btn-sm btn-info mb-1" target="_blank">Debug</a>
+                                        <button class="btn btn-sm btn-danger delete-btn" data-id="{{ analysis.id }}">Delete</button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
-                    <div id="uploadProgress" class="progress mb-3 d-none">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"></div>
-                    </div>
-                    <div id="batchStatus" class="mb-3"></div>
-                    <button type="submit" class="btn btn-primary" id="uploadBtn">
-                        <span class="spinner-border spinner-border-sm d-none" role="progressbar"></span>
-                        Upload and Analyze
-                    </button>
-                </form>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Audio Insights</h5>
-                <div id="insightsDashboard">
-                    <div class="row g-3">
+
+        <!-- Content Analysis Tab -->
+        <div class="tab-pane fade" id="analysis" role="tabpanel">
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Format Distribution</h5>
+                            <canvas id="formatChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Content Types</h5>
+                            <canvas id="contentChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Popular Themes</h5>
+                            <div id="themeCloud" class="text-center"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Character Network</h5>
+                            <canvas id="characterNetwork"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Environment Analysis</h5>
+                            <canvas id="environmentChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Criteria Tab -->
+        <div class="tab-pane fade" id="search" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Search by Content Criteria</h5>
+                    <form id="searchForm" class="row g-3">
                         <div class="col-md-6">
-                            <div class="card bg-dark">
+                            <div class="card">
                                 <div class="card-body">
-                                    <h6 class="card-subtitle mb-2">Format Distribution</h6>
-                                    <canvas id="formatChart"></canvas>
+                                    <h6 class="card-subtitle mb-2">Themes</h6>
+                                    <div id="themeCheckboxes" class="d-flex flex-wrap gap-2">
+                                        <!-- Dynamically populated -->
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="card bg-dark">
+                            <div class="card">
                                 <div class="card-body">
-                                    <h6 class="card-subtitle mb-2">Content Types</h6>
-                                    <canvas id="contentChart"></canvas>
+                                    <h6 class="card-subtitle mb-2">Characters</h6>
+                                    <div id="characterCheckboxes" class="d-flex flex-wrap gap-2">
+                                        <!-- Dynamically populated -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-subtitle mb-2">Environments</h6>
+                                    <div id="environmentCheckboxes" class="d-flex flex-wrap gap-2">
+                                        <!-- Dynamically populated -->
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         <div class="col-12">
-                            <div class="card bg-dark">
-                                <div class="card-body">
-                                    <h6 class="card-subtitle mb-2">Popular Themes</h6>
-                                    <div id="themeCloud" class="text-center"></div>
-                                </div>
-                            </div>
+                            <button type="submit" class="btn btn-primary">Search</button>
                         </div>
+                    </form>
+                    <div id="searchResults" class="mt-4">
+                        <!-- Results will be displayed here -->
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
-<!-- Google Drive File Selection Modal -->
-<div class="modal fade" id="driveFileModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Select Files from Google Drive</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div id="driveFileList" class="list-group">
-                    <!-- Files will be listed here -->
+        <!-- Bundle Opportunities Tab -->
+        <div class="tab-pane fade" id="bundle" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Content Bundle Suggestions</h5>
+                    <div id="bundleSuggestions" class="row g-4">
+                        <!-- Dynamically populated with bundle suggestions -->
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" id="selectDriveFiles">Select Files</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="card">
-    <div class="card-body">
-        <h5 class="card-title">Analysis Results</h5>
-        <div class="table-responsive">
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Title</th>
-                        <th>Filename</th>
-                        <th>Type</th>
-                        <th>Format</th>
-                        <th>Duration</th>
-                        <th>Environments</th>
-                        <th>Characters</th>
-                        <th>Speaking</th>
-                        <th>Underscore</th>
-                        <th>SFX</th>
-                        <th>Songs</th>
-                        <th>Themes</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="analysisTable">
-                    {% for analysis in analyses %}
-                    <tr data-id="{{ analysis.id }}">
-                        <td>{{ analysis.id }}</td>
-                        <td>{{ analysis.title or "Untitled" }}</td>
-                        <td>{{ analysis.filename }}</td>
-                        <td>{{ analysis.file_type }}</td>
-                        <td>{{ analysis.format }}</td>
-                        <td>{{ analysis.duration }}</td>
-                        <td>{{ analysis.environments | join | replace('[', '') | replace(']', '') if analysis.environments else '-' }}</td>
-                        <td>{{ analysis.characters_mentioned | join | replace('[', '') | replace(']', '') if analysis.characters_mentioned else '-' }}</td>
-                        <td>{{ analysis.speaking_characters | join | replace('[', '') | replace(']', '') if analysis.speaking_characters else '-' }}</td>
-                        <td>{{ "Yes" if analysis.has_underscore else "No" }}</td>
-                        <td>{{ "Yes" if analysis.has_sound_effects else "No" }}</td>
-                        <td>{{ analysis.songs_count }}</td>
-                        <td>{{ analysis.themes | join | replace('[', '') | replace(']', '') if analysis.themes else '-' }}</td>
-                        <td>
-                            <a href="{{ url_for('debug_analysis', analysis_id=analysis.id) }}" class="btn btn-sm btn-info mb-1" target="_blank">
-                                Debug
-                            </a>
-                            <button class="btn btn-sm btn-danger delete-btn" data-id="{{ analysis.id }}">
-                                Delete
-                            </button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
         </div>
     </div>
 </div>
@@ -148,5 +210,6 @@
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 <script src="{{ url_for('static', filename='js/batch_upload.js') }}"></script>
-<script src="{{ url_for('static', filename='js/google_drive.js') }}"></script>
+<script src="{{ url_for('static', filename='js/search.js') }}"></script>
+<script src="{{ url_for('static', filename='js/bundle.js') }}"></script>
 {% endblock %}

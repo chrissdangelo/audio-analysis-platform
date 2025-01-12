@@ -167,3 +167,43 @@ def register_routes(app):
         except Exception as e:
             logger.error(f"Error fetching analysis debug: {str(e)}")
             return jsonify({'error': 'Error fetching analysis debug info'}), 500
+
+    @app.route('/api/search', methods=['POST'])
+    def search_content():
+        try:
+            criteria = request.get_json()
+
+            # Start with all analyses
+            query = AudioAnalysis.query
+
+            # Apply theme filters if provided
+            if criteria.get('themes'):
+                # Filter for analyses that have any of the selected themes
+                theme_conditions = []
+                for theme in criteria['themes']:
+                    theme_conditions.append(AudioAnalysis.themes.contains(json.dumps([theme])))
+                query = query.filter(db.or_(*theme_conditions))
+
+            # Apply character filters if provided
+            if criteria.get('characters'):
+                # Filter for analyses that have any of the selected characters
+                char_conditions = []
+                for character in criteria['characters']:
+                    char_conditions.append(AudioAnalysis.characters_mentioned.contains(json.dumps([character])))
+                query = query.filter(db.or_(*char_conditions))
+
+            # Apply environment filters if provided
+            if criteria.get('environments'):
+                # Filter for analyses that have any of the selected environments
+                env_conditions = []
+                for environment in criteria['environments']:
+                    env_conditions.append(AudioAnalysis.environments.contains(json.dumps([environment])))
+                query = query.filter(db.or_(*env_conditions))
+
+            # Execute query and convert results to dictionaries
+            results = [analysis.to_dict() for analysis in query.all()]
+            return jsonify(results)
+
+        except Exception as e:
+            logger.error(f"Error performing search: {str(e)}")
+            return jsonify({"error": "Error performing search"}), 500
