@@ -346,7 +346,7 @@ def register_routes(app):
 
         except RequestEntityTooLarge:
             logger.error("File too large")
-            return jsonify({'error': 'File too large. Maximum file size is 100MB'}), 413
+            return jsonify({'error': 'File too large. Maximum file size is 500MB'}), 413
         except Exception as e:
             logger.error(f"Unexpected error in batch upload: {str(e)}", exc_info=True)
             return jsonify({'error': 'An unexpected error occurred'}), 500
