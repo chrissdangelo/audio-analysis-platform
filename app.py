@@ -31,7 +31,7 @@ def create_app():
             "pool_pre_ping": True,
         }
         app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-        app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # Increased to 500MB
+        app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # Increased to 100MB
         app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
         logger.info("Configured Flask application settings")
 
