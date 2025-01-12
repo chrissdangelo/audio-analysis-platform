@@ -3,77 +3,34 @@ document.addEventListener('DOMContentLoaded', function() {
     const uploadBtn = document.getElementById('uploadBtn');
     const spinner = uploadBtn.querySelector('.spinner-border');
     const audioFileInput = document.getElementById('audioFile');
-    const waveformContainer = document.getElementById('waveformContainer');
-    const playBtn = document.getElementById('playBtn');
-    const pauseBtn = document.getElementById('pauseBtn');
-    const currentTimeDisplay = document.getElementById('currentTime');
-    const totalDurationDisplay = document.getElementById('totalDuration');
     const errorAlert = document.createElement('div');
     errorAlert.className = 'alert alert-danger alert-dismissible fade';
     errorAlert.setAttribute('role', 'alert');
 
-    let wavesurfer = null;
-
-    // Initialize wavesurfer when an audio file is selected
-    audioFileInput.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        // Show waveform container
-        waveformContainer.style.display = 'block';
-
-        // Destroy previous instance if it exists
-        if (wavesurfer) {
-            wavesurfer.destroy();
-        }
-
-        // Create new WaveSurfer instance
-        wavesurfer = WaveSurfer.create({
-            container: '#waveform',
-            waveColor: '#4a9eff',
-            progressColor: '#1e88e5',
-            cursorColor: '#fff',
-            barWidth: 2,
-            barRadius: 3,
-            cursorWidth: 1,
-            height: 100,
-            barGap: 2
-        });
-
-        // Load the audio file
-        wavesurfer.loadBlob(file);
-
-        // Update time displays
-        wavesurfer.on('ready', function() {
-            const duration = wavesurfer.getDuration();
-            totalDurationDisplay.textContent = formatTime(duration);
-        });
-
-        wavesurfer.on('audioprocess', function() {
-            const currentTime = wavesurfer.getCurrentTime();
-            currentTimeDisplay.textContent = formatTime(currentTime);
-        });
+    // Initialize DataTable with dark theme configuration
+    const analysisTable = $('#analysisTable').DataTable({
+        order: [[0, 'desc']], // Sort by ID descending by default
+        pageLength: 10,
+        responsive: true,
+        dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
+             '<"row"<"col-sm-12"tr>>' +
+             '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+        language: {
+            search: "_INPUT_",
+            searchPlaceholder: "Search records..."
+        },
+        columnDefs: [
+            { targets: -1, orderable: false }, // Disable sorting on actions column
+            { 
+                targets: [9, 10], // Yes/No columns (underscore, sfx)
+                render: function(data) {
+                    return data === 'Yes' ? 
+                        '<span class="badge bg-success">Yes</span>' : 
+                        '<span class="badge bg-secondary">No</span>';
+                }
+            }
+        ]
     });
-
-    // Play/Pause controls
-    playBtn.addEventListener('click', function() {
-        if (wavesurfer) {
-            wavesurfer.play();
-        }
-    });
-
-    pauseBtn.addEventListener('click', function() {
-        if (wavesurfer) {
-            wavesurfer.pause();
-        }
-    });
-
-    // Format time in seconds to MM:SS
-    function formatTime(timeInSeconds) {
-        const minutes = Math.floor(timeInSeconds / 60);
-        const seconds = Math.floor(timeInSeconds % 60);
-        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    }
 
     function showError(message) {
         // Remove any existing error alerts
@@ -126,17 +83,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error(data.error || 'Upload failed');
             }
 
-            // Successfully processed
+            // Add new row to DataTable
             addAnalysisToTable(data);
             uploadForm.reset();
-            loadBundleSuggestions();
 
-            // Reset waveform display
-            if (wavesurfer) {
-                wavesurfer.destroy();
-                wavesurfer = null;
-            }
-            waveformContainer.style.display = 'none';
+            // Dispatch event for dashboard update
+            document.dispatchEvent(new CustomEvent('analysisAdded'));
 
             // Remove any error messages
             const existingAlert = document.querySelector('.alert-danger');
@@ -153,7 +105,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Handle deletion
+    // Handle deletion with DataTables
     document.addEventListener('click', async function(e) {
         if (e.target.classList.contains('delete-btn')) {
             const id = e.target.dataset.id;
@@ -167,9 +119,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         throw new Error('Delete failed');
                     }
 
-                    const row = document.querySelector(`tr[data-id="${id}"]`);
-                    row.remove();
-                    loadBundleSuggestions();
+                    // Remove row from DataTable
+                    const row = analysisTable.row($(e.target).closest('tr'));
+                    row.remove().draw();
+
+                    // Trigger dashboard update
+                    document.dispatchEvent(new CustomEvent('analysisAdded'));
 
                 } catch (error) {
                     console.error('Error:', error);
@@ -178,6 +133,37 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+
+    function addAnalysisToTable(analysis) {
+        // Create array of data for the new row
+        const rowData = [
+            analysis.id,
+            analysis.title || "Untitled",
+            analysis.filename,
+            analysis.file_type,
+            analysis.format,
+            analysis.duration,
+            Array.isArray(analysis.environments) && analysis.environments.length ? analysis.environments.join(', ') : '-',
+            Array.isArray(analysis.characters_mentioned) && analysis.characters_mentioned.length ? analysis.characters_mentioned.join(', ') : '-',
+            Array.isArray(analysis.speaking_characters) && analysis.speaking_characters.length ? analysis.speaking_characters.join(', ') : '-',
+            analysis.has_underscore ? 'Yes' : 'No',
+            analysis.has_sound_effects ? 'Yes' : 'No',
+            analysis.songs_count,
+            Array.isArray(analysis.themes) && analysis.themes.length ? analysis.themes.join(', ') : '-',
+            `<a href="${analysis.debug_url}" class="btn btn-sm btn-info mb-1" target="_blank">Debug</a>
+             <button class="btn btn-sm btn-danger delete-btn" data-id="${analysis.id}">Delete</button>`
+        ];
+
+        // Add new row to DataTable and redraw
+        analysisTable.row.add(rowData).draw();
+    }
+
+    // Format time in seconds to MM:SS
+    function formatTime(timeInSeconds) {
+        const minutes = Math.floor(timeInSeconds / 60);
+        const seconds = Math.floor(timeInSeconds % 60);
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
 
     // Load bundle suggestions
     async function loadBundleSuggestions() {
@@ -211,44 +197,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function addAnalysisToTable(analysis) {
-        const tbody = document.getElementById('analysisTable');
-        const row = document.createElement('tr');
-        row.dataset.id = analysis.id;
-
-        row.innerHTML = `
-            <td>${analysis.id}</td>
-            <td>${analysis.title || "Untitled"}</td>
-            <td>${analysis.filename}</td>
-            <td>${analysis.file_type}</td>
-            <td>${analysis.format}</td>
-            <td>${analysis.duration}</td>
-            <td>${Array.isArray(analysis.environments) && analysis.environments.length ? analysis.environments.join(', ') : '-'}</td>
-            <td>${Array.isArray(analysis.characters_mentioned) && analysis.characters_mentioned.length ? analysis.characters_mentioned.join(', ') : '-'}</td>
-            <td>${Array.isArray(analysis.speaking_characters) && analysis.speaking_characters.length ? analysis.speaking_characters.join(', ') : '-'}</td>
-            <td>${analysis.has_underscore ? 'Yes' : 'No'}</td>
-            <td>${analysis.has_sound_effects ? 'Yes' : 'No'}</td>
-            <td>${analysis.songs_count}</td>
-            <td>${Array.isArray(analysis.themes) && analysis.themes.length ? analysis.themes.join(', ') : '-'}</td>
-            <td>
-                <a href="${analysis.debug_url}" class="btn btn-sm btn-info mb-1" target="_blank">
-                    Debug
-                </a>
-                <button class="btn btn-sm btn-danger delete-btn" data-id="${analysis.id}">
-                    Delete
-                </button>
-            </td>
-        `;
-
-        tbody.prepend(row);
-
-        // Emit event for dashboard update
-        document.dispatchEvent(new CustomEvent('analysisAdded'));
-    }
-
     // Initialize Feather icons
     feather.replace();
-
-    // Initial load of bundle suggestions
     loadBundleSuggestions();
 });
