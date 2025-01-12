@@ -4,7 +4,15 @@ document.addEventListener('DOMContentLoaded', function() {
     async function findBundleOpportunities() {
         try {
             const response = await fetch('/api/analyses');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             const analyses = await response.json();
+            console.log('Fetched analyses:', analyses);
+
+            if (!Array.isArray(analyses)) {
+                throw new Error('Expected analyses to be an array');
+            }
 
             if (analyses.length === 0) {
                 bundleSuggestions.innerHTML = '<div class="col-12"><div class="alert alert-info">No content available for bundle analysis</div></div>';
@@ -13,43 +21,75 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Group by themes
             const themeGroups = groupByCommonality(analyses, 'themes');
+            console.log('Theme groups:', themeGroups);
 
             // Group by characters
             const characterGroups = groupByCommonality(analyses, 'characters_mentioned');
+            console.log('Character groups:', characterGroups);
 
             // Group by environments
             const environmentGroups = groupByCommonality(analyses, 'environments');
+            console.log('Environment groups:', environmentGroups);
 
             displayBundleSuggestions(themeGroups, characterGroups, environmentGroups);
 
         } catch (error) {
             console.error('Error finding bundle opportunities:', error);
-            bundleSuggestions.innerHTML = '<div class="col-12"><div class="alert alert-danger">Error analyzing bundle opportunities</div></div>';
+            bundleSuggestions.innerHTML = `
+                <div class="col-12">
+                    <div class="alert alert-danger">
+                        <h5 class="alert-heading">Error analyzing bundle opportunities</h5>
+                        <p>${error.message}</p>
+                    </div>
+                </div>`;
         }
     }
 
     function groupByCommonality(analyses, field) {
-        const groups = new Map();
+        try {
+            const groups = new Map();
 
-        analyses.forEach(analysis => {
-            const items = analysis[field] || [];
-            items.forEach(item => {
-                if (!groups.has(item)) {
-                    groups.set(item, []);
+            analyses.forEach(analysis => {
+                // Handle potential null/undefined values
+                let items = [];
+                try {
+                    items = JSON.parse(analysis[field] || '[]');
+                } catch (e) {
+                    console.warn(`Failed to parse ${field} for analysis:`, analysis);
+                    items = [];
                 }
-                groups.get(item).push(analysis);
-            });
-        });
 
-        // Filter groups to only include those with multiple items
-        return Array.from(groups.entries())
-            .filter(([_, items]) => items.length > 1)
-            .map(([key, items]) => ({
-                commonality: key,
-                items: items,
-                count: items.length
-            }))
-            .sort((a, b) => b.count - a.count);
+                if (!Array.isArray(items)) {
+                    console.warn(`${field} is not an array:`, items);
+                    items = [items].filter(Boolean);
+                }
+
+                items.forEach(item => {
+                    if (!item) return; // Skip null/undefined items
+                    const key = item.toString().trim();
+                    if (!key) return; // Skip empty strings
+
+                    if (!groups.has(key)) {
+                        groups.set(key, []);
+                    }
+                    groups.get(key).push(analysis);
+                });
+            });
+
+            // Filter groups to only include those with multiple items
+            return Array.from(groups.entries())
+                .filter(([_, items]) => items.length > 1)
+                .map(([key, items]) => ({
+                    commonality: key,
+                    items: items,
+                    count: items.length
+                }))
+                .sort((a, b) => b.count - a.count);
+
+        } catch (error) {
+            console.error('Error in groupByCommonality:', error);
+            return [];
+        }
     }
 
     function generateBundleTitle(type, commonality, count) {
