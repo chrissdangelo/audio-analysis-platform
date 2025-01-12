@@ -286,18 +286,34 @@ def register_routes(app):
             os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
             os.makedirs('data', exist_ok=True)  # For batch status files
 
-            # Filter out duplicates
+            # Filter out duplicates and check file sizes
             filenames = []
             duplicates = []
+            oversized = []
+
             for file in files:
                 if file.filename and allowed_file(file.filename):
                     filename = secure_filename(file.filename)
+                    # Check file size before saving
+                    file.seek(0, os.SEEK_END)
+                    size = file.tell()
+                    file.seek(0)
+
+                    if size > 500 * 1024 * 1024:  # 500MB limit
+                        oversized.append(filename)
+                        continue
+
                     # Check if file already exists in database
                     existing = AudioAnalysis.query.filter_by(filename=filename).first()
                     if existing:
                         duplicates.append(filename)
                     else:
                         filenames.append(filename)
+
+            if oversized:
+                return jsonify({
+                    'error': f'The following files exceed 500MB size limit: {", ".join(oversized)}'
+                }), 413
 
             if not filenames:
                 message = "No valid files selected"
@@ -341,7 +357,7 @@ def register_routes(app):
                 'batch_id': batch_id,
                 'message': 'Batch upload started',
                 'status_url': f'/api/upload/batch/{batch_id}/status',
-                'duplicates': duplicates
+                'duplicates': duplicates if duplicates else []
             }), 202
 
         except RequestEntityTooLarge:
@@ -485,11 +501,15 @@ def register_routes(app):
 
                 for filename in pending_files:
                     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+                    # Check if file exists before starting processing
                     if not os.path.exists(filepath):
-                        batch_manager.mark_file_failed(batch_id, filename, "File not found")
+                        logger.error(f"File not found before processing: {filepath}")
+                        batch_manager.mark_file_failed(batch_id, filename, "File not found before processing")
                         continue
 
                     batch_manager.mark_file_started(batch_id, filename)
+                    analyzer = None
 
                     try:
                         # Create analyzer instance
@@ -536,24 +556,27 @@ def register_routes(app):
                         db.session.commit()
 
                         batch_manager.mark_file_complete(batch_id, filename, analysis.id)
+                        logger.info(f"Successfully processed file {filename} in batch {batch_id}")
 
                     except Exception as e:
                         logger.error(f"Error processing {filename}: {str(e)}")
                         batch_manager.mark_file_failed(batch_id, filename, str(e))
 
                     finally:
+                        # Clean up resources
+                        if analyzer:
+                            try:
+                                analyzer.cleanup()
+                            except Exception as e:
+                                logger.error(f"Error cleaning up analyzer: {str(e)}")
+
+                        # Only remove the file after successful processing or if it failed
                         if os.path.exists(filepath):
                             try:
                                 os.remove(filepath)
                                 logger.info(f"Cleaned up file {filepath}")
                             except Exception as e:
                                 logger.error(f"Error cleaning up file {filepath}: {str(e)}")
-
-                        if 'analyzer' in locals():
-                            try:
-                                analyzer.cleanup()
-                            except Exception as e:
-                                logger.error(f"Error cleaning up analyzer: {str(e)}")
 
                     # Save batch status after each file
                     batch_manager.save_batch_status(batch_id)
