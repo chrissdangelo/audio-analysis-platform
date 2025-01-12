@@ -5,10 +5,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const progressBar = document.querySelector('#uploadProgress .progress-bar');
     const progressDiv = document.getElementById('uploadProgress');
     const batchStatus = document.getElementById('batchStatus');
+    const progressModal = new bootstrap.Modal(document.getElementById('uploadProgressModal'));
 
     async function uploadFiles(files) {
         const totalFiles = files.length;
 
+        // Show progress modal
+        progressModal.show();
         progressDiv.classList.remove('d-none');
         batchStatus.innerHTML = `Processing 0/${totalFiles} files...`;
 
@@ -47,6 +50,8 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             batchStatus.innerHTML = `<div class="alert alert-danger">Error starting batch upload: ${error.message}</div>`;
             progressDiv.classList.add('d-none');
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            progressModal.hide();
         }
     }
 
@@ -87,6 +92,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const processedFiles = status.processed_files + status.failed_files;
         const progress = (processedFiles / totalFiles) * 100;
 
+        // Animate progress bar
         progressBar.style.width = `${progress}%`;
         progressBar.setAttribute('aria-valuenow', progress);
 
@@ -104,9 +110,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 }[fileStatus.status] || 'text-muted';
 
                 statusHtml += `
-                    <div class="small ${statusClass}">
-                        ${filename}: ${fileStatus.status}
-                        ${fileStatus.error ? `(Error: ${fileStatus.error})` : ''}
+                    <div class="file-status ${fileStatus.status}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="filename">${filename}</span>
+                            <span class="${statusClass}">
+                                ${fileStatus.status.toUpperCase()}
+                                ${fileStatus.error ? `<i class="fas fa-exclamation-circle" title="${fileStatus.error}"></i>` : ''}
+                            </span>
+                        </div>
+                        ${fileStatus.error ? `
+                            <div class="error-message small text-danger mt-1">
+                                ${fileStatus.error}
+                            </div>
+                        ` : ''}
                     </div>
                 `;
             });
@@ -122,22 +138,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
         let message = `
             <div class="alert ${failedFiles > 0 ? 'alert-warning' : 'alert-success'}">
-                Batch processing completed!<br>
-                Successfully processed: ${successFiles}/${totalFiles} files<br>
-                Failed: ${failedFiles}/${totalFiles} files
+                <h5 class="alert-heading mb-2">
+                    ${failedFiles > 0 ? 'Batch Processing Completed with Issues' : 'Batch Processing Complete!'}
+                </h5>
+                <div class="mb-2">Successfully processed: ${successFiles}/${totalFiles} files</div>
+                ${failedFiles > 0 ? `<div class="mb-2">Failed: ${failedFiles}/${totalFiles} files</div>` : ''}
             </div>
         `;
 
         if (failedFiles > 0) {
             message += `
                 <button class="btn btn-warning" onclick="retryBatch('${status.batch_id}')">
-                    Retry Failed Files
+                    <i class="fas fa-sync-alt me-2"></i>Retry Failed Files
                 </button>
             `;
         }
 
         batchStatus.innerHTML = message;
         setTimeout(() => {
+            progressModal.hide();
             progressDiv.classList.add('d-none');
             progressBar.style.width = '0%';
             if (failedFiles === 0) {
