@@ -113,6 +113,51 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                     dataTable.columns.adjust();
                 }
+
+                // Handle Info button clicks
+                $('#analysisTable').on('click', '.btn-info', function(e) {
+                    e.preventDefault();
+                    const analysisId = $(this).closest('tr').data('id');
+                    window.location.href = `/debug_analysis/${analysisId}`;
+                });
+
+                // Handle Delete button clicks
+                $('#analysisTable').on('click', '.delete-btn', async function(e) {
+                    e.preventDefault();
+                    const id = $(this).data('id');
+
+                    if (confirm('Are you sure you want to delete this analysis?')) {
+                        try {
+                            const response = await fetch(`/api/analysis/${id}`, {
+                                method: 'DELETE'
+                            });
+
+                            if (!response.ok) {
+                                const data = await response.json();
+                                throw new Error(data.error || 'Delete failed');
+                            }
+
+                            // Remove row from DataTable
+                            dataTable.row($(this).closest('tr')).remove().draw();
+
+                            // Trigger dashboard update
+                            document.dispatchEvent(new CustomEvent('analysisDeleted'));
+
+                        } catch (error) {
+                            console.error('Error:', error);
+                            // Show error message
+                            const errorDiv = document.createElement('div');
+                            errorDiv.className = 'alert alert-danger';
+                            errorDiv.textContent = `Failed to delete analysis: ${error.message}`;
+                            const analysisTab = document.querySelector('#analysis');
+                            if (analysisTab) {
+                                const existingErrors = analysisTab.querySelectorAll('.alert-danger');
+                                existingErrors.forEach(err => err.remove());
+                                analysisTab.prepend(errorDiv);
+                            }
+                        }
+                    }
+                });
             }
         });
 
