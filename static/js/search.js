@@ -1,97 +1,25 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const bundleCreatorForm = document.getElementById('bundleCreatorForm');
+    const searchForm = document.getElementById('searchForm');
     const themeCheckboxes = document.getElementById('themeCheckboxes');
     const characterCheckboxes = document.getElementById('characterCheckboxes');
     const environmentCheckboxes = document.getElementById('environmentCheckboxes');
     const resultsDiv = document.getElementById('searchResults');
-    const createBundleBtn = document.getElementById('createBundleBtn');
-    const bundlePreview = document.getElementById('bundlePreview');
-    const bundleContent = document.getElementById('bundleContent');
-
-    // Function to normalize character names
-    function normalizeCharacterName(name) {
-        const normalizations = {
-            'mom': ['mum', 'mummy', 'mother'],
-            'dad': ['father', 'daddy', 'papa'],
-            'grandma': ['grandmother', 'granny', 'nana'],
-            'grandpa': ['grandfather', 'granddad', 'grandpapa'],
-            'cat': ['kitty', 'kitten'],
-            'dog': ['puppy', 'pup']
-        };
-
-        name = name.toLowerCase().trim();
-        for (const [primary, variations] of Object.entries(normalizations)) {
-            if (variations.includes(name) || name === primary) {
-                return primary;
-            }
-        }
-        return name;
-    }
-
-    // Function to group similar character names
-    function groupCharacterNames(characters) {
-        const groupedChars = new Map();
-        characters.forEach(char => {
-            const normalized = normalizeCharacterName(char);
-            if (!groupedChars.has(normalized)) {
-                groupedChars.set(normalized, [char]);
-            } else {
-                groupedChars.get(normalized).push(char);
-            }
-        });
-        return Array.from(groupedChars.entries()).map(([normalized, variants]) => ({
-            normalized,
-            variants,
-            displayName: variants[0] // Use the first variant as display name
-        }));
-    }
 
     // Function to create checkboxes from unique values
     function populateCheckboxes(container, items, type) {
-        if (type === 'character') {
-            const groupedItems = groupCharacterNames(items);
-            const html = groupedItems.map(group => `
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="checkbox" 
-                           id="${type}_${group.normalized}" 
-                           name="${type}" 
-                           value="${group.normalized}"
-                           data-variants='${JSON.stringify(group.variants)}'>
-                    <label class="form-check-label" for="${type}_${group.normalized}">
-                        ${group.displayName}
-                        ${group.variants.length > 1 ? 
-                            `<i class="bi bi-info-circle" data-bs-toggle="tooltip" 
-                                title="Includes: ${group.variants.join(', ')}"></i>` 
-                            : ''}
-                    </label>
-                </div>
-            `).join('');
-            container.innerHTML = html;
-
-            // Initialize tooltips
-            const tooltips = container.querySelectorAll('[data-bs-toggle="tooltip"]');
-            tooltips.forEach(tooltip => new bootstrap.Tooltip(tooltip));
-        } else {
-            const uniqueItems = [...new Set(items)].sort();
-            container.innerHTML = uniqueItems.map(item => `
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="checkbox" 
-                           id="${type}_${item}" 
-                           name="${type}" 
-                           value="${item}">
-                    <label class="form-check-label" for="${type}_${item}">${item}</label>
-                </div>
-            `).join('');
-        }
+        const uniqueItems = [...new Set(items)].sort();
+        container.innerHTML = uniqueItems.map(item => `
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" id="${type}_${item}" name="${type}" value="${item}">
+                <label class="form-check-label" for="${type}_${item}">${item}</label>
+            </div>
+        `).join('');
     }
 
     // Fetch and populate all available options
     async function loadSearchOptions() {
         try {
             const response = await fetch('/api/analyses');
-            if (!response.ok) {
-                throw new Error('Failed to load search options');
-            }
             const analyses = await response.json();
 
             const themes = analyses.flatMap(a => a.themes || []);
@@ -104,21 +32,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
         } catch (error) {
             console.error('Error loading search options:', error);
+            alert('Error loading search options');
         }
     }
 
-    let currentSearchResults = [];
-
-    // Handle form submission
-    bundleCreatorForm.addEventListener('submit', async function(e) {
+    searchForm.addEventListener('submit', async function(e) {
         e.preventDefault();
 
         const criteria = {
             themes: Array.from(document.querySelectorAll('input[name="theme"]:checked')).map(cb => cb.value),
-            characters: Array.from(document.querySelectorAll('input[name="character"]:checked')).map(cb => {
-                const variants = JSON.parse(cb.dataset.variants || '[]');
-                return variants.length > 0 ? variants : [cb.value];
-            }).flat(),
+            characters: Array.from(document.querySelectorAll('input[name="character"]:checked')).map(cb => cb.value),
             environments: Array.from(document.querySelectorAll('input[name="environment"]:checked')).map(cb => cb.value)
         };
 
@@ -140,14 +63,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error('Search failed');
             }
 
-            currentSearchResults = await response.json();
-            displaySearchResults(currentSearchResults);
-            createBundleBtn.disabled = currentSearchResults.length === 0;
+            const results = await response.json();
+            displaySearchResults(results);
 
         } catch (error) {
             console.error('Error:', error);
             resultsDiv.innerHTML = '<div class="alert alert-danger">Error performing search</div>';
-            createBundleBtn.disabled = true;
         }
     });
 
@@ -185,6 +106,6 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
     }
 
-    // Initialize search options when the page loads
+    // Load search options when the page loads
     loadSearchOptions();
 });
