@@ -172,36 +172,46 @@ def register_routes(app):
     def search_content():
         try:
             criteria = request.get_json()
+            logger.debug(f"Search criteria received: {criteria}")
 
             # Start with all analyses
             query = AudioAnalysis.query
 
             # Apply theme filters if provided
             if criteria.get('themes'):
-                # Filter for analyses that have any of the selected themes
                 theme_conditions = []
                 for theme in criteria['themes']:
-                    theme_conditions.append(AudioAnalysis.themes.contains(json.dumps([theme])))
+                    # Add logging to debug the theme search
+                    logger.debug(f"Searching for theme: {theme}")
+                    # Search for the theme within the JSON array
+                    theme_conditions.append(
+                        AudioAnalysis.themes.cast(db.Text).like(f'%"{theme}"%')
+                    )
                 query = query.filter(db.or_(*theme_conditions))
 
             # Apply character filters if provided
             if criteria.get('characters'):
-                # Filter for analyses that have any of the selected characters
                 char_conditions = []
                 for character in criteria['characters']:
-                    char_conditions.append(AudioAnalysis.characters_mentioned.contains(json.dumps([character])))
+                    logger.debug(f"Searching for character: {character}")
+                    char_conditions.append(
+                        AudioAnalysis.characters_mentioned.cast(db.Text).like(f'%"{character}"%')
+                    )
                 query = query.filter(db.or_(*char_conditions))
 
             # Apply environment filters if provided
             if criteria.get('environments'):
-                # Filter for analyses that have any of the selected environments
                 env_conditions = []
                 for environment in criteria['environments']:
-                    env_conditions.append(AudioAnalysis.environments.contains(json.dumps([environment])))
+                    logger.debug(f"Searching for environment: {environment}")
+                    env_conditions.append(
+                        AudioAnalysis.environments.cast(db.Text).like(f'%"{environment}"%')
+                    )
                 query = query.filter(db.or_(*env_conditions))
 
             # Execute query and convert results to dictionaries
             results = [analysis.to_dict() for analysis in query.all()]
+            logger.debug(f"Search returned {len(results)} results")
             return jsonify(results)
 
         except Exception as e:
