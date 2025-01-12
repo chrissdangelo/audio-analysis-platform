@@ -51,7 +51,6 @@ class GeminiAnalyzer:
         except Exception as e:
             logger.error(f"Failed to initialize GeminiAnalyzer: {str(e)}")
             raise
-
     def _clean_list_string(self, value_str: str) -> list:
         """Clean and parse a string into a list, handling various formats."""
         if not value_str:
@@ -254,3 +253,36 @@ class GeminiAnalyzer:
             logger.info("Reset chat history")
         except Exception as e:
             logger.error(f"Error during cleanup: {str(e)}")
+
+    def generate_summary(self, analysis_dict: Dict[str, Any]) -> Dict[str, str]:
+        """Generate a summary for an analysis using Gemini AI"""
+        try:
+            logger.info(f"Generating summary for analysis")
+
+            # Construct a descriptive prompt
+            prompt = (
+                "Generate a concise summary of this audio content analysis. Here are the key points:\n"
+                f"Format: {analysis_dict.get('format', 'unknown')}\n"
+                f"Duration: {analysis_dict.get('duration', '00:00:00')}\n"
+                f"Characters: {', '.join(analysis_dict.get('characters_mentioned', []))}\n"
+                f"Environments: {', '.join(analysis_dict.get('environments', []))}\n"
+                f"Themes: {', '.join(analysis_dict.get('themes', []))}\n"
+                f"Dominant Emotion: {analysis_dict.get('dominant_emotion', 'neutral')}\n\n"
+                "Please provide a natural, flowing summary that captures the essence of this content.\n"
+                "Format your response as: Summary: [your summary here]"
+            )
+
+            logger.info("Sending summary request to Gemini")
+            response = self.chat.send_message(prompt)
+            logger.debug(f"Raw response:\n{response.text}")
+
+            # Extract summary from response
+            summary_text = response.text
+            if 'Summary:' in summary_text:
+                summary_text = summary_text.split('Summary:', 1)[1].strip()
+
+            return {'summary': summary_text}
+
+        except Exception as e:
+            logger.error(f"Error generating summary: {str(e)}")
+            raise ValueError(f"Error generating summary: {str(e)}")

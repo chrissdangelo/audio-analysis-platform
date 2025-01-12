@@ -192,6 +192,19 @@ def register_routes(app):
             if not analysis_dict.get('tone_analysis'):
                 analysis_dict['tone_analysis'] = {}
 
+            # Handle missing or empty summary
+            if not analysis_dict.get('summary'):
+                # Try to get a summary from Gemini if missing
+                try:
+                    analyzer = GeminiAnalyzer()
+                    analysis_result = analyzer.generate_summary(analysis_dict)
+                    analysis.summary = analysis_result.get('summary', '')
+                    db.session.commit()
+                    analysis_dict['summary'] = analysis.summary
+                except Exception as e:
+                    logger.error(f"Error generating summary: {str(e)}")
+                    analysis_dict['summary'] = "Summary not available."
+
             return render_template('debug_analysis.html', analysis=analysis_dict)
         except Exception as e:
             logger.error(f"Error fetching analysis debug: {str(e)}")
@@ -359,6 +372,78 @@ def register_routes(app):
             'message': 'Batch processing restarted',
             'status_url': f'/api/upload/batch/{batch_id}/status'
         }), 202
+
+    @app.route('/api/update_missing_analysis', methods=['POST'])
+    def update_missing_analysis():
+        """Update records missing summaries and emotion scores."""
+        try:
+            # Get all records missing summaries or emotion scores
+            analyses = AudioAnalysis.query.filter(
+                db.or_(
+                    AudioAnalysis.summary.is_(None),
+                    AudioAnalysis.summary == '',
+                    AudioAnalysis.emotion_scores == '{}',
+                    AudioAnalysis.emotion_scores.is_(None)
+                )
+            ).all()
+
+            if not analyses:
+                logger.info("No records found needing updates")
+                return jsonify({'message': 'No records need updating'}), 200
+
+            logger.info(f"Found {len(analyses)} records to update")
+            analyzer = GeminiAnalyzer()
+
+            updated_count = 0
+            for analysis in analyses:
+                try:
+                    analysis_dict = analysis.to_dict()
+
+                    # Get missing summary if needed
+                    if not analysis.summary:
+                        summary_result = analyzer.generate_summary(analysis_dict)
+                        analysis.summary = summary_result.get('summary', '')
+                        logger.info(f"Generated summary for analysis {analysis.id}")
+
+                    # Get missing emotion scores if needed
+                    if not analysis.emotion_scores or analysis.emotion_scores == '{}':
+                        # Use the existing emotion scores from the analysis result
+                        default_emotions = {
+                            'joy': 0.0,
+                            'sadness': 0.0,
+                            'anger': 0.0,
+                            'fear': 0.0,
+                            'surprise': 0.0
+                        }
+                        analysis.emotion_scores = json.dumps(default_emotions)
+                        logger.info(f"Updated emotion scores for analysis {analysis.id}")
+
+                    db.session.add(analysis)
+                    updated_count += 1
+
+                    # Commit every 10 records to avoid long transactions
+                    if updated_count % 10 == 0:
+                        db.session.commit()
+                        logger.info(f"Committed batch of 10 updates, total: {updated_count}")
+
+                except Exception as e:
+                    logger.error(f"Error updating analysis {analysis.id}: {str(e)}")
+                    continue
+
+            # Final commit for remaining records
+            db.session.commit()
+            logger.info(f"Successfully updated {updated_count} records")
+
+            return jsonify({
+                'message': f'Successfully updated {updated_count} records',
+                'total_processed': len(analyses),
+                'successfully_updated': updated_count
+            }), 200
+
+        except Exception as e:
+            logger.error(f"Error in update_missing_analysis: {str(e)}")
+            return jsonify({'error': 'Error updating records'}), 500
+
 
 def process_batch(app, batch_id):
     """Process each file in the batch sequentially."""
