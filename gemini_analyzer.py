@@ -2,7 +2,7 @@ import os
 import logging
 import google.generativeai as genai
 import json
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 
 # Configure logging
 logging.basicConfig(
@@ -39,7 +39,7 @@ class GeminiAnalyzer:
                 system_instruction=(
                     "You are an expert audio content analyzer specializing in children's content. "
                     "Your task is to analyze audio files and provide detailed, accurate metadata "
-                    "including emotional and tonal analysis."
+                    "including transcription, emotional and tonal analysis."
                 )
             )
             logger.info("Initialized Gemini model")
@@ -51,53 +51,66 @@ class GeminiAnalyzer:
         except Exception as e:
             logger.error(f"Failed to initialize GeminiAnalyzer: {str(e)}")
             raise
-    def _clean_list_string(self, value_str: str) -> list:
-        """Clean and parse a string into a list, handling various formats."""
-        if not value_str:
-            return []
 
-        logger.debug(f"Raw input string to clean: {value_str}")
-
+    def extract_transcript(self, file_path: str, mime_type: str = None) -> str:
+        """Extract transcript from an audio file using Gemini."""
         try:
-            # If it's already a list, return it
-            if isinstance(value_str, list):
-                return value_str
+            logger.info(f"Starting transcript extraction for: {file_path}")
+            file = genai.upload_file(file_path, mime_type=mime_type)
 
-            # Try parsing as JSON first
-            try:
-                parsed = json.loads(value_str)
-                if isinstance(parsed, list):
-                    return parsed
-            except json.JSONDecodeError:
-                pass
+            prompt = (
+                "Please provide a detailed transcript of this audio content.\n"
+                "Focus on capturing all spoken dialogue, narration, and significant "
+                "sound effects. Format the transcript in a clear, readable manner.\n"
+                "Include speaker labels where possible."
+            )
 
-            # Handle string formatting
-            # Remove common list-like characters and split
-            cleaned_str = value_str.strip('[](){}').replace('"', '').replace("'", "")
-            items = [item.strip() for item in cleaned_str.split(',')]
+            response = self.chat.send_message([file, prompt])
+            transcript = response.text.strip()
 
-            # Remove empty items and duplicates while preserving order
-            cleaned = list(dict.fromkeys(item for item in items if item))
-            logger.debug(f"Cleaned list: {cleaned}")
-            return cleaned
+            logger.info("Successfully extracted transcript")
+            logger.debug(f"Transcript content: {transcript[:200]}...")  # Log first 200 chars
+
+            return transcript
 
         except Exception as e:
-            logger.error(f"Error cleaning list string: {str(e)}")
-            logger.error(f"Problematic value: {value_str}")
-            return []
+            logger.error(f"Error extracting transcript: {str(e)}")
+            raise ValueError(f"Error extracting transcript: {str(e)}")
+
+    def generate_summary_from_transcript(self, transcript: str) -> Dict[str, str]:
+        """Generate a summary specifically from the transcript."""
+        try:
+            logger.info("Generating summary from transcript")
+
+            prompt = (
+                "Generate a detailed summary of this audio transcript. Focus on:\n"
+                "1. Main narrative events and key plot points\n"
+                "2. Character interactions and development\n"
+                "3. Important themes and messages\n"
+                "4. Notable emotional moments\n\n"
+                f"Transcript:\n{transcript}\n\n"
+                "Provide a natural, flowing summary that captures the essence of the content."
+            )
+
+            response = self.chat.send_message(prompt)
+            summary = response.text.strip()
+
+            logger.info("Successfully generated summary from transcript")
+            return {'summary': summary}
+
+        except Exception as e:
+            logger.error(f"Error generating summary from transcript: {str(e)}")
+            raise ValueError(f"Error generating summary: {str(e)}")
 
     def upload_to_gemini(self, file_path: str, mime_type: str = None) -> Dict[str, Any]:
         """Upload and analyze an audio file using Gemini"""
         try:
             logger.info(f"Starting analysis of file: {file_path}")
 
-            # Verify file exists and has content
-            if not os.path.exists(file_path):
-                raise FileNotFoundError(f"File not found: {file_path}")
-            if os.path.getsize(file_path) == 0:
-                raise ValueError("File is empty")
+            # First get the transcript
+            transcript = self.extract_transcript(file_path, mime_type)
 
-            logger.info("Uploading file to Gemini")
+            # Then proceed with metadata analysis
             file = genai.upload_file(file_path, mime_type=mime_type)
             logger.info(f"Successfully uploaded file '{file.display_name}' as: {file.uri}")
 
@@ -143,6 +156,117 @@ class GeminiAnalyzer:
 
             # Process the response
             analysis = self._parse_gemini_response(response.text)
+
+            # Generate summary from transcript
+            summary_result = self.generate_summary_from_transcript(transcript)
+
+            # Add transcript and summary to the analysis results
+            analysis['transcript'] = transcript
+            analysis['summary'] = summary_result['summary']
+
+            return analysis
+
+        except Exception as e:
+            logger.error(f"Error in upload_to_gemini: {str(e)}")
+            raise ValueError(f"Error analyzing audio content: {str(e)}")
+
+    def _clean_list_string(self, value_str: str) -> list:
+        """Clean and parse a string into a list, handling various formats."""
+        if not value_str:
+            return []
+
+        logger.debug(f"Raw input string to clean: {value_str}")
+
+        try:
+            # If it's already a list, return it
+            if isinstance(value_str, list):
+                return value_str
+
+            # Try parsing as JSON first
+            try:
+                parsed = json.loads(value_str)
+                if isinstance(parsed, list):
+                    return parsed
+            except json.JSONDecodeError:
+                pass
+
+            # Handle string formatting
+            # Remove common list-like characters and split
+            cleaned_str = value_str.strip('[](){}').replace('"', '').replace("'", "")
+            items = [item.strip() for item in cleaned_str.split(',')]
+
+            # Remove empty items and duplicates while preserving order
+            cleaned = list(dict.fromkeys(item for item in items if item))
+            logger.debug(f"Cleaned list: {cleaned}")
+            return cleaned
+
+        except Exception as e:
+            logger.error(f"Error cleaning list string: {str(e)}")
+            logger.error(f"Problematic value: {value_str}")
+            return []
+
+    def upload_to_gemini(self, file_path: str, mime_type: str = None) -> Dict[str, Any]:
+        """Upload and analyze an audio file using Gemini"""
+        try:
+            logger.info(f"Starting analysis of file: {file_path}")
+
+            # First get the transcript
+            transcript = self.extract_transcript(file_path, mime_type)
+
+            # Then proceed with metadata analysis
+            file = genai.upload_file(file_path, mime_type=mime_type)
+            logger.info(f"Successfully uploaded file '{file.display_name}' as: {file.uri}")
+
+            prompt = (
+                "Analyze this audio file and provide detailed information in these categories:\n"
+                "1. Format: Is this narrated (single narrator) or radio play (multiple actors)?\n"
+                "2. Narration: Is there a narrator? (Yes/No)\n"
+                "3. Underscore: Is there background music? (Yes/No)\n"
+                "4. Sound Effects: Are there sound effects? (Yes/No)\n"
+                "5. Songs: Total number of complete songs\n"
+                "6. Characters Mentioned: List ALL character names (comma-separated)\n"
+                "7. Speaking Characters: List only characters with speaking lines (comma-separated)\n"
+                "8. Environments: List physical locations only (comma-separated, e.g. house, forest)\n"
+                "9. Themes: List abstract concepts only (comma-separated, e.g. friendship, bravery)\n"
+                "10. Duration: Total length in HH:MM:SS format\n"
+                "11. Emotions: Rate each emotion (joy, sadness, anger, fear, surprise) from 0.0 to 1.0\n"
+                "12. Tone Analysis: Describe the overall tone (formal, informal, playful, serious, etc)\n"
+                "13. Dominant Emotion: Which emotion is most prevalent?\n"
+                "14. Confidence: Rate analysis confidence from 0.0 to 1.0\n\n"
+                "Format your response with labels:\n"
+                "Format: [answer]\n"
+                "Narration: [yes/no]\n"
+                "Underscore: [yes/no]\n"
+                "Sound Effects: [yes/no]\n"
+                "Songs Count: [number]\n"
+                "Characters Mentioned: [comma-separated list]\n"
+                "Speaking Characters: [comma-separated list]\n"
+                "Environments: [comma-separated list]\n"
+                "Themes: [comma-separated list]\n"
+                "Duration: [HH:MM:SS]\n"
+                "Emotions: {'joy': [0-1], 'sadness': [0-1], 'anger': [0-1], 'fear': [0-1], 'surprise': [0-1]}\n"
+                "Tone Analysis: [description]\n"
+                "Dominant Emotion: [emotion]\n"
+                "Confidence: [0-1]\n"
+            )
+
+            logger.info("Sending analysis request to Gemini")
+            response = self.chat.send_message([file, prompt])
+
+            # Log the raw response
+            logger.info("Received response from Gemini")
+            logger.debug(f"Raw response:\n{response.text}")
+
+            # Process the response
+            analysis = self._parse_gemini_response(response.text)
+
+            # Generate summary from transcript
+            summary_result = self.generate_summary_from_transcript(transcript)
+
+            # Add transcript and summary to the analysis results
+            analysis['transcript'] = transcript
+            analysis['summary'] = summary_result['summary']
+
             return analysis
 
         except Exception as e:

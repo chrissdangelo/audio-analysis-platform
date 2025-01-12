@@ -375,11 +375,13 @@ def register_routes(app):
 
     @app.route('/api/update_missing_analysis', methods=['POST'])
     def update_missing_analysis():
-        """Update records missing summaries and emotion scores."""
+        """Update records missing transcripts, summaries and emotion scores."""
         try:
-            # Get all records missing summaries or emotion scores
+            # Get all records missing transcripts, summaries or emotion scores
             analyses = AudioAnalysis.query.filter(
                 db.or_(
+                    AudioAnalysis.transcript.is_(None),
+                    AudioAnalysis.transcript == '',
                     AudioAnalysis.summary.is_(None),
                     AudioAnalysis.summary == '',
                     AudioAnalysis.emotion_scores == '{}',
@@ -399,11 +401,19 @@ def register_routes(app):
                 try:
                     analysis_dict = analysis.to_dict()
 
-                    # Get missing summary if needed
-                    if not analysis.summary:
-                        summary_result = analyzer.generate_summary(analysis_dict)
+                    # Check if we need to generate a summary
+                    if not analysis.summary or not analysis.transcript:
+                        # For existing files without transcripts, we need to handle this case
+                        # by informing the user that we can't generate new summaries without
+                        # the original audio files
+                        if not analysis.transcript:
+                            logger.warning(f"Cannot generate summary for analysis {analysis.id} - no transcript available")
+                            continue
+
+                        # If we have a transcript but no summary, generate one
+                        summary_result = analyzer.generate_summary_from_transcript(analysis.transcript)
                         analysis.summary = summary_result.get('summary', '')
-                        logger.info(f"Generated summary for analysis {analysis.id}")
+                        logger.info(f"Generated summary from transcript for analysis {analysis.id}")
 
                     # Get missing emotion scores
                     if not analysis.emotion_scores or analysis.emotion_scores == '{}':
@@ -440,90 +450,89 @@ def register_routes(app):
             logger.error(f"Error in update_missing_analysis: {str(e)}")
             return jsonify({'error': 'Error updating records'}), 500
 
+    def process_batch(app, batch_id):
+        """Process each file in the batch sequentially."""
+        logger.info(f"Starting batch processing for batch {batch_id}")
 
-def process_batch(app, batch_id):
-    """Process each file in the batch sequentially."""
-    logger.info(f"Starting batch processing for batch {batch_id}")
+        with app.app_context():
+            while True:
+                pending_files = batch_manager.get_pending_files(batch_id)
+                if not pending_files:
+                    break
 
-    with app.app_context():
-        while True:
-            pending_files = batch_manager.get_pending_files(batch_id)
-            if not pending_files:
-                break
+                for filename in pending_files:
+                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    if not os.path.exists(filepath):
+                        batch_manager.mark_file_failed(batch_id, filename, "File not found")
+                        continue
 
-            for filename in pending_files:
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                if not os.path.exists(filepath):
-                    batch_manager.mark_file_failed(batch_id, filename, "File not found")
-                    continue
+                    batch_manager.mark_file_started(batch_id, filename)
 
-                batch_manager.mark_file_started(batch_id, filename)
+                    try:
+                        # Create analyzer instance
+                        analyzer = GeminiAnalyzer()
 
-                try:
-                    # Create analyzer instance
-                    analyzer = GeminiAnalyzer()
+                        # Determine MIME type
+                        file_ext = os.path.splitext(filename)[1].lower()
+                        mime_type = 'audio/wav' if file_ext == '.wav' else 'audio/mpeg'
 
-                    # Determine MIME type
-                    file_ext = os.path.splitext(filename)[1].lower()
-                    mime_type = 'audio/wav' if file_ext == '.wav' else 'audio/mpeg'
+                        # Process with Gemini
+                        analysis_result = analyzer.upload_to_gemini(filepath, mime_type)
 
-                    # Process with Gemini
-                    analysis_result = analyzer.upload_to_gemini(filepath, mime_type)
+                        # Prepare array fields for storage
+                        for field in ['environments', 'characters_mentioned', 'speaking_characters', 'themes']:
+                            if field in analysis_result:
+                                analysis_result[field] = prepare_list_for_storage(analysis_result[field])
 
-                    # Prepare array fields for storage
-                    for field in ['environments', 'characters_mentioned', 'speaking_characters', 'themes']:
-                        if field in analysis_result:
-                            analysis_result[field] = prepare_list_for_storage(analysis_result[field])
+                        # Create database entry
+                        analysis = AudioAnalysis(
+                            title=title_case(os.path.splitext(filename)[0]),
+                            filename=filename,
+                            file_type='Audio',
+                            format=analysis_result.get('format', 'narrated episode'),
+                            duration=analysis_result.get('duration', '00:00:00'),
+                            has_narration=analysis_result.get('has_narration', False),
+                            has_underscore=analysis_result.get('has_underscore', False),
+                            has_sound_effects=analysis_result.get('sound_effects_count', 0) > 0,
+                            songs_count=analysis_result.get('songs_count', 0),
+                            environments=analysis_result.get('environments', '[]'),
+                            characters_mentioned=analysis_result.get('characters_mentioned', '[]'),
+                            speaking_characters=analysis_result.get('speaking_characters', '[]'),
+                            themes=analysis_result.get('themes', '[]'),
+                            summary=analysis_result.get('summary', ''),
+                            emotion_scores=json.dumps(analysis_result.get('emotion_scores', {
+                                'joy': 0, 'sadness': 0, 'anger': 0,
+                                'fear': 0, 'surprise': 0
+                            })),
+                            dominant_emotion=analysis_result.get('dominant_emotion', ''),
+                            tone_analysis=json.dumps(analysis_result.get('tone_analysis', {})),
+                            confidence_score=analysis_result.get('confidence_score', 0.0)
+                        )
 
-                    # Create database entry
-                    analysis = AudioAnalysis(
-                        title=title_case(os.path.splitext(filename)[0]),
-                        filename=filename,
-                        file_type='Audio',
-                        format=analysis_result.get('format', 'narrated episode'),
-                        duration=analysis_result.get('duration', '00:00:00'),
-                        has_narration=analysis_result.get('has_narration', False),
-                        has_underscore=analysis_result.get('has_underscore', False),
-                        has_sound_effects=analysis_result.get('sound_effects_count', 0) > 0,
-                        songs_count=analysis_result.get('songs_count', 0),
-                        environments=analysis_result.get('environments', '[]'),
-                        characters_mentioned=analysis_result.get('characters_mentioned', '[]'),
-                        speaking_characters=analysis_result.get('speaking_characters', '[]'),
-                        themes=analysis_result.get('themes', '[]'),
-                        summary=analysis_result.get('summary', ''),
-                        emotion_scores=json.dumps(analysis_result.get('emotion_scores', {
-                            'joy': 0, 'sadness': 0, 'anger': 0,
-                            'fear': 0, 'surprise': 0
-                        })),
-                        dominant_emotion=analysis_result.get('dominant_emotion', ''),
-                        tone_analysis=json.dumps(analysis_result.get('tone_analysis', {})),
-                        confidence_score=analysis_result.get('confidence_score', 0.0)
-                    )
+                        db.session.add(analysis)
+                        db.session.commit()
 
-                    db.session.add(analysis)
-                    db.session.commit()
+                        batch_manager.mark_file_complete(batch_id, filename, analysis.id)
 
-                    batch_manager.mark_file_complete(batch_id, filename, analysis.id)
+                    except Exception as e:
+                        logger.error(f"Error processing {filename}: {str(e)}")
+                        batch_manager.mark_file_failed(batch_id, filename, str(e))
 
-                except Exception as e:
-                    logger.error(f"Error processing {filename}: {str(e)}")
-                    batch_manager.mark_file_failed(batch_id, filename, str(e))
+                    finally:
+                        if os.path.exists(filepath):
+                            try:
+                                os.remove(filepath)
+                                logger.info(f"Cleaned up file {filepath}")
+                            except Exception as e:
+                                logger.error(f"Error cleaning up file {filepath}: {str(e)}")
 
-                finally:
-                    if os.path.exists(filepath):
-                        try:
-                            os.remove(filepath)
-                            logger.info(f"Cleaned up file {filepath}")
-                        except Exception as e:
-                            logger.error(f"Error cleaning up file {filepath}: {str(e)}")
+                        if 'analyzer' in locals():
+                            try:
+                                analyzer.cleanup()
+                            except Exception as e:
+                                logger.error(f"Error cleaning up analyzer: {str(e)}")
 
-                    if 'analyzer' in locals():
-                        try:
-                            analyzer.cleanup()
-                        except Exception as e:
-                            logger.error(f"Error cleaning up analyzer: {str(e)}")
+                    # Save batch status after each file
+                    batch_manager.save_batch_status(batch_id)
 
-                # Save batch status after each file
-                batch_manager.save_batch_status(batch_id)
-
-        logger.info(f"Completed batch processing for batch {batch_id}")
+            logger.info(f"Completed batch processing for batch {batch_id}")

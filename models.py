@@ -20,6 +20,7 @@ class AudioAnalysis(db.Model):
     characters_mentioned = db.Column(db.Text)  # Store as JSON string
     speaking_characters = db.Column(db.Text)  # Store as JSON string
     themes = db.Column(db.Text)  # Store as JSON string
+    transcript = db.Column(db.Text)  # Store audio transcript
     summary = db.Column(db.Text)  # Store episode summary
     # Emotion analysis fields
     emotion_scores = db.Column(db.Text)  # Store as JSON string with scores for each emotion
