@@ -7,8 +7,10 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from database import db
 from models import AudioAnalysis
 from gemini_analyzer import GeminiAnalyzer
+from batch_manager import BatchUploadManager
 
 logger = logging.getLogger(__name__)
+batch_manager = BatchUploadManager()
 
 def title_case(s: str) -> str:
     """Convert string to title case, handling special characters"""
@@ -244,3 +246,159 @@ def register_routes(app):
         except Exception as e:
             logger.error(f"Error performing search: {str(e)}")
             return jsonify({"error": "Error performing search"}), 500
+
+    @app.route('/api/upload/batch', methods=['POST'])
+    def upload_batch():
+        if 'files[]' not in request.files:
+            return jsonify({'error': 'No files part'}), 400
+
+        files = request.files.getlist('files[]')
+        if not files:
+            return jsonify({'error': 'No selected files'}), 400
+
+        # Create uploads directory if it doesn't exist
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+        os.makedirs('data', exist_ok=True)  # For batch status files
+
+        # Create new batch
+        filenames = [secure_filename(f.filename) for f in files if f.filename and allowed_file(f.filename)]
+        if not filenames:
+            return jsonify({'error': 'No valid files selected'}), 400
+
+        batch_id = batch_manager.create_batch(filenames)
+
+        # Save files
+        saved_files = []
+        try:
+            for file in files:
+                if file.filename and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    file.save(filepath)
+                    saved_files.append(filepath)
+                    logger.info(f"Saved file {filename} for batch {batch_id}")
+        except Exception as e:
+            logger.error(f"Error saving files: {str(e)}")
+            return jsonify({'error': 'Error saving files'}), 500
+
+        # Start processing in a separate thread
+        from threading import Thread
+        thread = Thread(target=process_batch, args=(app, batch_id))
+        thread.daemon = True
+        thread.start()
+
+        return jsonify({
+            'batch_id': batch_id,
+            'message': 'Batch upload started',
+            'status_url': f'/api/upload/batch/{batch_id}/status'
+        }), 202
+
+    @app.route('/api/upload/batch/<batch_id>/status')
+    def batch_status(batch_id):
+        status = batch_manager.get_batch_status(batch_id)
+        if not status:
+            return jsonify({'error': 'Batch not found'}), 404
+        return jsonify(status)
+
+    @app.route('/api/upload/batch/<batch_id>/retry')
+    def retry_batch(batch_id):
+        if not batch_manager.load_batch_status(batch_id):
+            return jsonify({'error': 'Batch not found'}), 404
+
+        # Start processing in a separate thread
+        from threading import Thread
+        thread = Thread(target=process_batch, args=(app, batch_id))
+        thread.daemon = True
+        thread.start()
+
+        return jsonify({
+            'message': 'Batch processing restarted',
+            'status_url': f'/api/upload/batch/{batch_id}/status'
+        }), 202
+
+def process_batch(app, batch_id):
+    """Process each file in the batch sequentially."""
+    logger.info(f"Starting batch processing for batch {batch_id}")
+
+    with app.app_context():
+        while True:
+            pending_files = batch_manager.get_pending_files(batch_id)
+            if not pending_files:
+                break
+
+            for filename in pending_files:
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                if not os.path.exists(filepath):
+                    batch_manager.mark_file_failed(batch_id, filename, "File not found")
+                    continue
+
+                batch_manager.mark_file_started(batch_id, filename)
+
+                try:
+                    # Create analyzer instance
+                    analyzer = GeminiAnalyzer()
+
+                    # Determine MIME type
+                    file_ext = os.path.splitext(filename)[1].lower()
+                    mime_type = 'audio/wav' if file_ext == '.wav' else 'audio/mpeg'
+
+                    # Process with Gemini
+                    analysis_result = analyzer.upload_to_gemini(filepath, mime_type)
+
+                    # Prepare array fields for storage
+                    for field in ['environments', 'characters_mentioned', 'speaking_characters', 'themes']:
+                        if field in analysis_result:
+                            analysis_result[field] = prepare_list_for_storage(analysis_result[field])
+
+                    # Create database entry
+                    analysis = AudioAnalysis(
+                        title=title_case(os.path.splitext(filename)[0]),
+                        filename=filename,
+                        file_type='Audio',
+                        format=analysis_result.get('format', 'narrated episode'),
+                        duration=analysis_result.get('duration', '00:00:00'),
+                        has_narration=analysis_result.get('has_narration', False),
+                        has_underscore=analysis_result.get('has_underscore', False),
+                        has_sound_effects=analysis_result.get('sound_effects_count', 0) > 0,
+                        songs_count=analysis_result.get('songs_count', 0),
+                        environments=analysis_result.get('environments', '[]'),
+                        characters_mentioned=analysis_result.get('characters_mentioned', '[]'),
+                        speaking_characters=analysis_result.get('speaking_characters', '[]'),
+                        themes=analysis_result.get('themes', '[]'),
+                        summary=analysis_result.get('summary', ''),
+                        emotion_scores=json.dumps(analysis_result.get('emotion_scores', {
+                            'joy': 0, 'sadness': 0, 'anger': 0,
+                            'fear': 0, 'surprise': 0
+                        })),
+                        dominant_emotion=analysis_result.get('dominant_emotion', ''),
+                        tone_analysis=json.dumps(analysis_result.get('tone_analysis', {})),
+                        confidence_score=analysis_result.get('confidence_score', 0.0)
+                    )
+
+                    db.session.add(analysis)
+                    db.session.commit()
+
+                    batch_manager.mark_file_complete(batch_id, filename, analysis.id)
+
+                except Exception as e:
+                    logger.error(f"Error processing {filename}: {str(e)}")
+                    batch_manager.mark_file_failed(batch_id, filename, str(e))
+
+                finally:
+                    if os.path.exists(filepath):
+                        try:
+                            os.remove(filepath)
+                            logger.info(f"Cleaned up file {filepath}")
+                        except Exception as e:
+                            logger.error(f"Error cleaning up file {filepath}: {str(e)}")
+
+                    if 'analyzer' in locals():
+                        try:
+                            analyzer.cleanup()
+                        except Exception as e:
+                            logger.error(f"Error cleaning up analyzer: {str(e)}")
+
+                # Save batch status after each file
+                batch_manager.save_batch_status(batch_id)
+
+        logger.info(f"Completed batch processing for batch {batch_id}")
