@@ -8,16 +8,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function uploadFiles(files) {
         const totalFiles = files.length;
-        let completedFiles = 0;
 
         progressDiv.classList.remove('d-none');
         batchStatus.innerHTML = `Processing 0/${totalFiles} files...`;
 
         // Create FormData with all files
         const formData = new FormData();
-        Array.from(files).forEach(file => {
-            formData.append('files[]', file);
-        });
+        for (let i = 0; i < files.length; i++) {
+            formData.append('files[]', files[i]);
+        }
 
         try {
             // Start batch upload
@@ -88,21 +87,23 @@ document.addEventListener('DOMContentLoaded', function() {
         let statusHtml = `<div class="mb-3">Processing ${processedFiles}/${totalFiles} files...</div>`;
 
         // Show current file status
-        Object.entries(status.files).forEach(([filename, fileStatus]) => {
-            const statusClass = {
-                'pending': 'text-muted',
-                'processing': 'text-primary',
-                'completed': 'text-success',
-                'failed': 'text-danger'
-            }[fileStatus.status];
+        if (status.files) {
+            Object.entries(status.files).forEach(([filename, fileStatus]) => {
+                const statusClass = {
+                    'pending': 'text-muted',
+                    'processing': 'text-primary',
+                    'completed': 'text-success',
+                    'failed': 'text-danger'
+                }[fileStatus.status] || 'text-muted';
 
-            statusHtml += `
-                <div class="small ${statusClass}">
-                    ${filename}: ${fileStatus.status}
-                    ${fileStatus.error ? `(Error: ${fileStatus.error})` : ''}
-                </div>
-            `;
-        });
+                statusHtml += `
+                    <div class="small ${statusClass}">
+                        ${filename}: ${fileStatus.status}
+                        ${fileStatus.error ? `(Error: ${fileStatus.error})` : ''}
+                    </div>
+                `;
+            });
+        }
 
         batchStatus.innerHTML = statusHtml;
     }
