@@ -21,20 +21,23 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         items.forEach(item => {
-            let normalized = item.toLowerCase().trim();
+            if (!item) return; // Skip null/undefined items
+
+            let normalizedTerm = item.toLowerCase().trim();
+            if (!normalizedTerm) return; // Skip empty strings
 
             // Check if this term is a variation of another
             for (const [main, variants] of Object.entries(variations)) {
-                if (variants.includes(normalized) || normalized === main) {
-                    normalized = main;
+                if (variants.includes(normalizedTerm) || normalizedTerm === main) {
+                    normalizedTerm = main;
                     break;
                 }
             }
 
-            if (!normalized.get(normalized)) {
-                normalized.set(normalized, new Set());
+            if (!normalized.has(normalizedTerm)) {
+                normalized.set(normalizedTerm, new Set());
             }
-            normalized.get(normalized).add(item);
+            normalized.get(normalizedTerm).add(item);
         });
 
         return normalized;
@@ -68,15 +71,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const other = new Set();
 
         environments.forEach(env => {
-            let categorized = false;
+            let matched = false;
             for (const [category, info] of Object.entries(categories)) {
                 if (info.pattern.test(env)) {
                     categorized[category].add(env);
-                    categorized = true;
+                    matched = true;
                     break;
                 }
             }
-            if (!categorized) {
+            if (!matched) {
                 other.add(env);
             }
         });
@@ -116,15 +119,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const other = new Set();
 
         themes.forEach(theme => {
-            let categorized = false;
+            let matched = false;
             for (const [category, info] of Object.entries(categories)) {
                 if (info.pattern.test(theme)) {
                     categorized[category].add(theme);
-                    categorized = true;
+                    matched = true;
                     break;
                 }
             }
-            if (!categorized) {
+            if (!matched) {
                 other.add(theme);
             }
         });
@@ -178,11 +181,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const characters = analyses.flatMap(a => a.characters_mentioned || []);
             const environments = analyses.flatMap(a => a.environments || []);
 
-            // Normalize and categorize the data
-            const normalizedThemes = normalizeTerms(themes);
-            const normalizedCharacters = normalizeTerms(characters);
-            const normalizedEnvironments = normalizeTerms(environments);
-
             // Create hierarchical structures
             const categorizedThemes = categorizeThemes(Array.from(new Set(themes)));
             const categorizedEnvironments = categorizeEnvironments(Array.from(new Set(environments)));
@@ -191,9 +189,8 @@ document.addEventListener('DOMContentLoaded', function() {
             populateCategorizedCheckboxes(themeCheckboxes, categorizedThemes, 'theme');
             populateCategorizedCheckboxes(environmentCheckboxes, categorizedEnvironments, 'environment');
 
-            // For characters, we'll just use the normalized list for now
-            // You might want to add categorization later based on your needs
-            const charactersList = Array.from(normalizedCharacters.keys()).sort();
+            // For characters, we'll just use a simple list for now
+            const charactersList = Array.from(new Set(characters)).sort();
             characterCheckboxes.innerHTML = `
                 <div class="card">
                     <div class="card-body">
