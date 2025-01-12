@@ -525,3 +525,34 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial dashboard update
     updateDashboard();
 });
+
+$(document).ready(function() {
+    // Initialize DataTable with column resizing
+    $('#analysisTable').DataTable({
+        colResize: {
+            isEnabled: true,
+            hoverClass: 'dt-colresizable-hover',
+            hasBoundCheck: true,
+            minBoundClass: 'dt-colresizable-bound-min',
+            maxBoundClass: 'dt-colresizable-bound-max',
+            saveState: true,
+            isResizable: function(column) {
+                return true; // Allow resizing for all columns
+            }
+        },
+        scrollX: true,
+        autoWidth: false,
+        pageLength: 10,
+        lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+        dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
+             '<"row"<"col-sm-12"tr>>' +
+             '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+        language: {
+            search: "Filter records:",
+            lengthMenu: "Show _MENU_ entries per page",
+            info: "Showing _START_ to _END_ of _TOTAL_ entries",
+            infoEmpty: "No entries found",
+            infoFiltered: "(filtered from _MAX_ total entries)"
+        }
+    });
+});
