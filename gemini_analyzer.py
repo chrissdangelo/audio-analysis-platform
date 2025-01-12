@@ -286,3 +286,87 @@ class GeminiAnalyzer:
         except Exception as e:
             logger.error(f"Error generating summary: {str(e)}")
             raise ValueError(f"Error generating summary: {str(e)}")
+
+    def analyze_emotions(self, analysis_dict: Dict[str, Any]) -> Dict[str, Any]:
+        """Analyze emotions for existing content."""
+        try:
+            logger.info("Starting emotion analysis")
+
+            # Construct content for analysis from available data
+            content = (
+                f"Title: {analysis_dict.get('title', 'Unknown')}\n"
+                f"Characters: {', '.join(analysis_dict.get('characters_mentioned', []))}\n"
+                f"Themes: {', '.join(analysis_dict.get('themes', []))}\n"
+                f"Environment: {', '.join(analysis_dict.get('environments', []))}\n"
+                f"Summary: {analysis_dict.get('summary', '')}"
+            )
+
+            prompt = (
+                "Analyze the emotional content of this audio piece and provide scores for these emotions:\n"
+                "1. Joy (0.0 to 1.0)\n"
+                "2. Sadness (0.0 to 1.0)\n"
+                "3. Anger (0.0 to 1.0)\n"
+                "4. Fear (0.0 to 1.0)\n"
+                "5. Surprise (0.0 to 1.0)\n\n"
+                "Also determine:\n"
+                "6. Dominant Emotion (most prevalent)\n"
+                "7. Overall tone analysis\n"
+                "8. Confidence score for this analysis (0.0 to 1.0)\n\n"
+                f"Content to analyze:\n{content}\n\n"
+                "Format your response as JSON:\n"
+                "{\n"
+                "  'emotion_scores': {'joy': float, 'sadness': float, 'anger': float, 'fear': float, 'surprise': float},\n"
+                "  'dominant_emotion': string,\n"
+                "  'tone_analysis': {'tone': string},\n"
+                "  'confidence_score': float\n"
+                "}"
+            )
+
+            logger.info("Sending emotion analysis request to Gemini")
+            response = self.chat.send_message(prompt)
+            logger.debug(f"Raw response:\n{response.text}")
+
+            try:
+                # Try to parse the response as JSON
+                response_text = response.text
+                if "```json" in response_text:
+                    response_text = response_text.split("```json")[1].split("```")[0]
+                elif "```" in response_text:
+                    response_text = response_text.split("```")[1]
+
+                analysis_result = json.loads(response_text.strip())
+
+                # Validate and normalize the results
+                if 'emotion_scores' not in analysis_result:
+                    analysis_result['emotion_scores'] = {
+                        'joy': 0.0, 'sadness': 0.0, 'anger': 0.0,
+                        'fear': 0.0, 'surprise': 0.0
+                    }
+
+                if 'confidence_score' not in analysis_result:
+                    analysis_result['confidence_score'] = 0.5
+
+                if 'dominant_emotion' not in analysis_result:
+                    # Determine dominant emotion from scores
+                    scores = analysis_result['emotion_scores']
+                    analysis_result['dominant_emotion'] = max(scores.items(), key=lambda x: x[1])[0]
+
+                if 'tone_analysis' not in analysis_result:
+                    analysis_result['tone_analysis'] = {'tone': 'neutral'}
+
+                logger.info("Successfully analyzed emotions")
+                return analysis_result
+
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse emotion analysis response as JSON: {str(e)}")
+                logger.error(f"Response text: {response.text}")
+                return {
+                    'emotion_scores': {'joy': 0.0, 'sadness': 0.0, 'anger': 0.0, 'fear': 0.0, 'surprise': 0.0},
+                    'dominant_emotion': 'neutral',
+                    'tone_analysis': {'tone': 'neutral'},
+                    'confidence_score': 0.0
+                }
+
+        except Exception as e:
+            logger.error(f"Error in analyze_emotions: {str(e)}")
+            raise ValueError(f"Error analyzing emotions: {str(e)}")

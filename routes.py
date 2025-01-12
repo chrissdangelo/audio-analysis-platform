@@ -405,26 +405,22 @@ def register_routes(app):
                         analysis.summary = summary_result.get('summary', '')
                         logger.info(f"Generated summary for analysis {analysis.id}")
 
-                    # Get missing emotion scores if needed
+                    # Get missing emotion scores
                     if not analysis.emotion_scores or analysis.emotion_scores == '{}':
-                        # Use the existing emotion scores from the analysis result
-                        default_emotions = {
-                            'joy': 0.0,
-                            'sadness': 0.0,
-                            'anger': 0.0,
-                            'fear': 0.0,
-                            'surprise': 0.0
-                        }
-                        analysis.emotion_scores = json.dumps(default_emotions)
-                        logger.info(f"Updated emotion scores for analysis {analysis.id}")
+                        emotion_result = analyzer.analyze_emotions(analysis_dict)
+                        analysis.emotion_scores = json.dumps(emotion_result['emotion_scores'])
+                        analysis.dominant_emotion = emotion_result['dominant_emotion']
+                        analysis.tone_analysis = json.dumps(emotion_result['tone_analysis'])
+                        analysis.confidence_score = emotion_result['confidence_score']
+                        logger.info(f"Updated emotion analysis for analysis {analysis.id}")
 
                     db.session.add(analysis)
                     updated_count += 1
 
-                    # Commit every 10 records to avoid long transactions
-                    if updated_count % 10 == 0:
+                    # Commit every 5 records to avoid long transactions
+                    if updated_count % 5 == 0:
                         db.session.commit()
-                        logger.info(f"Committed batch of 10 updates, total: {updated_count}")
+                        logger.info(f"Committed batch of 5 updates, total: {updated_count}")
 
                 except Exception as e:
                     logger.error(f"Error updating analysis {analysis.id}: {str(e)}")
