@@ -2,14 +2,6 @@ import logging
 from datetime import datetime
 from database import db
 import json
-from flask_login import UserMixin
-
-class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    name = db.Column(db.String(100))
-    google_id = db.Column(db.String(100), unique=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class AudioAnalysis(db.Model):
     __tablename__ = 'audio_analyses'
@@ -29,8 +21,6 @@ class AudioAnalysis(db.Model):
     speaking_characters = db.Column(db.Text)  # Store as JSON string
     themes = db.Column(db.Text)  # Store as JSON string
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    user = db.relationship('User', backref=db.backref('analyses', lazy=True))
 
     def _parse_list_field(self, value):
         """Parse a field that should contain a list."""
@@ -62,8 +52,7 @@ class AudioAnalysis(db.Model):
                 'characters_mentioned': self._parse_list_field(self.characters_mentioned),
                 'speaking_characters': self._parse_list_field(self.speaking_characters),
                 'themes': self._parse_list_field(self.themes),
-                'created_at': self.created_at.isoformat() if self.created_at else None,
-                'user_id': self.user_id
+                'created_at': self.created_at.isoformat() if self.created_at else None
             }
         except Exception as e:
             logging.error(f"Error in to_dict: {str(e)}")
@@ -82,6 +71,5 @@ class AudioAnalysis(db.Model):
                 'characters_mentioned': [],
                 'speaking_characters': [],
                 'themes': [],
-                'created_at': self.created_at.isoformat() if self.created_at else None,
-                'user_id': self.user_id
+                'created_at': self.created_at.isoformat() if self.created_at else None
             }

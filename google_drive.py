@@ -6,9 +6,7 @@ from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 from flask import Blueprint, session, redirect, url_for, request, jsonify
-from flask_login import login_required, current_user, login_user
-from models import User
-from database import db
+from flask_login import login_required, current_user
 import json
 import io
 
@@ -17,87 +15,58 @@ logger = logging.getLogger(__name__)
 google_drive = Blueprint('google_drive', __name__)
 
 # OAuth 2.0 configuration
-SCOPES = ['https://www.googleapis.com/auth/drive.readonly', 'https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email']
-
-def get_replit_domain():
-    """Get the Replit domain for this project."""
-    repl_slug = os.environ.get('REPL_SLUG', '')
-    repl_owner = os.environ.get('REPL_OWNER', '')
-    return f"{repl_slug}.{repl_owner}.repl.co"
-
-def get_google_client_config():
-    domain = get_replit_domain()
-    return {
-        "web": {
-            "client_id": os.environ.get("GOOGLE_CLIENT_ID"),
-            "client_secret": os.environ.get("GOOGLE_CLIENT_SECRET"),
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "redirect_uris": [f"https://{domain}/oauth2callback"]
-        }
+SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
+CLIENT_CONFIG = {
+    "web": {
+        "client_id": os.environ.get("GOOGLE_CLIENT_ID"),
+        "client_secret": os.environ.get("GOOGLE_CLIENT_SECRET"),
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
     }
+}
 
-# Print setup instructions
-print(f"""
-Google OAuth Setup Instructions:
-1. Go to https://console.cloud.google.com/apis/credentials
-2. Edit your OAuth 2.0 Client ID
-3. Add these to Authorized JavaScript origins:
-   https://{get_replit_domain()}
-4. Add these to Authorized redirect URIs:
-   https://{get_replit_domain()}/oauth2callback
-""")
+def require_drive_auth(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'google_drive_credentials' not in session:
+            return redirect(url_for('google_drive.authorize'))
+        return f(*args, **kwargs)
+    return decorated_function
 
-@google_drive.route('/authorize')
+@google_drive.route('/drive/authorize')
+@login_required
 def authorize():
     try:
         flow = Flow.from_client_config(
-            get_google_client_config(),
+            CLIENT_CONFIG,
             scopes=SCOPES,
-            redirect_uri=f"https://{get_replit_domain()}/oauth2callback"
+            redirect_uri=url_for('google_drive.oauth2callback', _external=True)
         )
         authorization_url, state = flow.authorization_url(
             access_type='offline',
             include_granted_scopes='true'
         )
-        session['state'] = state
+        session['google_auth_state'] = state
         return redirect(authorization_url)
     except Exception as e:
         logger.error(f"Error during Google Drive authorization: {str(e)}")
         return jsonify({"error": "Failed to initiate Google Drive authorization"}), 500
 
-@google_drive.route('/oauth2callback')
+@google_drive.route('/drive/oauth2callback')
+@login_required
 def oauth2callback():
     try:
+        state = session['google_auth_state']
         flow = Flow.from_client_config(
-            get_google_client_config(),
+            CLIENT_CONFIG,
             scopes=SCOPES,
-            state=session['state'],
-            redirect_uri=f"https://{get_replit_domain()}/oauth2callback"
+            state=state,
+            redirect_uri=url_for('google_drive.oauth2callback', _external=True)
         )
-
+        
         flow.fetch_token(authorization_response=request.url)
         credentials = flow.credentials
-
-        # Get user info
-        oauth2_client = build('oauth2', 'v2', credentials=credentials)
-        user_info = oauth2_client.userinfo().get().execute()
-
-        # Find or create user
-        user = User.query.filter_by(email=user_info['email']).first()
-        if not user:
-            user = User(
-                email=user_info['email'],
-                name=user_info.get('name'),
-                google_id=user_info['id']
-            )
-            db.session.add(user)
-            db.session.commit()
-
-        login_user(user)
-
-        # Store credentials
-        session['google_credentials'] = {
+        session['google_drive_credentials'] = {
             'token': credentials.token,
             'refresh_token': credentials.refresh_token,
             'token_uri': credentials.token_uri,
@@ -105,25 +74,22 @@ def oauth2callback():
             'client_secret': credentials.client_secret,
             'scopes': credentials.scopes
         }
-
-        return redirect(url_for('index'))
+        return redirect(url_for('google_drive.list_files'))
     except Exception as e:
         logger.error(f"Error during OAuth callback: {str(e)}")
-        return jsonify({"error": "Failed to complete Google authentication"}), 500
+        return jsonify({"error": "Failed to complete Google Drive authentication"}), 500
 
 @google_drive.route('/drive/files')
 @login_required
+@require_drive_auth
 def list_files():
     try:
-        if 'google_credentials' not in session:
-            return jsonify({"error": "Authentication required"}), 401
-
         credentials = Credentials.from_authorized_user_info(
-            session['google_credentials'],
+            session['google_drive_credentials'],
             SCOPES
         )
         service = build('drive', 'v3', credentials=credentials)
-
+        
         # Only list audio files
         query = "mimeType contains 'audio/' and trashed = false"
         results = service.files().list(
@@ -131,7 +97,7 @@ def list_files():
             pageSize=10,
             fields="files(id, name, mimeType)"
         ).execute()
-
+        
         files = results.get('files', [])
         return jsonify({"files": files})
     except Exception as e:
@@ -140,20 +106,18 @@ def list_files():
 
 @google_drive.route('/drive/download/<file_id>')
 @login_required
+@require_drive_auth
 def download_file(file_id):
     try:
-        if 'google_credentials' not in session:
-            return jsonify({"error": "Authentication required"}), 401
-
         credentials = Credentials.from_authorized_user_info(
-            session['google_credentials'],
+            session['google_drive_credentials'],
             SCOPES
         )
         service = build('drive', 'v3', credentials=credentials)
-
+        
         # Get file metadata
         file_metadata = service.files().get(fileId=file_id).execute()
-
+        
         # Download file
         request = service.files().get_media(fileId=file_id)
         file = io.BytesIO()
@@ -161,12 +125,12 @@ def download_file(file_id):
         done = False
         while done is False:
             status, done = downloader.next_chunk()
-
+        
         file.seek(0)
         return jsonify({
             "success": True,
             "filename": file_metadata['name'],
-            "content": file.getvalue().decode('utf-8', errors='ignore')
+            "content": file.read().decode('utf-8')
         })
     except Exception as e:
         logger.error(f"Error downloading file from Google Drive: {str(e)}")
