@@ -376,10 +376,30 @@ def register_routes(app):
 
     @app.route('/api/upload/batch/<batch_id>/status')
     def batch_status(batch_id):
-        status = batch_manager.get_batch_status(batch_id)
-        if not status:
-            return jsonify({'error': 'Batch not found'}), 404
-        return jsonify(status)
+        """Get the status of a batch upload."""
+        try:
+            status = batch_manager.get_batch_status(batch_id)
+            if not status:
+                logger.error(f"Batch {batch_id} not found")
+                return jsonify({'error': 'Batch not found'}), 404
+
+            # Calculate progress percentage
+            total_files = len(status['files'])
+            completed = len([f for f in status['files'].values()
+                             if f.get('status') in ['completed', 'failed']])
+            progress = (completed / total_files * 100) if total_files > 0 else 0
+
+            # Add progress information to status
+            status['progress'] = progress
+            status['total_files'] = total_files
+            status['completed_files'] = completed
+            status['is_complete'] = completed == total_files
+
+            logger.debug(f"Batch {batch_id} status: {status}")
+            return jsonify(status)
+        except Exception as e:
+            logger.error(f"Error getting batch status: {str(e)}")
+            return jsonify({'error': 'Error getting batch status'}), 500
 
     @app.route('/api/upload/batch/<batch_id>/retry')
     def retry_batch(batch_id):
@@ -396,6 +416,19 @@ def register_routes(app):
             'message': 'Batch processing restarted',
             'status_url': f'/api/upload/batch/{batch_id}/status'
         }), 202
+    
+    @app.route('/api/upload/batch/<batch_id>/cancel', methods=['POST'])
+    def cancel_batch(batch_id):
+        """Cancel a batch upload."""
+        try:
+            if not batch_manager.load_batch_status(batch_id):
+                return jsonify({'error': 'Batch not found'}), 404
+
+            batch_manager.cancel_batch(batch_id)
+            return jsonify({'message': 'Batch cancelled successfully'}), 200
+        except Exception as e:
+            logger.error(f"Error cancelling batch: {str(e)}")
+            return jsonify({'error': 'Error cancelling batch'}), 500
 
     @app.route('/api/update_missing_analysis', methods=['POST'])
     def update_missing_analysis():

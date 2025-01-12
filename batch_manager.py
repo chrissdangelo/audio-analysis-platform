@@ -37,9 +37,11 @@ class BatchUploadManager:
             'failed_files': 0,
             'started_at': datetime.now().isoformat(),
             'completed_at': None,
-            'overall_progress': 0  # Track overall batch progress
+            'overall_progress': 0,  # Track overall batch progress
+            'is_cancelled': False  # Track if batch has been cancelled
         }
         logger.info(f"Created new batch {batch_id} with {len(file_list)} files")
+        self.save_batch_status(batch_id)
         return batch_id
 
     def update_file_progress(self, batch_id: str, filename: str, 
@@ -79,12 +81,14 @@ class BatchUploadManager:
 
     def mark_file_started(self, batch_id: str, filename: str):
         """Mark a file as being processed."""
-        if batch_id in self.batch_status:
+        if batch_id in self.batch_status and not self.batch_status[batch_id].get('is_cancelled'):
             file_status = self.batch_status[batch_id]['files'].get(filename)
             if file_status:
                 file_status['status'] = 'processing'
                 file_status['attempts'] += 1
                 file_status['current_operation'] = 'analyzing content'
+                file_status['upload_progress'] = 100  # File is uploaded
+                file_status['processing_progress'] = 0  # Start processing
                 logger.info(f"Started processing {filename} (Attempt {file_status['attempts']})")
                 self.save_batch_status(batch_id)
 
@@ -118,13 +122,27 @@ class BatchUploadManager:
                 file_status['status'] = 'failed'
                 file_status['error'] = error
                 file_status['current_operation'] = 'failed'
+                file_status['upload_progress'] = 100  # File was uploaded
+                file_status['processing_progress'] = 100  # Processing ended (in failure)
                 self.batch_status[batch_id]['failed_files'] += 1
                 logger.error(f"Failed to process {filename}: {error}")
                 self.save_batch_status(batch_id)
 
+    def cancel_batch(self, batch_id: str):
+        """Cancel a batch upload."""
+        if batch_id in self.batch_status:
+            self.batch_status[batch_id]['is_cancelled'] = True
+            # Mark all pending files as cancelled
+            for filename, file_status in self.batch_status[batch_id]['files'].items():
+                if file_status['status'] == 'pending':
+                    file_status['status'] = 'cancelled'
+                    file_status['current_operation'] = 'cancelled'
+            self.save_batch_status(batch_id)
+            logger.info(f"Cancelled batch {batch_id}")
+
     def get_pending_files(self, batch_id: str) -> List[str]:
         """Get list of files that still need processing."""
-        if batch_id not in self.batch_status:
+        if batch_id not in self.batch_status or self.batch_status[batch_id].get('is_cancelled'):
             return []
 
         return [
@@ -143,7 +161,10 @@ class BatchUploadManager:
             return False
 
         batch = self.batch_status[batch_id]
-        return (batch['processed_files'] + batch['failed_files']) == batch['total_files']
+        completed_count = batch['processed_files'] + batch['failed_files']
+        cancelled_count = sum(1 for file_status in batch['files'].values() 
+                            if file_status['status'] == 'cancelled')
+        return (completed_count + cancelled_count) == batch['total_files']
 
     def save_batch_status(self, batch_id: str):
         """Save batch status to file for persistence."""
