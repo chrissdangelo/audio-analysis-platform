@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let emotionChart = null;
     let confidenceChart = null;
     let dataTable = null;
+    let width = 0;
 
     // Initialize DataTable with column resizing
     function initializeDataTable() {
@@ -44,6 +45,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function initializeCharts() {
         try {
+            // Initialize width for character network
+            width = document.getElementById('characterNetwork')?.offsetWidth || 800;
+
             // Format distribution chart
             const formatCtx = document.getElementById('formatChart')?.getContext('2d');
             if (formatCtx) {
@@ -65,9 +69,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         plugins: {
                             legend: {
                                 position: 'bottom',
-                                labels: {
-                                    color: '#fff'
-                                }
+                                labels: { color: '#fff' }
                             },
                             title: {
                                 display: true,
@@ -100,9 +102,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     options: {
                         responsive: true,
                         plugins: {
-                            legend: {
-                                display: false
-                            },
+                            legend: { display: false },
                             title: {
                                 display: true,
                                 text: 'Audio Elements Distribution',
@@ -112,20 +112,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         scales: {
                             y: {
                                 beginAtZero: true,
-                                ticks: {
-                                    color: '#fff'
-                                },
-                                grid: {
-                                    color: 'rgba(255, 255, 255, 0.1)'
-                                }
+                                ticks: { color: '#fff' },
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
                             },
                             x: {
-                                ticks: {
-                                    color: '#fff'
-                                },
-                                grid: {
-                                    color: 'rgba(255, 255, 255, 0.1)'
-                                }
+                                ticks: { color: '#fff' },
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
                             }
                         }
                     }
@@ -149,9 +141,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         plugins: {
                             legend: {
                                 position: 'right',
-                                labels: {
-                                    color: '#fff'
-                                }
+                                labels: { color: '#fff' }
                             },
                             title: {
                                 display: true,
@@ -163,7 +153,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
 
-            // Initialize emotion radar chart
+            // Emotion radar chart
             const emotionCtx = document.getElementById('emotionChart')?.getContext('2d');
             if (emotionCtx) {
                 emotionChart = new Chart(emotionCtx, {
@@ -185,15 +175,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         responsive: true,
                         scales: {
                             r: {
-                                angleLines: {
-                                    color: 'rgba(255, 255, 255, 0.1)'
-                                },
-                                grid: {
-                                    color: 'rgba(255, 255, 255, 0.1)'
-                                },
-                                pointLabels: {
-                                    color: '#fff'
-                                },
+                                angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                                pointLabels: { color: '#fff' },
                                 ticks: {
                                     color: '#fff',
                                     backdropColor: 'transparent'
@@ -201,9 +185,34 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         },
                         plugins: {
-                            legend: {
-                                display: false
-                            }
+                            legend: { display: false }
+                        }
+                    }
+                });
+            }
+
+            // Initialize confidence gauge chart
+            const confidenceCtx = document.getElementById('confidenceChart')?.getContext('2d');
+            if (confidenceCtx) {
+                confidenceChart = new Chart(confidenceCtx, {
+                    type: 'doughnut',
+                    data: {
+                        datasets: [{
+                            data: [0, 100],
+                            backgroundColor: [
+                                'rgba(74, 158, 255, 0.8)',
+                                'rgba(255, 255, 255, 0.1)'
+                            ],
+                            circumference: 180,
+                            rotation: 270
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        cutout: '80%',
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { enabled: false }
                         }
                     }
                 });
@@ -256,19 +265,23 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // Ensure charts are initialized
-            if (!formatChart || !contentChart || !environmentChart || !emotionChart) {
+            if (!formatChart || !contentChart || !environmentChart || !emotionChart || !confidenceChart) {
+                console.log('Reinitializing charts...');
                 if (!initializeCharts()) {
                     throw new Error('Failed to initialize charts');
                 }
             }
 
-            // Update charts
-            updateFormatDistribution(data);
-            updateContentTypes(data);
+            // Update charts if they exist
+            if (formatChart) updateFormatDistribution(data);
+            if (contentChart) updateContentTypes(data);
+            if (environmentChart) updateEnvironmentDistribution(data);
+            if (emotionChart) updateEmotionAnalysis(data);
+            if (confidenceChart) updateConfidence(data); // Added confidence chart update
+
+            // Update additional visualizations
             updateThemeCloud(data);
-            updateEnvironmentDistribution(data);
             updateCharacterNetwork(data);
-            updateEmotionAnalysis(data);
 
         } catch (error) {
             console.error('Error updating dashboard:', error);
@@ -276,18 +289,29 @@ document.addEventListener('DOMContentLoaded', function() {
             const errorDiv = document.createElement('div');
             errorDiv.className = 'alert alert-danger';
             errorDiv.textContent = `Failed to update dashboard: ${error.message}`;
-            document.querySelector('#analysis').prepend(errorDiv);
+            const analysisTab = document.querySelector('#analysis');
+            if (analysisTab) {
+                // Remove any existing error messages
+                const existingErrors = analysisTab.querySelectorAll('.alert-danger');
+                existingErrors.forEach(err => err.remove());
+                // Add new error message
+                analysisTab.prepend(errorDiv);
+            }
         }
     }
 
     // Add tab change listener to refresh data
     document.querySelector('#analysis-tab').addEventListener('shown.bs.tab', function (e) {
+        console.log('Content Analysis tab activated, updating dashboard...');
         updateDashboard();
     });
 
     // Initialize everything
+    console.log('Initializing dashboard...');
     if (initializeCharts()) {
         console.log('Charts initialized successfully');
+        initializeDataTable();
+
         // Initial dashboard update
         updateDashboard();
 
@@ -296,7 +320,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Update dashboard when new analysis is added
-    document.addEventListener('analysisAdded', updateDashboard);
+    document.addEventListener('analysisAdded', () => {
+        console.log('New analysis added, updating dashboard...');
+        updateDashboard();
+    });
 });
 
 function updateFormatDistribution(analyses) {
@@ -351,7 +378,6 @@ function updateEnvironmentDistribution(analyses) {
 }
 
 function initializeCharacterNetwork() {
-    const width = document.getElementById('characterNetwork').offsetWidth;
     const height = 400;
 
     const svg = d3.select('#characterNetwork')
@@ -571,11 +597,7 @@ function updateEmotionAnalysis(analyses) {
 
         // Update confidence gauge
         const avgConfidence = totalConfidence / analyses.length;
-        confidenceChart.data.datasets[0].data = [
-            avgConfidence * 100,
-            100 - (avgConfidence * 100)
-        ];
-        confidenceChart.update();
+        updateConfidenceGauge(avgConfidence); // Update using the helper function
 
         // Update dominant emotion display
         const dominantEmotion = Object.entries(dominantEmotions)
@@ -601,6 +623,14 @@ function updateEmotionAnalysis(analyses) {
     }
 }
 
+
+function updateConfidenceGauge(avgConfidence) {
+    confidenceChart.data.datasets[0].data = [
+        avgConfidence * 100,
+        100 - (avgConfidence * 100)
+    ];
+    confidenceChart.update();
+}
 
 // Initialize everything
     initializeCharts();
