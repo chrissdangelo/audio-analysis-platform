@@ -134,10 +134,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function formatDuration(duration) {
         if (!duration) return '00:00:00';
-        const [hours, minutes, seconds] = duration.split(':').map(num => 
-            String(parseInt(num)).padStart(2, '0')
-        );
-        return `${hours}:${minutes}:${seconds}`;
+        try {
+            const [hours, minutes, seconds] = duration.split(':').map(num => 
+                String(parseInt(num || '0')).padStart(2, '0')
+            );
+            return `${hours}:${minutes}:${seconds}`;
+        } catch (error) {
+            console.warn('Error formatting duration:', error);
+            return '00:00:00';
+        }
     }
 
     function displayBundleSuggestions(themeGroups, characterGroups, environmentGroups) {
@@ -192,7 +197,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     ${group.items.map(item => `
                                         <div class="list-group-item">
                                             <div class="d-flex justify-content-between align-items-center">
-                                                <span>${item.title}</span>
+                                                <span>${item.title || 'Untitled'}</span>
                                                 <span class="badge bg-secondary">${formatDuration(item.duration)}</span>
                                             </div>
                                         </div>
