@@ -462,6 +462,32 @@ def register_routes(app):
             logger.error(f"Error cancelling batch: {str(e)}")
             return jsonify({'error': 'Error cancelling batch'}), 500
 
+    @app.route('/export_csv')
+    def export_csv():
+        try:
+            analyses = AudioAnalysis.query.order_by(AudioAnalysis.created_at.desc()).all()
+            output = "ID,Title,Filename,Format,Duration,Has Narration,Has Music,Has Sound Effects,Songs Count,Environments,Characters,Themes\n"
+            
+            for analysis in analyses:
+                environments = "|".join(analysis._parse_list_field(analysis.environments))
+                characters = "|".join(analysis._parse_list_field(analysis.characters_mentioned))
+                themes = "|".join(analysis._parse_list_field(analysis.themes))
+                
+                row = f"{analysis.id},{analysis.title},{analysis.filename},{analysis.format},"
+                row += f"{analysis.duration},{analysis.has_narration},{analysis.has_underscore},"
+                row += f"{analysis.has_sound_effects},{analysis.songs_count},"
+                row += f"\"{environments}\",\"{characters}\",\"{themes}\"\n"
+                output += row
+
+            return Response(
+                output,
+                mimetype="text/csv",
+                headers={"Content-disposition": "attachment; filename=content_export.csv"}
+            )
+        except Exception as e:
+            logger.error(f"Error exporting CSV: {str(e)}")
+            return jsonify({'error': 'Error exporting data'}), 500
+
     @app.route('/api/update_missing_analysis', methods=['POST'])
     def update_missing_analysis():
         """Update records missing transcripts, summaries and emotion scores."""
