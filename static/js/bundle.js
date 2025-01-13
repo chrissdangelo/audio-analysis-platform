@@ -1,5 +1,7 @@
 
 document.addEventListener('DOMContentLoaded', function() {
+    let bundles = [];
+
     async function findBundleOpportunities() {
         try {
             const response = await fetch('/api/bundles');
@@ -78,7 +80,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (!pitchResponse.ok) throw new Error('Failed to generate pitch');
 
-            // Trigger download of the PDF
             const blob = await pitchResponse.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');

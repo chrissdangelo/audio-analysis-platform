@@ -828,15 +828,23 @@ def register_routes(app):
                 return emojis.get(emotion_context.get('dominant')) if emotion_context else '✨'
 
             def generate_elevator_pitch(type, commonality, count, items, emotion_context):
-                emotion_descriptor = emotion_context.get('dominant', 'enchanting') if emotion_context else 'enchanting'
+                emotion = emotion_context.get('dominant', 'enchanting') if emotion_context else 'enchanting'
                 examples = [item.get('title', 'Untitled') for item in items[:3]]
                 
-                pitch = f"{get_emoji(emotion_context)} Experience {count} {emotion_descriptor} tales featuring '{commonality}'! "
+                pitches = [
+                    f"✨ Unlock a treasure trove of {count} captivating stories featuring '{commonality}'! This curated collection brings together our most {emotion} tales.",
+                    f"🌟 Dive into an extraordinary bundle of {count} adventures centered around '{commonality}'. Perfect for inspiring young minds!",
+                    f"🎯 Transform storytelling with this handpicked collection of {count} {emotion} stories about '{commonality}'."
+                ]
+                
                 if examples:
-                    pitch += f"Including '{examples[0]}'"
+                    selected_pitch = pitches[0] + f" Featuring fan favorites like '{examples[0]}'"
                     if len(examples) > 1:
-                        pitch += f" and '{examples[1]}'"
-                return pitch
+                        selected_pitch += f" and '{examples[1]}'"
+                    selected_pitch += "!"
+                    return selected_pitch
+                
+                return pitches[0]
 
             summary_text = generate_elevator_pitch(type, group['commonality'], group['count'], group['items'], group.get('emotionalContext'))
             story.append(Paragraph("Summary", styles['Heading2']))
