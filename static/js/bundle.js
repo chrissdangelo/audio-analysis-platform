@@ -441,12 +441,44 @@ document.addEventListener('DOMContentLoaded', function() {
                                         </div>
                                     `).join('')}
                                 </div>
+                                <div class="card-footer">
+                                    <button class="btn btn-outline-primary" onclick="downloadBundlePitch('${type}', ${JSON.stringify(group)})">
+                                        <i class="bi bi-download"></i> Download Bundle Pitch
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
                     `}).join('')}
             </div>
         `;
+    }
+
+    async function downloadBundlePitch(type, group) {
+        try {
+            const response = await fetch('/api/bundle-pitch', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ type, group })
+            });
+            
+            if (!response.ok) throw new Error('Failed to generate pitch');
+            
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${group.commonality.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_bundle_pitch.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error('Error downloading bundle pitch:', error);
+            alert('Failed to download bundle pitch');
+        }
     }
 
     // Load bundle opportunities when the bundle tab is shown

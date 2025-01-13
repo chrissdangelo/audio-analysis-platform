@@ -756,3 +756,83 @@ def register_routes(app):
             logger.error(f"Error updating title for analysis {analysis_id}: {str(e)}")
             db.session.rollback()
             return jsonify({'error': 'Error updating title'}), 500
+
+    @app.route('/api/bundle-pitch', methods=['POST'])
+    def generate_bundle_pitch():
+        try:
+            data = request.get_json()
+            type = data['type']
+            group = data['group']
+
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import letter
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from io import BytesIO
+
+            # Create PDF buffer
+            buffer = BytesIO()
+            doc = SimpleDocTemplate(buffer, pagesize=letter)
+            styles = getSampleStyleSheet()
+            story = []
+
+            # Title
+            title_style = ParagraphStyle(
+                'CustomTitle',
+                parent=styles['Heading1'],
+                fontSize=24,
+                spaceAfter=30
+            )
+            story.append(Paragraph(f"Bundle Pitch: {group['commonality']}", title_style))
+
+            # Summary
+            summary_text = generateElevatorPitch(type, group['commonality'], group['count'], group['items'], group.get('emotionalContext'))
+            story.append(Paragraph("Summary", styles['Heading2']))
+            story.append(Paragraph(summary_text, styles['Normal']))
+            story.append(Spacer(1, 20))
+
+            # Bundle Details
+            story.append(Paragraph("Bundle Details", styles['Heading2']))
+            details = [
+                ["Type:", type.capitalize()],
+                ["Theme/Character:", group['commonality']],
+                ["Number of Stories:", str(group['count'])],
+                ["Emotional Context:", group.get('emotionalContext', {}).get('dominant', 'N/A')]
+            ]
+            
+            t = Table(details, colWidths=[100, 400])
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, -1), colors.lightgrey),
+                ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+                ('TOPPADDING', (0, 0), (-1, -1), 12),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            story.append(t)
+            story.append(Spacer(1, 20))
+
+            # Content List
+            story.append(Paragraph("Included Stories", styles['Heading2']))
+            for item in group['items']:
+                story.append(Paragraph(f"• {item.get('title', 'Untitled')}", styles['Normal']))
+                if item.get('summary'):
+                    story.append(Paragraph(f"  Summary: {item['summary'][:200]}...", styles['Normal']))
+                story.append(Spacer(1, 10))
+
+            # Build PDF
+            doc.build(story)
+            buffer.seek(0)
+            
+            return send_file(
+                buffer,
+                mimetype='application/pdf',
+                as_attachment=True,
+                download_name=f"{group['commonality'].replace(' ', '_').lower()}_bundle_pitch.pdf"
+            )
+
+        except Exception as e:
+            logger.error(f"Error generating bundle pitch: {str(e)}")
+            return jsonify({'error': 'Error generating bundle pitch'}), 500
