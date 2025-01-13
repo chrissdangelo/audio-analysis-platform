@@ -6,11 +6,13 @@ document.addEventListener('DOMContentLoaded', function() {
         columnDefs: [
             {
                 targets: 1,  // Title column (second column)
-                width: '600px'
+                width: '600px',
+                className: 'fixed-width'
             },
             {
                 targets: 2,  // Filename column (third column)
-                width: '300px'
+                width: '300px',
+                className: 'fixed-width'
             },
             {
                 targets: -1,   // Last column (Actions)

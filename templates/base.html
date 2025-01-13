@@ -23,6 +23,17 @@
     <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
 
     <style>
+        /* Fixed width column styling */
+        .fixed-width {
+            width: 600px !important;
+            max-width: 600px !important;
+            min-width: 600px !important;
+        }
+        .fixed-width:nth-child(3) {
+            width: 300px !important;
+            max-width: 300px !important;
+            min-width: 300px !important;
+        }
         /* Table header and resize handle styling */
         .table th {
             position: relative;
