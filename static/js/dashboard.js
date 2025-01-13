@@ -1,12 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
-    let formatChart = null;
-    let contentChart = null;
-    let environmentChart = null;
-    let characterNetworkChart = null;
-    let emotionChart = null;
-    let confidenceChart = null;
     let dataTable = null;
-    let width = 0;
 
     function createDataTable() {
         if ($.fn.DataTable.isDataTable('#analysisTable')) {
@@ -15,164 +8,48 @@ document.addEventListener('DOMContentLoaded', function() {
 
         dataTable = $('#analysisTable').DataTable({
             scrollX: true,
-            autoWidth: true,
             pageLength: 10,
             lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "All"]],
             order: [[0, 'desc']], // Sort by ID by default
-            dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
-                 '<"row"<"col-sm-12"tr>>' +
-                 '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
             columnDefs: [
                 {
-                    targets: '_all',
-                    sortable: true,
-                    render: function(data, type, row) {
-                        if (type === 'display' && data != null) {
-                            return '<div class="text-truncate" title="' + data + '">' + data + '</div>';
-                        }
-                        return data;
-                    }
-                },
-                {
                     targets: -1, // Actions column
-                    sortable: false,
-                    width: '120px',
-                    render: function(data, type, row) {
-                        return `<div class="btn-group" role="group">
-                            <a href="/debug_analysis/${row[0]}" class="btn btn-sm btn-info">Info</a>
-                            <button class="btn btn-sm btn-danger delete-btn" data-id="${row[0]}">Delete</button>
-                        </div>`;
-                    }
+                    orderable: false
                 }
             ],
             drawCallback: function() {
-                attachTableEventHandlers();
-                setupColumnResize(this);
+                // Reattach event handlers after each redraw
+                $('#analysisTable').off('click', '.btn-info').on('click', '.btn-info', function(e) {
+                    e.preventDefault();
+                    const id = $(this).closest('tr').data('id');
+                    window.location.href = `/debug_analysis/${id}`;
+                });
+
+                $('#analysisTable').off('click', '.delete-btn').on('click', '.delete-btn', async function(e) {
+                    e.preventDefault();
+                    const id = $(this).data('id');
+                    if (confirm('Are you sure you want to delete this analysis?')) {
+                        try {
+                            const response = await fetch(`/api/analysis/${id}`, {
+                                method: 'DELETE'
+                            });
+
+                            if (!response.ok) {
+                                throw new Error('Delete failed');
+                            }
+
+                            dataTable.row($(this).closest('tr')).remove().draw();
+                            document.dispatchEvent(new CustomEvent('analysisDeleted'));
+                        } catch (error) {
+                            console.error('Error:', error);
+                            showError(`Failed to delete analysis: ${error.message}`);
+                        }
+                    }
+                });
             }
         });
 
         return dataTable;
-    }
-
-    function attachTableEventHandlers() {
-        $('#analysisTable').off('click', '.btn-info').on('click', '.btn-info', function(e) {
-            e.preventDefault();
-            const row = dataTable.row($(this).closest('tr'));
-            const id = row.data()[0];
-            window.location.href = `/debug_analysis/${id}`;
-        });
-
-        $('#analysisTable').off('click', '.delete-btn').on('click', '.delete-btn', async function(e) {
-            e.preventDefault();
-            const id = $(this).data('id');
-            if (confirm('Are you sure you want to delete this analysis?')) {
-                try {
-                    const response = await fetch(`/api/analysis/${id}`, {
-                        method: 'DELETE'
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('Delete failed');
-                    }
-
-                    dataTable.row($(this).closest('tr')).remove().draw();
-                    document.dispatchEvent(new CustomEvent('analysisDeleted'));
-                } catch (error) {
-                    console.error('Error:', error);
-                    showError(`Failed to delete analysis: ${error.message}`);
-                }
-            }
-        });
-    }
-
-    function setupColumnResize(table) {
-        const $table = $(table.table().node());
-        const $headers = $table.find('thead th');
-
-        // Remove any existing resize handles
-        $table.find('.resize-handle').remove();
-
-        // Add resize handles to all headers except the last one (actions)
-        $headers.not(':last').each(function() {
-            const $handle = $('<div class="resize-handle"></div>');
-            $(this).append($handle);
-        });
-
-        let isResizing = false;
-        let $currentHeader = null;
-        let startX, startWidth;
-
-        $table.on('mousedown', '.resize-handle', function(e) {
-            isResizing = true;
-            $currentHeader = $(this).parent();
-            startX = e.pageX;
-            startWidth = $currentHeader.width();
-            $currentHeader.addClass('resizing');
-            $('body').addClass('column-resizing');
-            e.preventDefault();
-        });
-
-        $(document).on('mousemove', function(e) {
-            if (!isResizing) return;
-
-            const width = Math.max(50, startWidth + (e.pageX - startX));
-            const colIdx = $currentHeader.index();
-
-            table.column(colIdx).nodes().each(function(cell) {
-                $(cell).css('width', width + 'px');
-            });
-            $currentHeader.width(width);
-        });
-
-        $(document).on('mouseup', function() {
-            if (!isResizing) return;
-
-            isResizing = false;
-            $('body').removeClass('column-resizing');
-
-            if ($currentHeader) {
-                $currentHeader.removeClass('resizing');
-
-                // Save column widths
-                const widths = {};
-                $headers.each(function(i) {
-                    widths[i] = $(this).width();
-                });
-                localStorage.setItem('columnWidths', JSON.stringify(widths));
-
-                // Force DataTables to recalculate column widths
-                table.columns.adjust();
-                $currentHeader = null;
-            }
-        });
-
-        // Double-click to auto-fit
-        $headers.on('dblclick', function(e) {
-            if ($(e.target).hasClass('resize-handle')) return;
-
-            const colIdx = $(this).index();
-            table.column(colIdx).nodes().each(function() {
-                $(this).css('width', 'auto');
-            });
-            $(this).width('auto');
-            table.columns.adjust();
-        });
-
-        // Restore saved widths
-        const savedWidths = localStorage.getItem('columnWidths');
-        if (savedWidths) {
-            const widths = JSON.parse(savedWidths);
-            $headers.each(function(i) {
-                const width = widths[i];
-                if (width) {
-                    $(this).width(width);
-                    table.column(i).nodes().each(function(cell) {
-                        $(cell).css('width', width + 'px');
-                    });
-                }
-            });
-            table.columns.adjust();
-        }
     }
 
     function showError(message) {
@@ -218,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         analysis.songs_count,
                         (analysis.themes || []).join(', ') || '-',
                         `<div class="btn-group" role="group">
-                            <a href="/debug_analysis/${analysis.id}" class="btn btn-sm btn-info">Info</a>
+                            <a href="/debug_analysis/${analysis.id}" class="btn btn-sm btn-info" data-id="${analysis.id}">Info</a>
                             <button class="btn btn-sm btn-danger delete-btn" data-id="${analysis.id}">Delete</button>
                         </div>`
                     ]);
@@ -743,13 +620,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
     // Initialize components
-    document.querySelector('#analysis-tab').addEventListener('shown.bs.tab', updateDashboard);
-
-    if (initializeCharts()) {
-        createDataTable();
-        updateDashboard();
-        setInterval(updateDashboard, 30000);
+    if (document.getElementById('analysisTable')) {
+        dataTable = createDataTable();
     }
 
+    // Handle tab switching
+    document.querySelector('#analysis-tab')?.addEventListener('shown.bs.tab', function() {
+        if (dataTable) {
+            dataTable.columns.adjust();
+        }
+        updateDashboard();
+    });
+
     document.addEventListener('analysisAdded', updateDashboard);
+    setInterval(updateDashboard, 30000);
 });

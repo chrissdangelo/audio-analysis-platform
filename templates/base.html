@@ -6,94 +6,36 @@
     <title>Audio Analyzer</title>
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
-    <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
     <style>
-        .file-status {
-            margin-bottom: 5px;
-            padding: 8px;
-            border-radius: 4px;
-            background-color: var(--bs-dark);
-        }
-        .file-status.completed { border-left: 4px solid var(--bs-success); }
-        .file-status.failed { border-left: 4px solid var(--bs-danger); }
-        .file-status.processing { border-left: 4px solid var(--bs-primary); }
-        .file-status.pending { border-left: 4px solid var(--bs-secondary); }
-        .card-header[aria-expanded="true"] .bi-chevron-down {
-            transform: rotate(180deg);
-        }
-        .card-header .bi-chevron-down {
-            transition: transform 0.2s ease-in-out;
-        }
-        .card-header[role="button"]:hover {
-            cursor: pointer;
-            background-color: var(--bs-dark);
-        }
-
-        /* Table Header Styles */
+        /* Basic styling for the table */
         .table th {
-            position: relative;
-            min-width: 50px;
-            padding-right: 20px !important;
-            user-select: none;
-            cursor: pointer;
             background-color: var(--bs-dark);
+            cursor: pointer;
         }
 
-        /* Column Resize Handle */
-        .resize-handle {
+        .table th.sorting,
+        .table th.sorting_asc,
+        .table th.sorting_desc {
+            position: relative;
+            padding-right: 30px;
+        }
+
+        .table th.sorting:after,
+        .table th.sorting_asc:after,
+        .table th.sorting_desc:after {
             position: absolute;
-            right: 0;
-            top: 0;
-            bottom: 0;
-            width: 8px;
-            cursor: col-resize;
-            background: rgba(255, 255, 255, 0.1);
-            transition: background 0.2s;
-            z-index: 1;
-        }
-
-        .resize-handle:hover,
-        th.resizing .resize-handle {
-            background: rgba(255, 255, 255, 0.3);
-            width: 4px;
-        }
-
-        th.resizing {
-            background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
-        }
-
-        /* Prevent text selection while resizing */
-        body.column-resizing {
-            cursor: col-resize !important;
-            user-select: none;
-        }
-
-        body.column-resizing .table th,
-        body.column-resizing .table td {
-            cursor: col-resize !important;
-        }
-
-        /* DataTables Sorting Icons */
-        .table thead th.sorting:before,
-        .table thead th.sorting:after,
-        .table thead th.sorting_asc:before,
-        .table thead th.sorting_asc:after,
-        .table thead th.sorting_desc:before,
-        .table thead th.sorting_desc:after {
-            position: absolute;
-            right: 12px;
-            color: var(--bs-light);
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
             opacity: 0.5;
-            font-size: 0.8em;
         }
 
-        .table thead th.sorting_asc:after,
-        .table thead th.sorting_desc:after {
+        .table th.sorting_asc:after,
+        .table th.sorting_desc:after {
             opacity: 1;
         }
 
@@ -114,34 +56,6 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            display: block;
-        }
-
-        /* DataTables specific styling */
-        .dataTables_wrapper .dataTables_length,
-        .dataTables_wrapper .dataTables_filter {
-            margin-bottom: 1rem;
-            color: var(--bs-light);
-        }
-
-        .dataTables_wrapper .dataTables_info {
-            color: var(--bs-light);
-        }
-
-        .dataTables_wrapper .dataTables_paginate .paginate_button {
-            padding: 0.25rem 0.5rem;
-            margin-left: 2px;
-            color: var(--bs-light) !important;
-            background: var(--bs-dark);
-            border: 1px solid var(--bs-gray-700);
-            border-radius: 4px;
-        }
-
-        .dataTables_wrapper .dataTables_paginate .paginate_button.current,
-        .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
-            background: var(--bs-primary) !important;
-            border-color: var(--bs-primary);
-            color: white !important;
         }
     </style>
 </head>
