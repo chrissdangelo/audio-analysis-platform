@@ -46,21 +46,33 @@ document.addEventListener('DOMContentLoaded', function() {
     // Create hierarchical structure for environments
     function categorizeEnvironments(environments) {
         const categories = {
-            'Indoor Locations': {
-                items: ['house', 'school', 'library', 'museum', 'store', 'restaurant'],
-                pattern: /(house|home|school|library|museum|store|shop|restaurant|building|room)/i
+            'Home Settings': {
+                items: ['house', 'home', 'bedroom', 'kitchen', 'backyard', 'garage'],
+                pattern: /(house|home|bedroom|kitchen|backyard|garage|living room|basement)/i
             },
-            'Outdoor Nature': {
-                items: ['forest', 'beach', 'mountain', 'park', 'garden', 'lake', 'river'],
-                pattern: /(forest|beach|mountain|park|garden|lake|river|woods|field)/i
+            'Educational': {
+                items: ['school', 'library', 'classroom', 'museum', 'laboratory'],
+                pattern: /(school|library|classroom|museum|lab|university|campus)/i
             },
-            'Fantasy Realms': {
+            'Commercial': {
+                items: ['store', 'restaurant', 'mall', 'shop', 'market', 'cafe'],
+                pattern: /(store|restaurant|mall|shop|market|cafe|cinema|theater)/i
+            },
+            'Natural Land': {
+                items: ['forest', 'mountain', 'park', 'garden', 'field', 'cave'],
+                pattern: /(forest|mountain|park|garden|field|cave|hill|valley)/i
+            },
+            'Water Bodies': {
+                items: ['beach', 'lake', 'river', 'ocean', 'pond', 'waterfall'],
+                pattern: /(beach|lake|river|ocean|pond|waterfall|stream|sea)/i
+            },
+            'Urban Outdoor': {
+                items: ['street', 'playground', 'neighborhood', 'park', 'sidewalk'],
+                pattern: /(street|playground|neighborhood|sidewalk|parking|road|avenue)/i
+            },
+            'Fantasy & Magical': {
                 items: ['castle', 'magical forest', 'enchanted garden', 'fairy kingdom'],
-                pattern: /(castle|magical|enchanted|fairy|kingdom|realm)/i
-            },
-            'Urban Settings': {
-                items: ['city', 'street', 'playground', 'neighborhood', 'mall'],
-                pattern: /(city|street|playground|neighborhood|mall|urban|town)/i
+                pattern: /(castle|magical|enchanted|fairy|kingdom|realm|mystical)/i
             }
         };
 
