@@ -60,7 +60,7 @@ def reset_sequence():
             SELECT COALESCE(MAX(id), 0) FROM audio_analyses;
         """)).scalar()
         db.session.execute(text(f"""
-            ALTER SEQUENCE audio_analysis_id_seq RESTART WITH {max_id + 1};
+            ALTER SEQUENCE audio_analyses_id_seq RESTART WITH {max_id + 1};
         """))
         db.session.commit()
         logger.info("Successfully reset ID sequence")
@@ -583,7 +583,7 @@ def register_routes(app):
 
             # Reset the sequence to the next available ID
             max_id = db.session.execute(text("""
-                SELECT COALESCE(MAX(id), 0) + 1 FROM audio_analysis;
+                SELECT COALESCE(MAX(id), 0) + 1 FROM audio_analyses;
             """)).scalar()
             db.session.execute(text(f"""
                 ALTER SEQUENCE audio_analyses_id_seq RESTART WITH {max_id};
