@@ -489,5 +489,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Load bundle opportunities when the bundle tab is shown
     const bundleTab = document.getElementById('bundle-tab');
-    bundleTab.addEventListener('shown.bs.tab', findBundleOpportunities);
+    if (bundleTab) {
+        bundleTab.addEventListener('shown.bs.tab', function() {
+            findBundleOpportunities();
+        });
+    }
+
+    // Initial load of bundle opportunities
+    findBundleOpportunities();EventListener('shown.bs.tab', findBundleOpportunities);
 });
