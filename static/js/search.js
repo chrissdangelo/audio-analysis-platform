@@ -1,4 +1,3 @@
-
 document.addEventListener('DOMContentLoaded', function() {
     const characterCheckboxes = document.getElementById('characterCheckboxes');
     const environmentCheckboxes = document.getElementById('environmentCheckboxes');
@@ -6,8 +5,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchResults = document.getElementById('searchResults');
 
     function toggleSection(id) {
-        const element = document.getElementById(id);
-        element.classList.toggle('expanded');
+        const content = document.getElementById(id);
+        const header = content.previousElementSibling;
+
+        content.classList.toggle('expanded');
+        header.classList.toggle('expanded');
     }
 
     async function loadFilterOptions() {

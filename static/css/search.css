@@ -1,0 +1,27 @@
+.card-header.collapsible {
+    cursor: pointer;
+    background-color: #f8f9fa;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.collapse-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+    padding: 0;
+}
+
+.collapse-content.expanded {
+    max-height: 500px;
+    padding: 15px;
+}
+
+.card-header .fa-chevron-down {
+    transition: transform 0.3s;
+}
+
+.card-header.expanded .fa-chevron-down {
+    transform: rotate(180deg);
+}
