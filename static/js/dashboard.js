@@ -7,12 +7,33 @@ document.addEventListener('DOMContentLoaded', function() {
             $('#analysisTable').DataTable().destroy();
         }
 
-        // Initialize DataTable with basic sorting enabled
+        // Initialize DataTable with explicit column definitions
         dataTable = $('#analysisTable').DataTable({
-            order: [[0, 'desc']], // Default sort by ID descending
+            order: [[0, 'desc']], // Default sort by ID
+            columns: [
+                { data: '0', name: 'id' }, // ID column
+                { data: '1', name: 'title' }, // Title column
+                { data: '2', name: 'filename' }, // Filename column
+                { data: '3', name: 'file_type' }, // Type column
+                { data: '4', name: 'format' }, // Format column
+                { data: '5', name: 'duration' }, // Duration column
+                { data: '6', name: 'environments' }, // Environments column
+                { data: '7', name: 'characters' }, // Characters column
+                { data: '8', name: 'speaking' }, // Speaking column
+                { data: '9', name: 'underscore' }, // Underscore column
+                { data: '10', name: 'sfx' }, // SFX column
+                { data: '11', name: 'songs' }, // Songs column
+                { data: '12', name: 'themes' }, // Themes column
+                { 
+                    data: '13',
+                    name: 'actions',
+                    orderable: false,
+                    searchable: false
+                } // Actions column
+            ],
             columnDefs: [{
-                targets: -1, // Last column (actions)
-                orderable: false // Disable sorting on actions column
+                targets: '_all',
+                sortable: true
             }]
         });
 
@@ -97,7 +118,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-
     // Initialize DataTable when DOM is ready
     if (document.getElementById('analysisTable')) {
         dataTable = initializeDataTable();
@@ -115,15 +135,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set up event listeners for table updates
     document.addEventListener('analysisAdded', function() {
         if (dataTable) {
-            dataTable.ajax.reload();
+            updateDashboard();
         }
     });
 
-    document.addEventListener('analysisDeleted', function() {
-        if (dataTable) {
-            dataTable.ajax.reload();
-        }
-    });
+    document.addEventListener('analysisDeleted', updateDashboard);
     setInterval(updateDashboard, 30000);
 });
 
