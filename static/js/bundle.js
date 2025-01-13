@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Group by character dynamics (recurring character relationships)
             const characterDynamicsGroups = groupByCharacterDynamics(analyses);
 
-            displayBundleSuggestions(themeGroups, characterGroups, emotionGroups, environmentGroups);
+            displayBundleSuggestions(themeGroups, characterGroups, emotionGroups, environmentGroups, emotionalArcGroups, characterDynamicsGroups);
 
         } catch (error) {
             console.error('Error finding bundle opportunities:', error);
