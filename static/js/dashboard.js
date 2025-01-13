@@ -15,37 +15,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
         dataTable = $('#analysisTable').DataTable({
             scrollX: true,
-            autoWidth: false,
-            colReorder: {
-                realtime: false,
-                fixedColumnsLeft: 1
-            },
+            autoWidth: true,
             pageLength: 10,
             lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "All"]],
+            order: [[0, 'desc']], // Sort by ID by default
             dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
                  '<"row"<"col-sm-12"tr>>' +
                  '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
-            order: [[0, 'desc']], // Sort by ID by default
-            language: {
-                search: "Filter records:",
-                lengthMenu: "Show _MENU_ entries per page",
-                info: "Showing _START_ to _END_ of _TOTAL_ entries",
-                infoEmpty: "No entries found",
-                infoFiltered: "(filtered from _MAX_ total entries)"
-            },
             columnDefs: [
                 {
                     targets: '_all',
+                    sortable: true,
                     render: function(data, type, row) {
                         if (type === 'display' && data != null) {
-                            return '<div class="text-truncate" style="max-width: 150px;" title="' + data + '">' + data + '</div>';
+                            return '<div class="text-truncate" title="' + data + '">' + data + '</div>';
                         }
                         return data;
                     }
                 },
                 {
-                    targets: -1, // Last column (actions)
-                    orderable: false,
+                    targets: -1, // Actions column
+                    sortable: false,
                     width: '120px',
                     render: function(data, type, row) {
                         return `<div class="btn-group" role="group">
@@ -56,12 +46,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             ],
             drawCallback: function() {
-                // Attach event handlers after each draw
                 attachTableEventHandlers();
-            },
-            initComplete: function() {
-                // Initialize column resizing
-                initializeColumnResizing(this);
+                setupColumnResize(this);
             }
         });
 
@@ -69,7 +55,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function attachTableEventHandlers() {
-        // Handle Info button clicks
         $('#analysisTable').off('click', '.btn-info').on('click', '.btn-info', function(e) {
             e.preventDefault();
             const row = dataTable.row($(this).closest('tr'));
@@ -77,7 +62,6 @@ document.addEventListener('DOMContentLoaded', function() {
             window.location.href = `/debug_analysis/${id}`;
         });
 
-        // Handle Delete button clicks
         $('#analysisTable').off('click', '.delete-btn').on('click', '.delete-btn', async function(e) {
             e.preventDefault();
             const id = $(this).data('id');
@@ -101,12 +85,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function initializeColumnResizing(table) {
+    function setupColumnResize(table) {
         const $table = $(table.table().node());
         const $headers = $table.find('thead th');
-        let isResizing = false;
-        let currentHeader = null;
-        let startX, startWidth;
+
+        // Remove any existing resize handles
+        $table.find('.resize-handle').remove();
 
         // Add resize handles to all headers except the last one (actions)
         $headers.not(':last').each(function() {
@@ -114,14 +98,17 @@ document.addEventListener('DOMContentLoaded', function() {
             $(this).append($handle);
         });
 
-        // Mouse events for resize handles
+        let isResizing = false;
+        let $currentHeader = null;
+        let startX, startWidth;
+
         $table.on('mousedown', '.resize-handle', function(e) {
             isResizing = true;
-            currentHeader = $(this).parent();
+            $currentHeader = $(this).parent();
             startX = e.pageX;
-            startWidth = currentHeader.width();
-            currentHeader.addClass('resizing');
-            $('body').css('cursor', 'col-resize');
+            startWidth = $currentHeader.width();
+            $currentHeader.addClass('resizing');
+            $('body').addClass('column-resizing');
             e.preventDefault();
         });
 
@@ -129,25 +116,22 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!isResizing) return;
 
             const width = Math.max(50, startWidth + (e.pageX - startX));
-            const colIdx = currentHeader.index();
+            const colIdx = $currentHeader.index();
 
-            // Update column width
-            currentHeader.width(width);
             table.column(colIdx).nodes().each(function(cell) {
                 $(cell).css('width', width + 'px');
             });
-
-            // Force DataTables to recalculate column widths
-            table.columns.adjust();
+            $currentHeader.width(width);
         });
 
         $(document).on('mouseup', function() {
             if (!isResizing) return;
 
             isResizing = false;
-            $('body').css('cursor', '');
-            if (currentHeader) {
-                currentHeader.removeClass('resizing');
+            $('body').removeClass('column-resizing');
+
+            if ($currentHeader) {
+                $currentHeader.removeClass('resizing');
 
                 // Save column widths
                 const widths = {};
@@ -156,8 +140,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 localStorage.setItem('columnWidths', JSON.stringify(widths));
 
-                currentHeader = null;
+                // Force DataTables to recalculate column widths
+                table.columns.adjust();
+                $currentHeader = null;
             }
+        });
+
+        // Double-click to auto-fit
+        $headers.on('dblclick', function(e) {
+            if ($(e.target).hasClass('resize-handle')) return;
+
+            const colIdx = $(this).index();
+            table.column(colIdx).nodes().each(function() {
+                $(this).css('width', 'auto');
+            });
+            $(this).width('auto');
+            table.columns.adjust();
         });
 
         // Restore saved widths
@@ -175,21 +173,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             table.columns.adjust();
         }
-
-        // Double-click to auto-fit
-        $headers.on('dblclick', function() {
-            const colIdx = $(this).index();
-            const column = table.column(colIdx);
-
-            // Reset width to auto
-            $(this).css('width', 'auto');
-            column.nodes().each(function() {
-                $(this).css('width', 'auto');
-            });
-
-            // Let DataTables calculate optimal width
-            table.columns.adjust();
-        });
     }
 
     function showError(message) {

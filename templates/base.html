@@ -11,7 +11,6 @@
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
-    <script src="https://cdn.datatables.net/colreorder/1.5.4/js/dataTables.colReorder.min.js"></script>
     <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
     <style>
         .file-status {
@@ -20,18 +19,10 @@
             border-radius: 4px;
             background-color: var(--bs-dark);
         }
-        .file-status.completed {
-            border-left: 4px solid var(--bs-success);
-        }
-        .file-status.failed {
-            border-left: 4px solid var(--bs-danger);
-        }
-        .file-status.processing {
-            border-left: 4px solid var(--bs-primary);
-        }
-        .file-status.pending {
-            border-left: 4px solid var(--bs-secondary);
-        }
+        .file-status.completed { border-left: 4px solid var(--bs-success); }
+        .file-status.failed { border-left: 4px solid var(--bs-danger); }
+        .file-status.processing { border-left: 4px solid var(--bs-primary); }
+        .file-status.pending { border-left: 4px solid var(--bs-secondary); }
         .card-header[aria-expanded="true"] .bi-chevron-down {
             transform: rotate(180deg);
         }
@@ -43,15 +34,17 @@
             background-color: var(--bs-dark);
         }
 
-        /* Enhanced column resize styles */
+        /* Table Header Styles */
         .table th {
             position: relative;
             min-width: 50px;
             padding-right: 20px !important;
             user-select: none;
             cursor: pointer;
+            background-color: var(--bs-dark);
         }
 
+        /* Column Resize Handle */
         .resize-handle {
             position: absolute;
             right: 0;
@@ -60,7 +53,7 @@
             width: 8px;
             cursor: col-resize;
             background: rgba(255, 255, 255, 0.1);
-            transition: background 0.2s, width 0.2s;
+            transition: background 0.2s;
             z-index: 1;
         }
 
@@ -74,21 +67,33 @@
             background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
         }
 
-        /* Sortable headers */
-        .sorting::before,
-        .sorting::after,
-        .sorting_asc::before,
-        .sorting_asc::after,
-        .sorting_desc::before,
-        .sorting_desc::after {
-            position: absolute;
-            right: 10px;
-            color: var(--bs-light);
-            opacity: 0.5;
+        /* Prevent text selection while resizing */
+        body.column-resizing {
+            cursor: col-resize !important;
+            user-select: none;
         }
 
-        .sorting_asc::after,
-        .sorting_desc::after {
+        body.column-resizing .table th,
+        body.column-resizing .table td {
+            cursor: col-resize !important;
+        }
+
+        /* DataTables Sorting Icons */
+        .table thead th.sorting:before,
+        .table thead th.sorting:after,
+        .table thead th.sorting_asc:before,
+        .table thead th.sorting_asc:after,
+        .table thead th.sorting_desc:before,
+        .table thead th.sorting_desc:after {
+            position: absolute;
+            right: 12px;
+            color: var(--bs-light);
+            opacity: 0.5;
+            font-size: 0.8em;
+        }
+
+        .table thead th.sorting_asc:after,
+        .table thead th.sorting_desc:after {
             opacity: 1;
         }
 
@@ -98,23 +103,25 @@
             -webkit-overflow-scrolling: touch;
         }
 
-        /* Improve button group spacing */
+        /* Button styling in table */
         .btn-group .btn {
             margin: 0 2px;
         }
 
-        /* Truncate long content */
+        /* Content truncation */
         .text-truncate {
             max-width: 150px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            display: block;
         }
 
-        /* DataTables specific styles */
+        /* DataTables specific styling */
         .dataTables_wrapper .dataTables_length,
         .dataTables_wrapper .dataTables_filter {
             margin-bottom: 1rem;
+            color: var(--bs-light);
         }
 
         .dataTables_wrapper .dataTables_info {
@@ -127,9 +134,11 @@
             color: var(--bs-light) !important;
             background: var(--bs-dark);
             border: 1px solid var(--bs-gray-700);
+            border-radius: 4px;
         }
 
-        .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current,
+        .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
             background: var(--bs-primary) !important;
             border-color: var(--bs-primary);
             color: white !important;
