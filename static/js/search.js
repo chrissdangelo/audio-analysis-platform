@@ -1,12 +1,14 @@
+
 document.addEventListener('DOMContentLoaded', function() {
     const characterCheckboxes = document.getElementById('characterCheckboxes');
     const environmentCheckboxes = document.getElementById('environmentCheckboxes');
-    const themeCheckboxes = document.getElementById('themesList');
-    const searchForm = document.getElementById('searchForm');
+    const themesList = document.getElementById('themesList');
     const searchResults = document.getElementById('searchResults');
 
-    // Fetch and populate filters when the search tab is shown
-    document.getElementById('search-tab')?.addEventListener('shown.bs.tab', loadFilterOptions);
+    function toggleSection(id) {
+        const element = document.getElementById(id);
+        element.classList.toggle('expanded');
+    }
 
     async function loadFilterOptions() {
         try {
@@ -19,17 +21,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const themes = new Set();
 
             analyses.forEach(analysis => {
-                // Add characters
                 if (analysis.speaking_characters) {
                     analysis.speaking_characters.forEach(char => characters.add(char));
                 }
-
-                // Add environments
                 if (analysis.environments) {
                     analysis.environments.forEach(env => environments.add(env));
                 }
-
-                // Add themes
                 if (analysis.themes) {
                     analysis.themes.forEach(theme => themes.add(theme));
                 }
@@ -39,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function() {
             characterCheckboxes.innerHTML = Array.from(characters)
                 .sort()
                 .map(char => `
-                    <div class="form-check form-check-inline">
+                    <div class="form-check">
                         <input class="form-check-input" type="checkbox" value="${char}" id="char-${char}">
                         <label class="form-check-label" for="char-${char}">${char}</label>
                     </div>
@@ -48,13 +45,13 @@ document.addEventListener('DOMContentLoaded', function() {
             environmentCheckboxes.innerHTML = Array.from(environments)
                 .sort()
                 .map(env => `
-                    <div class="form-check form-check-inline">
+                    <div class="form-check">
                         <input class="form-check-input" type="checkbox" value="${env}" id="env-${env}">
                         <label class="form-check-label" for="env-${env}">${env}</label>
                     </div>
                 `).join('');
 
-            themeCheckboxes.innerHTML = Array.from(themes)
+            themesList.innerHTML = Array.from(themes)
                 .sort()
                 .map(theme => `
                     <div class="form-check">
@@ -64,10 +61,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 `).join('');
 
             // Add change event listeners to all checkboxes
-            document.querySelectorAll('#characterCheckboxes input, #environmentCheckboxes input, #themesList input')
-                .forEach(checkbox => {
-                    checkbox.addEventListener('change', performSearch);
-                });
+            document.querySelectorAll('.form-check-input').forEach(checkbox => {
+                checkbox.addEventListener('change', performSearch);
+            });
 
         } catch (error) {
             console.error('Error loading filter options:', error);
@@ -117,11 +113,6 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
     }
 
-    function toggleCollapse(id) {
-        const element = document.getElementById(id);
-        element.classList.toggle('collapsed'); // Add a simple collapsed class for styling
-    }
-
-    // Initial load of filter options
+    window.toggleSection = toggleSection;
     loadFilterOptions();
 });
