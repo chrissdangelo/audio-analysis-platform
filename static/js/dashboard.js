@@ -626,8 +626,57 @@ document.addEventListener('analysisAdded', updateTable);
 document.addEventListener('analysisDeleted', updateTable);
 setInterval(updateTable, 30000);
 
+function generateContentSummary(data) {
+    const totalItems = data.length;
+    if (totalItems === 0) {
+        return "No content has been analyzed yet.";
+    }
+
+    // Calculate format distribution
+    const formats = {};
+    data.forEach(item => {
+        formats[item.format] = (formats[item.format] || 0) + 1;
+    });
+
+    // Calculate audio elements
+    const audioStats = {
+        withNarration: data.filter(item => item.has_narration).length,
+        withMusic: data.filter(item => item.has_underscore).length,
+        withSoundEffects: data.filter(item => item.has_sound_effects).length,
+        totalSongs: data.reduce((sum, item) => sum + item.songs_count, 0)
+    };
+
+    // Collect all unique themes and characters
+    const themes = new Set();
+    const characters = new Set();
+    data.forEach(item => {
+        if (Array.isArray(item.themes)) {
+            item.themes.forEach(theme => themes.add(theme));
+        }
+        if (Array.isArray(item.characters_mentioned)) {
+            item.characters_mentioned.forEach(char => characters.add(char));
+        }
+    });
+
+    // Calculate average confidence score
+    const avgConfidence = data.reduce((sum, item) => sum + (item.confidence_score || 0), 0) / totalItems;
+
+    // Generate summary text
+    return `This corpus contains ${totalItems} analyzed pieces of content. ` +
+           `The content is primarily ${Object.entries(formats).map(([k,v]) => `${v} ${k}`).join(' and ')}. ` +
+           `${audioStats.withNarration} pieces contain narration, ${audioStats.withMusic} have background music, ` +
+           `and ${audioStats.withSoundEffects} include sound effects. There are ${audioStats.totalSongs} total songs across all content. ` +
+           `The collection features ${characters.size} unique characters and explores ${themes.size} distinct themes. ` +
+           `Analysis confidence averages ${(avgConfidence * 100).toFixed(1)}%.`;
+}
+
 function updateCharts(data) {
     try {
+        // Update content summary
+        const summaryElement = document.getElementById('content-summary');
+        if (summaryElement) {
+            summaryElement.textContent = generateContentSummary(data);
+        }
         // Format distribution
         if (formatChart) {
             const formats = {};
