@@ -1,33 +1,69 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize DataTable
+    // Initialize DataTable with column management features
     const table = $('#analysisTable').DataTable({
-        destroy: true,
-        ordering: true,
-        info: false,
-        scrollX: true,  // Enable horizontal scrolling
-        autoWidth: false,  // Disable automatic width calculation
-        columnDefs: [
-            { targets: 1, width: '300px' },  // Title column - wider
-            { targets: 2, width: '150px' },  // Filename column - narrower
-            { targets: -1, orderable: false, width: '100px' }  // Actions column
-        ],
-        columns: [
-            null, // ID
-            null, // Title
-            null, // Filename
-            null, // Type
-            null, // Format
-            null, // Duration
-            null, // Environments
-            null, // Characters
-            null, // Speaking
-            null, // Underscore
-            null, // SFX
-            null, // Songs
-            null, // Themes
-            { orderable: false } // Actions
-        ],
-        order: [[0, 'desc']] // Sort by first column (ID) by default
+        scrollX: true,     // Enable horizontal scrolling
+        autoWidth: false,  // Disable automatic column width calculation
+        columnDefs: [{
+            targets: -1,   // Last column (Actions)
+            orderable: false,
+            width: '100px'
+        }],
+        order: [[0, 'desc']], // Sort by first column (ID) by default
+        initComplete: function() {
+            const headerCells = $('#analysisTable thead th').not(':last'); // Skip Actions column
+
+            // Add resize handles to each header cell
+            headerCells.each(function() {
+                const resizer = document.createElement('div');
+                resizer.className = 'resizer';
+                this.appendChild(resizer);
+            });
+
+            // Initialize column resizing
+            let currentResizer;
+            let startX, startWidth;
+
+            headerCells.on('mousedown', '.resizer', function(e) {
+                currentResizer = e.target;
+                const headerCell = currentResizer.parentElement;
+                startX = e.pageX;
+                startWidth = headerCell.offsetWidth;
+
+                $(currentResizer).addClass('resizing');
+
+                // Add event listeners for mousemove and mouseup
+                document.addEventListener('mousemove', resize);
+                document.addEventListener('mouseup', stopResize);
+
+                // Prevent text selection while resizing
+                e.preventDefault();
+            });
+
+            function resize(e) {
+                if (currentResizer) {
+                    const headerCell = currentResizer.parentElement;
+                    const columnIndex = $(headerCell).index();
+                    const width = startWidth + (e.pageX - startX);
+
+                    // Update column width
+                    if (width >= 50) { // Minimum width
+                        $(headerCell).width(width);
+                        table.column(columnIndex).nodes().each(function(cell) {
+                            $(cell).width(width);
+                        });
+                    }
+                }
+            }
+
+            function stopResize() {
+                if (currentResizer) {
+                    $(currentResizer).removeClass('resizing');
+                    document.removeEventListener('mousemove', resize);
+                    document.removeEventListener('mouseup', stopResize);
+                    currentResizer = null;
+                }
+            }
+        }
     });
 
     // Handle delete button clicks
@@ -112,7 +148,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Handle tab switching
     document.querySelector('#analysis-tab')?.addEventListener('shown.bs.tab', function() {
-        table.columns.adjust();
         updateTable();
     });
 
@@ -475,10 +510,7 @@ if (initializeCharts()){
 
 // Handle tab switching
 document.querySelector('#analysis-tab')?.addEventListener('shown.bs.tab', function() {
-    if (table) {
-        table.columns.adjust();
-        updateTable();
-    }
+    updateTable();
 });
 
 // Set up event listeners
