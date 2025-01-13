@@ -1,4 +1,3 @@
-
 document.addEventListener('DOMContentLoaded', function() {
     const characterCheckboxes = document.getElementById('characterCheckboxes');
     const environmentCheckboxes = document.getElementById('environmentCheckboxes');
@@ -116,6 +115,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 `).join('')}
             </div>
         `;
+    }
+
+    function toggleCollapse(id) {
+        const element = document.getElementById(id);
+        element.classList.toggle('collapsed'); // Add a simple collapsed class for styling
     }
 
     // Initial load of filter options
