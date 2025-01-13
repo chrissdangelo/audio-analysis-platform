@@ -1,8 +1,7 @@
-
 document.addEventListener('DOMContentLoaded', function() {
     const characterCheckboxes = document.getElementById('characterCheckboxes');
     const environmentCheckboxes = document.getElementById('environmentCheckboxes');
-    const themesList = document.getElementById('themesList');
+    const themeCheckboxes = document.getElementById('themesList');
     const searchForm = document.getElementById('searchForm');
 
     // Fetch and populate filters when the search tab is shown
@@ -12,23 +11,23 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const response = await fetch('/api/analyses');
             const analyses = await response.json();
-            
+
             // Extract unique values
             const characters = new Set();
             const environments = new Set();
             const themes = new Set();
-            
+
             analyses.forEach(analysis => {
                 // Add characters
                 if (analysis.speaking_characters) {
                     analysis.speaking_characters.forEach(char => characters.add(char));
                 }
-                
+
                 // Add environments
                 if (analysis.environments) {
                     analysis.environments.forEach(env => environments.add(env));
                 }
-                
+
                 // Add themes
                 if (analysis.themes) {
                     analysis.themes.forEach(theme => themes.add(theme));
@@ -56,8 +55,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 `).join('');
 
             // Populate themes
-            if (themesList) {
-                themesList.innerHTML = Array.from(themes)
+            if (themeCheckboxes) {
+                themeCheckboxes.innerHTML = Array.from(themes)
                     .sort()
                     .map(theme => `
                         <div class="form-check">
@@ -76,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (searchForm) {
         searchForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             // Get selected values
             const selectedCharacters = [...document.querySelectorAll('#characterCheckboxes input:checked')]
                 .map(input => input.value);

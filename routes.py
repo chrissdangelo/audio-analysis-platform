@@ -248,7 +248,7 @@ def register_routes(app):
     def search_page():
         return render_template('search.html')
 
-    @app.route('/api/search', methods=['POST'])
+    @app.route('/api/search', methods=['GET', 'POST'])
     def search_content():
         try:
             criteria = request.get_json()
