@@ -1,11 +1,13 @@
+
 document.addEventListener('DOMContentLoaded', function() {
     const characterCheckboxes = document.getElementById('characterCheckboxes');
     const environmentCheckboxes = document.getElementById('environmentCheckboxes');
     const themeCheckboxes = document.getElementById('themesList');
     const searchForm = document.getElementById('searchForm');
+    const searchResults = document.getElementById('searchResults');
 
     // Fetch and populate filters when the search tab is shown
-    document.getElementById('search-tab').addEventListener('shown.bs.tab', loadFilterOptions);
+    document.getElementById('search-tab')?.addEventListener('shown.bs.tab', loadFilterOptions);
 
     async function loadFilterOptions() {
         try {
@@ -34,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
-            // Populate characters
+            // Populate checkboxes
             characterCheckboxes.innerHTML = Array.from(characters)
                 .sort()
                 .map(char => `
@@ -44,7 +46,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 `).join('');
 
-            // Populate environments
             environmentCheckboxes.innerHTML = Array.from(environments)
                 .sort()
                 .map(env => `
@@ -54,34 +55,28 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 `).join('');
 
-            // Populate themes
-            if (themeCheckboxes) {
-                themeCheckboxes.innerHTML = Array.from(themes)
-                    .sort()
-                    .map(theme => `
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="${theme}" id="theme-${theme}">
-                            <label class="form-check-label" for="theme-${theme}">${theme}</label>
-                        </div>
-                    `).join('');
+            themeCheckboxes.innerHTML = Array.from(themes)
+                .sort()
+                .map(theme => `
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="${theme}" id="theme-${theme}">
+                        <label class="form-check-label" for="theme-${theme}">${theme}</label>
+                    </div>
+                `).join('');
 
-                // Add change event listeners to all checkboxes
-                document.querySelectorAll('#characterCheckboxes input, #environmentCheckboxes input, #themesList input')
-                    .forEach(checkbox => {
-                        checkbox.addEventListener('change', performSearch);
-                    });
-            }
+            // Add change event listeners to all checkboxes
+            document.querySelectorAll('#characterCheckboxes input, #environmentCheckboxes input, #themesList input')
+                .forEach(checkbox => {
+                    checkbox.addEventListener('change', performSearch);
+                });
 
         } catch (error) {
             console.error('Error loading filter options:', error);
         }
     }
 
-    // Handle form submission and checkbox changes
     async function performSearch() {
-        if (!searchForm) return;
-
-            // Get selected values
+        try {
             const selectedCharacters = [...document.querySelectorAll('#characterCheckboxes input:checked')]
                 .map(input => input.value);
             const selectedEnvironments = [...document.querySelectorAll('#environmentCheckboxes input:checked')]
@@ -89,26 +84,20 @@ document.addEventListener('DOMContentLoaded', function() {
             const selectedThemes = [...document.querySelectorAll('#themesList input:checked')]
                 .map(input => input.value);
 
-            // Build query parameters
             const params = new URLSearchParams();
             if (selectedCharacters.length) params.append('characters', selectedCharacters.join(','));
             if (selectedEnvironments.length) params.append('environments', selectedEnvironments.join(','));
             if (selectedThemes.length) params.append('themes', selectedThemes.join(','));
 
-            try {
-                const response = await fetch(`/api/search?${params.toString()}`);
-                const results = await response.json();
-                displaySearchResults(results);
-            } catch (error) {
-                console.error('Error performing search:', error);
-            }
-        });
+            const response = await fetch(`/api/search?${params.toString()}`);
+            const results = await response.json();
+            displaySearchResults(results);
+        } catch (error) {
+            console.error('Error performing search:', error);
+        }
     }
 
     function displaySearchResults(results) {
-        const searchResults = document.getElementById('searchResults');
-        if (!searchResults) return;
-
         if (!results.length) {
             searchResults.innerHTML = '<div class="alert alert-info">No matches found</div>';
             return;
@@ -128,4 +117,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
     }
+
+    // Initial load of filter options
+    loadFilterOptions();
 });
