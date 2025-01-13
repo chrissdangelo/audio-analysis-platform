@@ -496,5 +496,5 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Initial load of bundle opportunities
-    findBundleOpportunities();EventListener('shown.bs.tab', findBundleOpportunities);
+    findBundleOpportunities();
 });
