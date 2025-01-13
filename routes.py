@@ -440,8 +440,17 @@ def register_routes(app):
 
     @app.route('/api/upload/batch/<batch_id>/retry')
     def retry_batch(batch_id):
-        if not batch_manager.load_batch_status(batch_id):
+        status = batch_manager.load_batch_status(batch_id)
+        if not status:
             return jsonify({'error': 'Batch not found'}), 404
+
+        # Reset failed files to pending
+        for filename, file_status in status['files'].items():
+            if file_status['status'] == 'failed':
+                file_status['status'] = 'pending'
+                file_status['error'] = None
+                file_status['attempts'] = 0
+        batch_manager.save_batch_status(batch_id)
 
         # Start processing in a separate thread
         from threading import Thread

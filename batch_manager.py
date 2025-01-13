@@ -119,13 +119,19 @@ class BatchUploadManager:
         if batch_id in self.batch_status:
             file_status = self.batch_status[batch_id]['files'].get(filename)
             if file_status:
-                file_status['status'] = 'failed'
-                file_status['error'] = error
-                file_status['current_operation'] = 'failed'
-                file_status['upload_progress'] = 100  # File was uploaded
-                file_status['processing_progress'] = 100  # Processing ended (in failure)
-                self.batch_status[batch_id]['failed_files'] += 1
-                logger.error(f"Failed to process {filename}: {error}")
+                # Only mark as failed if we've exhausted retry attempts
+                if file_status['attempts'] >= 3:
+                    file_status['status'] = 'failed'
+                    file_status['error'] = error
+                    file_status['current_operation'] = 'failed'
+                    file_status['upload_progress'] = 100  # File was uploaded
+                    file_status['processing_progress'] = 100  # Processing ended (in failure)
+                    self.batch_status[batch_id]['failed_files'] += 1
+                    logger.error(f"Failed to process {filename} after {file_status['attempts']} attempts: {error}")
+                else:
+                    file_status['status'] = 'pending'
+                    file_status['error'] = error
+                    logger.warning(f"Processing attempt {file_status['attempts']} failed for {filename}: {error}")
                 self.save_batch_status(batch_id)
 
     def cancel_batch(self, batch_id: str):
