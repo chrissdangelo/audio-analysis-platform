@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Only initialize audio player if needed
-    function initAudioPlayer() {
+    function initializeAudioControls() {
         const playBtn = document.getElementById('playBtn');
         const audio = document.getElementById('audioPlayer');
         if (playBtn && audio) {
@@ -94,5 +94,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     }
-    initAudioPlayer();
+
+    // Initialize controls when content is loaded
+    document.addEventListener('DOMContentLoaded', initializeAudioControls);
 });
