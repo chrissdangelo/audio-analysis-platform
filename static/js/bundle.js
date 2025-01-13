@@ -390,11 +390,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function createBundleSection(title, groups, type) {
         const maxTitles = parseInt(document.getElementById('maxTitles').value) || 5;
-        const limitedGroups = groups.slice(0, maxTitles);
         return `
             <div class="col-12 mb-4">
                 <h6 class="mb-3">${title}</h6>
-                ${limitedGroups.map(group => {
+                ${groups.map(group => {
+                    // Limit the items in each group
+                    const limitedItems = {...group, items: group.items.slice(0, maxTitles)};
                     const bundleTitle = generateBundleTitle(type, group.commonality, group.emotionalContext);
                     const elevatorPitch = generateElevatorPitch(
                         type, 
@@ -414,7 +415,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     ${bundleTitle}
                                     <i class="bi bi-chevron-down ms-2"></i>
                                 </h5>
-                                <span class="badge bg-primary">${group.count} stories</span>
+                                <span class="badge bg-primary">${limitedItems.items.length} stories</span>
                             </div>
                             <p class="card-text text-muted mb-0 mt-2">${elevatorPitch}</p>
                             <div class="mt-2">
