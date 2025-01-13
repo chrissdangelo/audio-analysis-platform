@@ -449,6 +449,36 @@ def register_routes(app):
             'status_url': f'/api/upload/batch/{batch_id}/status'
         }), 202
 
+    @app.route('/api/bundles')
+    def get_bundles():
+        try:
+            analyses = AudioAnalysis.query.order_by(AudioAnalysis.created_at.desc()).all()
+            bundles = []
+            
+            # Group by themes
+            theme_groups = {}
+            for analysis in analyses:
+                themes = json.loads(analysis.themes)
+                for theme in themes:
+                    if theme not in theme_groups:
+                        theme_groups[theme] = []
+                    theme_groups[theme].append(analysis)
+
+            # Create bundles from groups
+            for theme, items in theme_groups.items():
+                if len(items) >= 2:  # Only create bundles with 2 or more items
+                    bundles.append({
+                        "type": "theme",
+                        "commonality": theme,
+                        "count": len(items),
+                        "items": [item.to_dict() for item in items]
+                    })
+
+            return jsonify(bundles)
+        except Exception as e:
+            logger.error(f"Error getting bundles: {str(e)}")
+            return jsonify([])
+
     @app.route('/api/upload/batch/<batch_id>/cancel', methods=['POST'])
     def cancel_batch(batch_id):
         """Cancel a batch upload."""

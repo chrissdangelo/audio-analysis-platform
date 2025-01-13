@@ -1,14 +1,17 @@
 
 document.addEventListener('DOMContentLoaded', function() {
-    let bundles = [];
-
     async function findBundleOpportunities() {
         try {
             const response = await fetch('/api/bundles');
-            bundles = await response.json();
+            if (!response.ok) throw new Error('Failed to fetch bundles');
+            const bundles = await response.json();
             displayBundles(bundles);
         } catch (error) {
             console.error('Error:', error);
+            const container = document.getElementById('bundleSuggestions');
+            if (container) {
+                container.innerHTML = `<div class="alert alert-danger">Error loading bundles: ${error.message}</div>`;
+            }
         }
     }
 
@@ -16,24 +19,29 @@ document.addEventListener('DOMContentLoaded', function() {
         const container = document.getElementById('bundleSuggestions');
         if (!container) return;
 
+        if (!bundles.length) {
+            container.innerHTML = '<div class="alert alert-info">No bundle opportunities found.</div>';
+            return;
+        }
+
         container.innerHTML = bundles.map((bundle, index) => `
             <div class="col-12 mb-4">
                 <div class="card">
                     <div class="card-body">
-                        <h5 class="card-title">${bundle.name}</h5>
-                        <p class="card-text">${bundle.description}</p>
+                        <h5 class="card-title">${bundle.commonality}</h5>
+                        <p class="card-text">Bundle of ${bundle.count} ${bundle.type} items</p>
                         <div class="d-flex justify-content-between align-items-center">
                             <button class="btn btn-primary" onclick="toggleBundleDetails(${index})">
                                 View Details
                             </button>
-                            <button class="btn btn-secondary" onclick="downloadBundlePitch(${index})">
+                            <button class="btn btn-secondary download-pitch" onclick="downloadBundlePitch(${index})">
                                 Download Bundle Pitch
                             </button>
                         </div>
                         <div id="bundleDetails${index}" class="mt-3" style="display: none;">
-                            <h6>Files:</h6>
+                            <h6>Items:</h6>
                             <ul>
-                                ${bundle.files.map(file => `<li>${file}</li>`).join('')}
+                                ${bundle.items.map(item => `<li>${item.title}</li>`).join('')}
                             </ul>
                         </div>
                     </div>
@@ -49,37 +57,42 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    window.downloadBundlePitch = function(index) {
-        const bundle = bundles[index];
-        if (!bundle) return;
+    window.downloadBundlePitch = async function(index) {
+        try {
+            const response = await fetch('/api/bundles');
+            const bundles = await response.json();
+            const bundle = bundles[index];
+            
+            if (!bundle) return;
 
-        const pitch = generateBundlePitch(bundle);
-        downloadFile(pitch, `${bundle.name.replace(/\s+/g, '_')}_pitch.txt`);
+            const pitchResponse = await fetch('/api/bundle-pitch', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    type: bundle.type,
+                    group: bundle
+                })
+            });
+
+            if (!pitchResponse.ok) throw new Error('Failed to generate pitch');
+
+            // Trigger download of the PDF
+            const blob = await pitchResponse.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${bundle.commonality.replace(/\s+/g, '_')}_bundle_pitch.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error('Error downloading pitch:', error);
+            alert('Error generating bundle pitch');
+        }
     };
-
-    function generateBundlePitch(bundle) {
-        return `Bundle: ${bundle.name}
-Description: ${bundle.description}
-
-Files Included:
-${bundle.files.map(file => `- ${file}`).join('\n')}
-
-Summary:
-This bundle contains ${bundle.files.length} related audio files that form a cohesive collection.
-`;
-    }
-
-    function downloadFile(content, filename) {
-        const blob = new Blob([content], { type: 'text/plain' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-    }
 
     // Initial load of bundle opportunities
     findBundleOpportunities();
