@@ -78,16 +78,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    const playBtn = document.getElementById('playBtn');
-    if (playBtn) {
-        playBtn.addEventListener('click', function() {
-            if (audio.paused) {
-                audio.play();
-                playBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
-            } else {
-                audio.pause();
-                playBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
-            }
-        });
+    // Only initialize audio player if needed
+    function initAudioPlayer() {
+        const playBtn = document.getElementById('playBtn');
+        const audio = document.getElementById('audioPlayer');
+        if (playBtn && audio) {
+            playBtn.addEventListener('click', function() {
+                if (audio.paused) {
+                    audio.play();
+                    playBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
+                } else {
+                    audio.pause();
+                    playBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
+                }
+            });
+        }
     }
+    initAudioPlayer();
 });
