@@ -25,29 +25,42 @@
     <script src="https://cdn.datatables.net/colreorder/1.5.4/js/dataTables.colReorder.min.js"></script>
 
     <style>
-        /* Column resize handle */
-        .ui-resizable-e {
-            width: 4px;
-            background-color: var(--bs-primary);
-            cursor: col-resize;
-            opacity: 0;
-            transition: opacity 0.2s;
-            right: 0;
-            top: 0;
-            height: 100%;
-            position: absolute;
-        }
-
-        th:hover .ui-resizable-e {
-            opacity: 0.5;
-        }
-
-        /* Table header styling */
+        /* Column resize handle styling */
         .table th {
             position: relative;
-            background-color: var(--bs-dark);
-            color: var(--bs-light);
+            padding-right: 10px !important;
+        }
+
+        .table th::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 25%;
+            height: 50%;
+            width: 5px;
+            background-color: rgba(var(--bs-primary-rgb), 0.3);
+            cursor: col-resize;
+            transition: background-color 0.2s;
+        }
+
+        .table th:hover::after {
+            background-color: rgba(var(--bs-primary-rgb), 0.8);
+        }
+
+        /* Column reorder styling */
+        .table th {
+            cursor: move;
             user-select: none;
+            background-color: var(--bs-dark);
+            border-right: 1px solid rgba(var(--bs-primary-rgb), 0.2);
+        }
+
+        .table th.dt-colreorder-move {
+            background-color: rgba(var(--bs-primary-rgb), 0.2);
+        }
+
+        .table th.dt-colreorder-hover {
+            background-color: rgba(var(--bs-primary-rgb), 0.1);
         }
 
         /* DataTables styling */

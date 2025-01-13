@@ -1,37 +1,37 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize DataTable
+    // Initialize DataTable with column management features
     const table = $('#analysisTable').DataTable({
-        colReorder: true,  // Enable column reordering
+        colReorder: {
+            fixedColumnsLeft: 0,  // Allow all columns to be reordered
+            realtime: true        // Update column positions in real-time while dragging
+        },
         scrollX: true,     // Enable horizontal scrolling
         autoWidth: false,  // Disable automatic column width calculation
-        columns: [
-            { width: '5%' },  // ID
-            { width: '10%' }, // Title
-            { width: '10%' }, // Filename
-            { width: '5%' },  // Type
-            { width: '5%' },  // Format
-            { width: '5%' },  // Duration
-            { width: '10%' }, // Environments
-            { width: '10%' }, // Characters
-            { width: '10%' }, // Speaking
-            { width: '5%' },  // Underscore
-            { width: '5%' },  // SFX
-            { width: '5%' },  // Songs
-            { width: '10%' }, // Themes
-            { width: '5%', orderable: false }  // Actions
-        ],
-        order: [[0, 'desc']] // Default sort by ID column descending
-    });
+        columnDefs: [{
+            targets: -1,   // Last column (Actions)
+            orderable: false,
+            width: '100px'
+        }],
+        order: [[0, 'desc']], // Default sort by ID column descending
+        drawCallback: function() {
+            // Re-initialize column resize handles after table redraw
+            this.api().columns().every(function() {
+                const column = this;
+                const header = $(column.header());
 
-    // Make columns resizable
-    $('#analysisTable th').resizable({
-        handles: 'e',
-        minWidth: 50,
-        resize: function(e, ui) {
-            const th = $(this);
-            const index = th.index();
-            table.column(index).nodes().each(function(cell, i) {
-                $(cell).width(ui.size.width);
+                // Only make resizable if not the actions column
+                if (!header.hasClass('no-resize')) {
+                    header.resizable({
+                        handles: 'e',
+                        minWidth: 50,
+                        resize: function(event, ui) {
+                            // Update column width
+                            column.nodes().each(function(cell) {
+                                $(cell).css('width', ui.size.width);
+                            });
+                        }
+                    });
+                }
             });
         }
     });
@@ -111,6 +111,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+
     // Set up event listeners
     document.addEventListener('analysisAdded', updateTable);
     document.addEventListener('analysisDeleted', updateTable);
@@ -128,205 +129,160 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(updateTable, 30000);
 });
 
-function showError(message) {
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'alert alert-danger';
-    errorDiv.textContent = message;
-    const container = document.querySelector('.container');
-    if (container) {
-        const existingErrors = container.querySelectorAll('.alert-danger');
-        existingErrors.forEach(err => err.remove());
-        container.prepend(errorDiv);
-    }
-}
-
-async function updateTable() {
+function initializeCharts() {
     try {
-        const response = await fetch('/api/analyses');
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        width = document.getElementById('characterNetwork')?.offsetWidth || 800;
 
-        const data = await response.json();
-        const table = $('#analysisTable').DataTable();
-
-        table.clear();
-        data.forEach(analysis => {
-            table.row.add([
-                analysis.id,
-                analysis.title || "Untitled",
-                analysis.filename,
-                analysis.file_type,
-                analysis.format,
-                analysis.duration,
-                (analysis.environments || []).join(', ') || '-',
-                (analysis.characters_mentioned || []).join(', ') || '-',
-                (analysis.speaking_characters || []).join(', ') || '-',
-                analysis.has_underscore ? "Yes" : "No",
-                analysis.has_sound_effects ? "Yes" : "No",
-                analysis.songs_count,
-                (analysis.themes || []).join(', ') || '-',
-                `<div class="btn-group" role="group">
-                    <a href="/debug_analysis/${analysis.id}" class="btn btn-sm btn-info">Info</a>
-                    <button class="btn btn-sm btn-danger delete-btn" data-id="${analysis.id}">Delete</button>
-                </div>`
-            ]);
-        });
-        table.draw();
-
-    } catch (error) {
-        console.error('Error updating table:', error);
-        showError(`Failed to update table: ${error.message}`);
-    }
-}
-
-function updateCharts(data) {
-    try {
-        // Format distribution
-        if (formatChart) {
-            const formats = {};
-            data.forEach(analysis => {
-                if (analysis.format) {
-                    formats[analysis.format] = (formats[analysis.format] || 0) + 1;
+        // Format Chart
+        const formatCtx = document.getElementById('formatChart');
+        if (formatCtx?.getContext('2d')) {
+            formatChart = new Chart(formatCtx.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: [
+                            'rgba(74, 158, 255, 0.8)',
+                            'rgba(255, 99, 132, 0.8)',
+                            'rgba(255, 205, 86, 0.8)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#fff' }
+                        }
+                    }
                 }
             });
-            formatChart.data.labels = Object.keys(formats);
-            formatChart.data.datasets[0].data = Object.values(formats);
-            formatChart.update();
         }
 
-        // Content types
-        if (contentChart) {
-            const contentTypes = {
-                narration: 0,
-                backgroundMusic: 0,
-                soundEffects: 0,
-                songs: 0
-            };
-
-            data.forEach(analysis => {
-                if (analysis.has_narration) contentTypes.narration++;
-                if (analysis.has_underscore) contentTypes.backgroundMusic++;
-                if (analysis.has_sound_effects) contentTypes.soundEffects++;
-                if (analysis.songs_count > 0) contentTypes.songs++;
-            });
-
-            contentChart.data.datasets[0].data = [
-                contentTypes.narration,
-                contentTypes.backgroundMusic,
-                contentTypes.soundEffects,
-                contentTypes.songs
-            ];
-            contentChart.update();
-        }
-
-        // Environment distribution
-        if (environmentChart) {
-            const environments = {};
-            data.forEach(analysis => {
-                (analysis.environments || []).forEach(env => {
-                    environments[env] = (environments[env] || 0) + 1;
-                });
-            });
-
-            const colors = Array.from(
-                { length: Object.keys(environments).length },
-                (_, i) => `hsl(${(i * 360) / Object.keys(environments).length}, 70%, 60%)`
-            );
-
-            environmentChart.data.labels = Object.keys(environments);
-            environmentChart.data.datasets[0].data = Object.values(environments);
-            environmentChart.data.datasets[0].backgroundColor = colors;
-            environmentChart.update();
-        }
-
-        // Theme cloud and character network
-        updateThemeCloud(data);
-        updateCharacterNetwork(data);
-
-    } catch (error) {
-        console.error('Error updating charts:', error);
-        throw error;
-    }
-}
-
-function updateEmotionAnalysis(data) {
-    try {
-        // Calculate average emotion scores
-        const totalEmotions = {
-            joy: 0,
-            sadness: 0,
-            anger: 0,
-            fear: 0,
-            surprise: 0
-        };
-        let totalConfidence = 0;
-        const dominantEmotions = {};
-
-        data.forEach(analysis => {
-            if (analysis.emotion_scores) {
-                Object.entries(analysis.emotion_scores).forEach(([emotion, score]) => {
-                    if (totalEmotions.hasOwnProperty(emotion)) {
-                        totalEmotions[emotion] += score || 0;
+        // Content Chart
+        const contentCtx = document.getElementById('contentChart');
+        if (contentCtx?.getContext('2d')) {
+            contentChart = new Chart(contentCtx.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: ['Narration', 'Background Music', 'Sound Effects', 'Songs'],
+                    datasets: [{
+                        data: [0, 0, 0, 0],
+                        backgroundColor: [
+                            'rgba(74, 158, 255, 0.8)',
+                            'rgba(255, 99, 132, 0.8)',
+                            'rgba(255, 205, 86, 0.8)',
+                            'rgba(153, 102, 255, 0.8)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: '#fff' }
+                        }
                     }
-                });
-            }
-
-            if (analysis.confidence_score) {
-                totalConfidence += analysis.confidence_score;
-            }
-
-            if (analysis.dominant_emotion) {
-                dominantEmotions[analysis.dominant_emotion] =
-                    (dominantEmotions[analysis.dominant_emotion] || 0) + 1;
-            }
-        });
-
-        // Update emotion radar chart
-        if (emotionChart) {
-            const avgEmotions = Object.values(totalEmotions).map(score =>
-                score / Math.max(1, data.length));
-            emotionChart.data.datasets[0].data = avgEmotions;
-            emotionChart.update();
+                }
+            });
         }
 
-        // Update confidence gauge
-        if (confidenceChart) {
-            const avgConfidence = totalConfidence / Math.max(1, data.length);
-            confidenceChart.data.datasets[0].data = [
-                avgConfidence * 100,
-                100 - (avgConfidence * 100)
-            ];
-            confidenceChart.update();
+        // Environment Chart
+        const environmentCtx = document.getElementById('environmentChart');
+        if (environmentCtx?.getContext('2d')) {
+            environmentChart = new Chart(environmentCtx.getContext('2d'), {
+                type: 'polarArea',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: []
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: { color: '#fff' }
+                        }
+                    }
+                }
+            });
         }
 
-        // Update dominant emotion display
-        const dominantEmotion = Object.entries(dominantEmotions)
-            .sort((a, b) => b[1] - a[1])[0];
-
-        const dominantEl = document.getElementById('dominantEmotion');
-        if (dominantEl && dominantEmotion) {
-            dominantEl.textContent = dominantEmotion[0].charAt(0).toUpperCase() +
-                dominantEmotion[0].slice(1);
+        // Emotion Chart
+        const emotionCtx = document.getElementById('emotionChart');
+        if (emotionCtx?.getContext('2d')) {
+            emotionChart = new Chart(emotionCtx.getContext('2d'), {
+                type: 'radar',
+                data: {
+                    labels: ['Joy', 'Sadness', 'Anger', 'Fear', 'Surprise'],
+                    datasets: [{
+                        label: 'Emotion Scores',
+                        data: [0, 0, 0, 0, 0],
+                        backgroundColor: 'rgba(74, 158, 255, 0.2)',
+                        borderColor: 'rgba(74, 158, 255, 1)',
+                        pointBackgroundColor: 'rgba(74, 158, 255, 1)',
+                        pointBorderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            pointLabels: { color: '#fff' },
+                            ticks: {
+                                color: '#fff',
+                                backdropColor: 'transparent'
+                            }
+                        }
+                    }
+                }
+            });
         }
 
-        // Update tone analysis
-        const toneDiv = document.getElementById('toneAnalysis');
-        if (toneDiv && data.length > 0) {
-            const lastAnalysis = data[data.length - 1];
-            if (lastAnalysis?.tone_analysis) {
-                const toneAnalysis = typeof lastAnalysis.tone_analysis === 'string'
-                    ? JSON.parse(lastAnalysis.tone_analysis)
-                    : lastAnalysis.tone_analysis;
-
-                toneDiv.innerHTML = Object.entries(toneAnalysis)
-                    .map(([key, value]) =>
-                        `<span class="badge bg-secondary me-2">${key}: ${value}</span>`
-                    ).join('');
-            }
+        // Confidence Chart
+        const confidenceCtx = document.getElementById('confidenceChart');
+        if (confidenceCtx?.getContext('2d')) {
+            confidenceChart = new Chart(confidenceCtx.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [0, 100],
+                        backgroundColor: [
+                            'rgba(74, 158, 255, 0.8)',
+                            'rgba(255, 255, 255, 0.1)'
+                        ],
+                        circumference: 180,
+                        rotation: 270
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    cutout: '80%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    }
+                }
+            });
         }
+
+        // Initialize character network
+        initializeCharacterNetwork();
+
+        return true;
     } catch (error) {
-        console.error('Error updating emotion analysis:', error);
+        console.error('Error initializing charts:', error);
+        return false;
     }
 }
 
@@ -518,164 +474,6 @@ function formatCorrelations(correlations) {
         .join('<br>');
 }
 
-function initializeCharts() {
-    try {
-        width = document.getElementById('characterNetwork')?.offsetWidth || 800;
-
-        // Format Chart
-        const formatCtx = document.getElementById('formatChart');
-        if (formatCtx?.getContext('2d')) {
-            formatChart = new Chart(formatCtx.getContext('2d'), {
-                type: 'doughnut',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        data: [],
-                        backgroundColor: [
-                            'rgba(74, 158, 255, 0.8)',
-                            'rgba(255, 99, 132, 0.8)',
-                            'rgba(255, 205, 86, 0.8)'
-                        ]
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { color: '#fff' }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Content Chart
-        const contentCtx = document.getElementById('contentChart');
-        if (contentCtx?.getContext('2d')) {
-            contentChart = new Chart(contentCtx.getContext('2d'), {
-                type: 'bar',
-                data: {
-                    labels: ['Narration', 'Background Music', 'Sound Effects', 'Songs'],
-                    datasets: [{
-                        data: [0, 0, 0, 0],
-                        backgroundColor: [
-                            'rgba(74, 158, 255, 0.8)',
-                            'rgba(255, 99, 132, 0.8)',
-                            'rgba(255, 205, 86, 0.8)',
-                            'rgba(153, 102, 255, 0.8)'
-                        ]
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { color: '#fff' }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Environment Chart
-        const environmentCtx = document.getElementById('environmentChart');
-        if (environmentCtx?.getContext('2d')) {
-            environmentChart = new Chart(environmentCtx.getContext('2d'), {
-                type: 'polarArea',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        data: [],
-                        backgroundColor: []
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                            labels: { color: '#fff' }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Emotion Chart
-        const emotionCtx = document.getElementById('emotionChart');
-        if (emotionCtx?.getContext('2d')) {
-            emotionChart = new Chart(emotionCtx.getContext('2d'), {
-                type: 'radar',
-                data: {
-                    labels: ['Joy', 'Sadness', 'Anger', 'Fear', 'Surprise'],
-                    datasets: [{
-                        label: 'Emotion Scores',
-                        data: [0, 0, 0, 0, 0],
-                        backgroundColor: 'rgba(74, 158, 255, 0.2)',
-                        borderColor: 'rgba(74, 158, 255, 1)',
-                        pointBackgroundColor: 'rgba(74, 158, 255, 1)',
-                        pointBorderColor: '#fff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        r: {
-                            angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
-                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                            pointLabels: { color: '#fff' },
-                            ticks: {
-                                color: '#fff',
-                                backdropColor: 'transparent'
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Confidence Chart
-        const confidenceCtx = document.getElementById('confidenceChart');
-        if (confidenceCtx?.getContext('2d')) {
-            confidenceChart = new Chart(confidenceCtx.getContext('2d'), {
-                type: 'doughnut',
-                data: {
-                    datasets: [{
-                        data: [0, 100],
-                        backgroundColor: [
-                            'rgba(74, 158, 255, 0.8)',
-                            'rgba(255, 255, 255, 0.1)'
-                        ],
-                        circumference: 180,
-                        rotation: 270
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    cutout: '80%',
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: { enabled: false }
-                    }
-                }
-            });
-        }
-
-        // Initialize character network
-        initializeCharacterNetwork();
-
-        return true;
-    } catch (error) {
-        console.error('Error initializing charts:', error);
-        return false;
-    }
-}
-
-
 // Initialize charts after DataTable is ready.  This ensures the width is correctly calculated
 if (initializeCharts()){
     updateTable();
@@ -694,3 +492,153 @@ document.addEventListener('analysisAdded', updateTable);
 document.addEventListener('analysisDeleted', updateTable);
 setInterval(updateTable, 30000);
 });
+
+function updateCharts(data) {
+    try {
+        // Format distribution
+        if (formatChart) {
+            const formats = {};
+            data.forEach(analysis => {
+                if (analysis.format) {
+                    formats[analysis.format] = (formats[analysis.format] || 0) + 1;
+                }
+            });
+            formatChart.data.labels = Object.keys(formats);
+            formatChart.data.datasets[0].data = Object.values(formats);
+            formatChart.update();
+        }
+
+        // Content types
+        if (contentChart) {
+            const contentTypes = {
+                narration: 0,
+                backgroundMusic: 0,
+                soundEffects: 0,
+                songs: 0
+            };
+
+            data.forEach(analysis => {
+                if (analysis.has_narration) contentTypes.narration++;
+                if (analysis.has_underscore) contentTypes.backgroundMusic++;
+                if (analysis.has_sound_effects) contentTypes.soundEffects++;
+                if (analysis.songs_count > 0) contentTypes.songs++;
+            });
+
+            contentChart.data.datasets[0].data = [
+                contentTypes.narration,
+                contentTypes.backgroundMusic,
+                contentTypes.soundEffects,
+                contentTypes.songs
+            ];
+            contentChart.update();
+        }
+
+        // Environment distribution
+        if (environmentChart) {
+            const environments = {};
+            data.forEach(analysis => {
+                (analysis.environments || []).forEach(env => {
+                    environments[env] = (environments[env] || 0) + 1;
+                });
+            });
+
+            const colors = Array.from(
+                { length: Object.keys(environments).length },
+                (_, i) => `hsl(${(i * 360) / Object.keys(environments).length}, 70%, 60%)`
+            );
+
+            environmentChart.data.labels = Object.keys(environments);
+            environmentChart.data.datasets[0].data = Object.values(environments);
+            environmentChart.data.datasets[0].backgroundColor = colors;
+            environmentChart.update();
+        }
+
+        // Theme cloud and character network
+        updateThemeCloud(data);
+        updateCharacterNetwork(data);
+
+    } catch (error) {
+        console.error('Error updating charts:', error);
+        throw error;
+    }
+}
+
+function updateEmotionAnalysis(data) {
+    try {
+        // Calculate average emotion scores
+        const totalEmotions = {
+            joy: 0,
+            sadness: 0,
+            anger: 0,
+            fear: 0,
+            surprise: 0
+        };
+        let totalConfidence = 0;
+        const dominantEmotions = {};
+
+        data.forEach(analysis => {
+            if (analysis.emotion_scores) {
+                Object.entries(analysis.emotion_scores).forEach(([emotion, score]) => {
+                    if (totalEmotions.hasOwnProperty(emotion)) {
+                        totalEmotions[emotion] += score || 0;
+                    }
+                });
+            }
+
+            if (analysis.confidence_score) {
+                totalConfidence += analysis.confidence_score;
+            }
+
+            if (analysis.dominant_emotion) {
+                dominantEmotions[analysis.dominant_emotion] =
+                    (dominantEmotions[analysis.dominant_emotion] || 0) + 1;
+            }
+        });
+
+        // Update emotion radar chart
+        if (emotionChart) {
+            const avgEmotions = Object.values(totalEmotions).map(score =>
+                score / Math.max(1, data.length));
+            emotionChart.data.datasets[0].data = avgEmotions;
+            emotionChart.update();
+        }
+
+        // Update confidence gauge
+        if (confidenceChart) {
+            const avgConfidence = totalConfidence / Math.max(1, data.length);
+            confidenceChart.data.datasets[0].data = [
+                avgConfidence * 100,
+                100 - (avgConfidence * 100)
+            ];
+            confidenceChart.update();
+        }
+
+        // Update dominant emotion display
+        const dominantEmotion = Object.entries(dominantEmotions)
+            .sort((a, b) => b[1] - a[1])[0];
+
+        const dominantEl = document.getElementById('dominantEmotion');
+        if (dominantEl && dominantEmotion) {
+            dominantEl.textContent = dominantEmotion[0].charAt(0).toUpperCase() +
+                dominantEmotion[0].slice(1);
+        }
+
+        // Update tone analysis
+        const toneDiv = document.getElementById('toneAnalysis');
+        if (toneDiv && data.length > 0) {
+            const lastAnalysis = data[data.length - 1];
+            if (lastAnalysis?.tone_analysis) {
+                const toneAnalysis = typeof lastAnalysis.tone_analysis === 'string'
+                    ? JSON.parse(lastAnalysis.tone_analysis)
+                    : lastAnalysis.tone_analysis;
+
+                toneDiv.innerHTML = Object.entries(toneAnalysis)
+                    .map(([key, value]) =>
+                        `<span class="badge bg-secondary me-2">${key}: ${value}</span>`
+                    ).join('');
+            }
+        }
+    } catch (error) {
+        console.error('Error updating emotion analysis:', error);
+    }
+}
