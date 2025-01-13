@@ -244,6 +244,7 @@ document.addEventListener('DOMContentLoaded', function() {
             table.draw();
             updateCharts(data);
             updateEmotionAnalysis(data);
+            updateDashboard(data); // Added call to updateDashboard
         } catch (error) {
             console.error('Error updating table:', error);
             showError(`Failed to update table: ${error.message}`);
@@ -773,5 +774,65 @@ function updateEmotionAnalysis(data) {
         }
     } catch (error) {
         console.error('Error updating emotion analysis:', error);
+    }
+}
+
+function updateDashboard(data) {
+    try {
+        if (!data || data.length === 0) {
+            console.log("No data available for dashboard");
+            return;
+        }
+
+        // Generate overview summary
+        const totalContent = data.length;
+        const formats = [...new Set(data.map(item => item.format))];
+        const totalDuration = data.reduce((acc, item) => {
+            const [hours, minutes, seconds] = item.duration.split(':').map(Number);
+            return acc + hours * 3600 + minutes * 60 + seconds;
+        }, 0);
+        const hours = Math.floor(totalDuration / 3600);
+        const minutes = Math.floor((totalDuration % 3600) / 60);
+
+        // Get most common elements
+        const getTopItems = (key, limit = 3) => {
+            const counts = data.reduce((acc, item) => {
+                const items = Array.isArray(item[key]) ? item[key] : [];
+                items.forEach(i => acc[i] = (acc[i] || 0) + 1);
+                return acc;
+            }, {});
+            return Object.entries(counts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, limit);
+        };
+
+        const topCharacters = getTopItems('characters_mentioned');
+        const topEnvironments = getTopItems('environments');
+        const topThemes = getTopItems('themes');
+
+        // Update overview text
+        const overviewElement = document.getElementById('analysisOverview');
+        if (overviewElement) {
+            overviewElement.innerHTML = `
+                Analyzed ${totalContent} pieces of content across ${formats.length} different formats, 
+                totaling ${hours} hours and ${minutes} minutes of content. 
+                The collection features diverse themes and characters across multiple environments.
+            `;
+        }
+
+        // Update highlights
+        const highlightsElement = document.getElementById('keyHighlights');
+        if (highlightsElement) {
+            highlightsElement.innerHTML = `
+                <li><strong>Top Characters:</strong> ${topCharacters.map(([char, count]) => 
+                    `${char} (${count})`).join(', ')}</li>
+                <li><strong>Common Settings:</strong> ${topEnvironments.map(([env, count]) => 
+                    `${env} (${count})`).join(', ')}</li>
+                <li><strong>Primary Themes:</strong> ${topThemes.map(([theme, count]) => 
+                    `${theme} (${count})`).join(', ')}</li>
+            `;
+        }
+    } catch (error) {
+        console.error('Error updating dashboard:', error);
     }
 }
