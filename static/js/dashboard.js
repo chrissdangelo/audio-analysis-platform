@@ -3,11 +3,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const table = $('#analysisTable').DataTable({
         scrollX: true,     // Enable horizontal scrolling
         autoWidth: false,  // Disable automatic column width calculation
-        columnDefs: [{
-            targets: -1,   // Last column (Actions)
-            orderable: false,
-            width: '100px'
-        }],
+        columnDefs: [
+            {
+                targets: 1,  // Title column (second column)
+                width: '300px'  // Make title column wider
+            },
+            {
+                targets: -1,   // Last column (Actions)
+                orderable: false,
+                width: '100px'
+            }
+        ],
         order: [[0, 'desc']], // Sort by first column (ID) by default
         initComplete: function() {
             const headerCells = $('#analysisTable thead th').not(':last'); // Skip Actions column
