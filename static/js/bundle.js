@@ -27,8 +27,14 @@ document.addEventListener('DOMContentLoaded', function() {
             // Group by emotional patterns
             const emotionGroups = groupByEmotions(analyses);
 
+            // Group by emotional arcs (stories that follow similar emotional progressions)
+            const emotionalArcGroups = groupByEmotionalArcs(analyses);
+
             // Group by environments with emotional context
             const environmentGroups = groupByCommonality(analyses, 'environments', 'emotion_scores');
+
+            // Group by character dynamics (recurring character relationships)
+            const characterDynamicsGroups = groupByCharacterDynamics(analyses);
 
             displayBundleSuggestions(themeGroups, characterGroups, emotionGroups, environmentGroups);
 
@@ -70,29 +76,108 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function groupByCharacterInteractions(analyses) {
         const characterPairs = new Map();
+        const characterEmotions = new Map();
 
         analyses.forEach(analysis => {
             const characters = analysis.speaking_characters || [];
+            const emotion = analysis.dominant_emotion;
 
-            // Create pairs of characters that appear together
+            // Track character pairs and their emotional context
             for (let i = 0; i < characters.length; i++) {
                 for (let j = i + 1; j < characters.length; j++) {
                     const pair = [characters[i], characters[j]].sort().join(' & ');
                     if (!characterPairs.has(pair)) {
                         characterPairs.set(pair, []);
+                        characterEmotions.set(pair, new Map());
                     }
                     characterPairs.get(pair).push(analysis);
+                    if (emotion) {
+                        const emotions = characterEmotions.get(pair);
+                        emotions.set(emotion, (emotions.get(emotion) || 0) + 1);
+                    }
                 }
             }
         });
 
         return Array.from(characterPairs.entries())
             .filter(([_, items]) => items.length > 1)
-            .map(([pair, items]) => ({
-                commonality: pair,
+            .map(([pair, items]) => {
+                const emotions = characterEmotions.get(pair);
+                const dominantEmotion = Array.from(emotions?.entries() || [])
+                    .sort((a, b) => b[1] - a[1])[0]?.[0];
+                return {
+                    commonality: pair,
+                    items: items,
+                    count: items.length,
+                    emotionalContext: dominantEmotion ? { dominant: dominantEmotion } : null
+                };
+            })
+            .sort((a, b) => b.count - a.count);
+    }
+
+    function groupByEmotionalArcs(analyses) {
+        const arcPatterns = new Map();
+        
+        analyses.forEach(analysis => {
+            if (!analysis.emotion_scores) return;
+            
+            const scores = analysis.emotion_scores;
+            const dominantEmotions = Object.entries(scores)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 2)
+                .map(([emotion]) => emotion)
+                .join(' to ');
+                
+            if (!arcPatterns.has(dominantEmotions)) {
+                arcPatterns.set(dominantEmotions, []);
+            }
+            arcPatterns.get(dominantEmotions).push(analysis);
+        });
+
+        return Array.from(arcPatterns.entries())
+            .filter(([_, items]) => items.length > 1)
+            .map(([arc, items]) => ({
+                commonality: arc,
                 items: items,
-                count: items.length
+                count: items.length,
+                emotionalContext: {
+                    dominant: arc.split(' to ')[0]
+                }
             }))
+            .sort((a, b) => b.count - a.count);
+    }
+
+    function groupByCharacterDynamics(analyses) {
+        const dynamics = new Map();
+        
+        analyses.forEach(analysis => {
+            const characters = analysis.speaking_characters || [];
+            const emotion = analysis.dominant_emotion;
+            
+            characters.forEach(char => {
+                if (!dynamics.has(char)) {
+                    dynamics.set(char, { stories: [], emotions: new Map() });
+                }
+                dynamics.get(char).stories.push(analysis);
+                if (emotion) {
+                    const emotions = dynamics.get(char).emotions;
+                    emotions.set(emotion, (emotions.get(emotion) || 0) + 1);
+                }
+            });
+        });
+
+        return Array.from(dynamics.entries())
+            .filter(([_, data]) => data.stories.length > 1)
+            .map(([character, data]) => {
+                const dominantEmotion = Array.from(data.emotions.entries())
+                    .sort((a, b) => b[1] - a[1])[0]?.[0];
+                return {
+                    commonality: character,
+                    items: data.stories,
+                    count: data.stories.length,
+                    emotionalContext: dominantEmotion ? { dominant: dominantEmotion } : null
+                };
+            })
             .sort((a, b) => b.count - a.count);
     }
 
@@ -259,7 +344,7 @@ document.addEventListener('DOMContentLoaded', function() {
             (emojis[emotionalContext.dominant] || '✨') : '✨';
     }
 
-    function displayBundleSuggestions(themeGroups, characterGroups, emotionGroups, environmentGroups) {
+    function displayBundleSuggestions(themeGroups, characterGroups, emotionGroups, environmentGroups, emotionalArcGroups, characterDynamicsGroups) {
         let html = '';
 
         // Emotion-based bundles
@@ -267,14 +352,24 @@ document.addEventListener('DOMContentLoaded', function() {
             html += createBundleSection('Emotional Journeys', emotionGroups, 'emotion');
         }
 
+        // Character Dynamics
+        if (characterDynamicsGroups.length > 0) {
+            html += createBundleSection('Character Spotlights', characterDynamicsGroups, 'character');
+        }
+
+        // Character Interactions
+        if (characterGroups.length > 0) {
+            html += createBundleSection('Dynamic Duos', characterGroups, 'character');
+        }
+
+        // Emotional Arcs
+        if (emotionalArcGroups.length > 0) {
+            html += createBundleSection('Emotional Story Arcs', emotionalArcGroups, 'emotion');
+        }
+
         // Theme-based bundles
         if (themeGroups.length > 0) {
             html += createBundleSection('Theme-based Collections', themeGroups, 'theme');
-        }
-
-        // Character-based bundles
-        if (characterGroups.length > 0) {
-            html += createBundleSection('Character Adventures', characterGroups, 'character');
         }
 
         // Environment-based bundles
