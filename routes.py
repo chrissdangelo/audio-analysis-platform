@@ -4,13 +4,6 @@ import logging
 from datetime import datetime
 from flask import request, jsonify, render_template, Response
 from werkzeug.utils import secure_filename
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"]
-)
 from werkzeug.exceptions import RequestEntityTooLarge
 from database import db
 from models import AudioAnalysis

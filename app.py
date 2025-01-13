@@ -2,10 +2,7 @@ import os
 import logging
 from flask import Flask
 from flask_migrate import Migrate
-from flask_wtf.csrf import CSRFProtect
 from database import db
-
-csrf = CSRFProtect()
 
 # Configure logging
 logging.basicConfig(
@@ -24,32 +21,24 @@ def create_app():
         app.secret_key = os.environ.get("FLASK_SECRET_KEY") or "a secret key"
 
         # Configure database
-        database_url = os.environ.get("DATABASE_URL")
-        if not database_url:
-            # Fallback to SQLite for development
-            database_url = "sqlite:///app.db"
-            logger.warning(f"DATABASE_URL not set, using SQLite: {database_url}")
-        
-        app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+        if not os.environ.get("DATABASE_URL"):
+            logger.error("DATABASE_URL environment variable is not set")
+            raise ValueError("DATABASE_URL environment variable is not set")
+
+        app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
         app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
             "pool_recycle": 300,
             "pool_pre_ping": True,
         }
         app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
         app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # Increased to 500MB
-        # Ensure upload directory is outside web root
-        app.config['UPLOAD_FOLDER'] = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'secure_uploads'))
-        # Limit upload size
-        app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB limit
+        app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
         logger.info("Configured Flask application settings")
 
         # Ensure upload directory exists
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
         logger.info(f"Created upload directory at {app.config['UPLOAD_FOLDER']}")
 
-        # Initialize security
-        csrf.init_app(app)
-        
         # Initialize database
         logger.info("Initializing database...")
         db.init_app(app)
