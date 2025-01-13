@@ -612,23 +612,14 @@ function formatCorrelations(correlations) {
         .join('<br>');
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize charts and update data when the analysis tab is shown
-    const analysisTab = document.querySelector('#analysis-tab');
-    if (analysisTab) {
-        analysisTab.addEventListener('shown.bs.tab', function() {
-            if (!formatChart) {
-                initializeCharts();
-            }
-            updateTable();
-        });
-    }
+// Initialize charts after DataTable is ready.  This ensures the width is correctly calculated
+if (initializeCharts()){
+    updateTable();
+}
 
-    // Initial load if we're already on the analysis tab
-    if (document.querySelector('.tab-pane.active#analysis')) {
-        initializeCharts();
-        updateTable();
-    }
+// Handle tab switching
+document.querySelector('#analysis-tab')?.addEventListener('shown.bs.tab', function() {
+    updateTable();
 });
 
 // Set up event listeners
@@ -796,27 +787,12 @@ function updateDashboard(data) {
         // Generate overview summary
         const totalContent = data.length;
         const formats = [...new Set(data.map(item => item.format))];
-        
-        // Calculate total duration properly handling invalid formats
         const totalDuration = data.reduce((acc, item) => {
-            if (!item.duration) return acc;
-            const parts = item.duration.split(':');
-            if (parts.length !== 3) return acc;
-            const [hours, minutes, seconds] = parts.map(n => parseInt(n) || 0);
+            const [hours, minutes, seconds] = item.duration.split(':').map(Number);
             return acc + hours * 3600 + minutes * 60 + seconds;
         }, 0);
-        
         const hours = Math.floor(totalDuration / 3600);
         const minutes = Math.floor((totalDuration % 3600) / 60);
-
-        // Get content insights
-        const emotions = data.reduce((acc, item) => {
-            if (item.dominant_emotion) {
-                acc[item.dominant_emotion] = (acc[item.dominant_emotion] || 0) + 1;
-            }
-            return acc;
-        }, {});
-        const dominantMood = Object.entries(emotions).sort((a, b) => b[1] - a[1])[0]?.[0] || 'neutral';
 
         // Get most common elements
         const getTopItems = (key, limit = 3) => {
@@ -838,11 +814,9 @@ function updateDashboard(data) {
         const overviewElement = document.getElementById('analysisOverview');
         if (overviewElement) {
             overviewElement.innerHTML = `
-                This library contains ${totalContent} pieces of content across ${formats.length} different formats,
-                totaling ${hours} hours and ${minutes} minutes. The overall mood tends towards ${dominantMood},
-                with a rich mix of ${Math.max(...Object.values(getTopItems('themes', 1).map(([,count]) => count))} 
-                recurring themes and ${Math.max(...Object.values(getTopItems('characters_mentioned', 1).map(([,count]) => count))}
-                character appearances across diverse environments.
+                Analyzed ${totalContent} pieces of content across ${formats.length} different formats, 
+                totaling ${hours} hours and ${minutes} minutes of content. 
+                The collection features diverse themes and characters across multiple environments.
             `;
         }
 
