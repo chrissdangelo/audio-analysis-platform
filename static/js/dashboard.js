@@ -4,6 +4,13 @@ document.addEventListener('DOMContentLoaded', function() {
         destroy: true,
         ordering: true,
         info: false,
+        scrollX: true,  // Enable horizontal scrolling
+        autoWidth: false,  // Disable automatic width calculation
+        columnDefs: [
+            { targets: 1, width: '300px' },  // Title column - wider
+            { targets: 2, width: '150px' },  // Filename column - narrower
+            { targets: -1, orderable: false, width: '100px' }  // Actions column
+        ],
         columns: [
             null, // ID
             null, // Title
