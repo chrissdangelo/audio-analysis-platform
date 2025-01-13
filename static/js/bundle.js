@@ -1,3 +1,4 @@
+
 document.addEventListener('DOMContentLoaded', function() {
     let bundles = [];
 
@@ -82,10 +83,4 @@ This bundle contains ${bundle.files.length} related audio files that form a cohe
 
     // Initial load of bundle opportunities
     findBundleOpportunities();
-
-    // Load bundles when the bundle tab is shown
-    const bundleTab = document.getElementById('bundle-tab');
-    if (bundleTab) {
-        bundleTab.addEventListener('shown.bs.tab', findBundleOpportunities);
-    }
 });
