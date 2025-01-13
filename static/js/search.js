@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function displaySearchResults(results) {
+    function updateTable(results) {
         if (!results.length) {
             searchResults.innerHTML = '<div class="alert alert-info">No matches found</div>';
             return;
@@ -141,6 +141,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 `).join('')}
             </div>
         `;
+    }
+
+    function displaySearchResults(results) {
+        updateTable(results);
     }
 
     // Initialize
