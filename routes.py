@@ -368,7 +368,7 @@ def register_routes(app):
             batch_id = batch_manager.create_batch(filenames)
             logger.info(f"Created batch {batch_id} with {len(filenames)} files")
 
-            # Save files
+            # Save files and verify they exist
             saved_files = []
             try:
                 for file in files:
@@ -377,8 +377,17 @@ def register_routes(app):
                         if filename in filenames:  # Only save non-duplicate files
                             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                             file.save(filepath)
+                            # Verify file was saved
+                            if not os.path.exists(filepath):
+                                raise IOError(f"Failed to save file {filename}")
                             saved_files.append(filepath)
-                            logger.info(f"Saved file {filename} for batch {batch_id}")
+                            logger.info(f"Saved and verified file {filename} for batch {batch_id}")
+                
+                # Double check all files exist before starting batch
+                missing_files = [f for f in saved_files if not os.path.exists(f)]
+                if missing_files:
+                    raise IOError(f"Files missing after save: {', '.join(missing_files)}")
+                
             except Exception as e:
                 logger.error(f"Error saving files: {str(e)}")
                 # Clean up any saved files
