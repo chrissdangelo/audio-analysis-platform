@@ -10,26 +10,18 @@
 }
 
 .collapse-content {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease-out;
-    padding: 0 1rem;
+    display: none;
+    padding: 1rem;
 }
 
-.collapse-content.expanded {
-    max-height: 500px;
-    padding: 1rem;
+.collapse-content.show {
+    display: block;
 }
 
 .card-header .fa-chevron-down {
     transition: transform 0.3s;
 }
 
-.card-header.expanded .fa-chevron-down {
+.card-header.active .fa-chevron-down {
     transform: rotate(180deg);
-}
-
-/* Remove Bootstrap collapse styles */
-.collapse:not(.show) {
-    display: block !important;
 }

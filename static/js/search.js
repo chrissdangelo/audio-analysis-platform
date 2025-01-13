@@ -5,30 +5,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const themesList = document.getElementById('themesList');
     const searchResults = document.getElementById('searchResults');
 
-    // Initialize all sections as collapsed
-    document.querySelectorAll('.collapse-content').forEach(content => {
-        content.style.maxHeight = '0px';
-        content.classList.remove('expanded');
+    // Setup collapsible sections
+    document.querySelectorAll('.card-header.collapsible').forEach(header => {
+        header.addEventListener('click', function() {
+            const target = this.getAttribute('data-target');
+            const content = document.getElementById(target);
+            
+            // Toggle current section
+            this.classList.toggle('active');
+            content.classList.toggle('show');
+        });
     });
-
-    function toggleSection(id) {
-        const content = document.getElementById(id);
-        const header = content.previousElementSibling;
-        const icon = header.querySelector('.fa-chevron-down');
-
-        // Remove any bootstrap classes that might interfere
-        content.classList.remove('show', 'collapse', 'collapsing');
-        
-        if (content.classList.contains('expanded')) {
-            content.style.maxHeight = '0px';
-            content.classList.remove('expanded');
-            header.classList.remove('expanded');
-        } else {
-            content.style.maxHeight = content.scrollHeight + 'px';
-            content.classList.add('expanded');
-            header.classList.add('expanded');
-        }
-    }
 
     async function loadFilterOptions() {
         try {
@@ -133,6 +120,6 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
     }
 
-    window.toggleSection = toggleSection;
+    // Initialize
     loadFilterOptions();
 });
