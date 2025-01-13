@@ -53,6 +53,21 @@ def get_mime_type(filename):
     else:
         raise ValueError(f"Unsupported file type: {file_ext}")
 
+def reset_sequence():
+    """Resets the ID sequence for AudioAnalysis."""
+    try:
+        max_id = db.session.execute(text("""
+            SELECT COALESCE(MAX(id), 0) FROM audio_analysis;
+        """)).scalar()
+        db.session.execute(text(f"""
+            ALTER SEQUENCE audio_analysis_id_seq RESTART WITH {max_id + 1};
+        """))
+        db.session.commit()
+        logger.info("Successfully reset ID sequence")
+    except Exception as e:
+        logger.error(f"Error resetting ID sequence: {str(e)}")
+        db.session.rollback()
+
 def register_routes(app):
     @app.route('/')
     def index():
@@ -285,7 +300,7 @@ def register_routes(app):
             analysis = AudioAnalysis.query.get_or_404(analysis_id)
             db.session.delete(analysis)
             db.session.commit()
-            logger.info(f"Deleted analysis {analysis_id}")
+            reset_sequence()
             return jsonify({'message': 'Analysis deleted successfully'}), 200
         except Exception as e:
             logger.error(f"Error deleting analysis {analysis_id}: {str(e)}")
