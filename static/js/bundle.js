@@ -1,5 +1,8 @@
 document.addEventListener('DOMContentLoaded', function() {
     const bundleSuggestions = document.getElementById('bundleSuggestions');
+    const themesContainer = document.getElementById('themesContainer');
+    const charactersContainer = document.getElementById('charactersContainer');
+    const environmentsContainer = document.getElementById('environmentsContainer');
 
     async function findBundleOpportunities() {
         try {
@@ -18,26 +21,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            // Extract all unique themes, characters, and environments
+            const uniqueThemes = new Set();
+            const uniqueCharacters = new Set();
+            const uniqueEnvironments = new Set();
+
+            analyses.forEach(analysis => {
+                if (analysis.themes) analysis.themes.forEach(theme => uniqueThemes.add(theme));
+                if (analysis.speaking_characters) analysis.speaking_characters.forEach(char => uniqueCharacters.add(char));
+                if (analysis.environments) analysis.environments.forEach(env => uniqueEnvironments.add(env));
+            });
+
             // Group by themes with emotion context
             const themeGroups = groupByCommonality(analyses, 'themes', 'emotion_scores');
-
-            // Group by characters with interaction context
             const characterGroups = groupByCharacterInteractions(analyses);
-
-            // Group by emotional patterns
             const emotionGroups = groupByEmotions(analyses);
-
-            // Group by emotional arcs (stories that follow similar emotional progressions)
             const emotionalArcGroups = groupByEmotionalArcs(analyses);
-
-            // Group by environments with emotional context
             const environmentGroups = groupByCommonality(analyses, 'environments', 'emotion_scores');
-
-            // Group by character dynamics (recurring character relationships)
             const characterDynamicsGroups = groupByCharacterDynamics(analyses);
 
-            displayBundleSuggestions(themeGroups, characterGroups, emotionGroups, environmentGroups, emotionalArcGroups, characterDynamicsGroups);
+            // Update dropdowns
+            updateFilterDropdowns(Array.from(uniqueThemes), Array.from(uniqueCharacters), Array.from(uniqueEnvironments));
 
+            displayBundleSuggestions(themeGroups, characterGroups, emotionGroups, environmentGroups, emotionalArcGroups, characterDynamicsGroups);
         } catch (error) {
             console.error('Error finding bundle opportunities:', error);
             bundleSuggestions.innerHTML = `
@@ -48,6 +54,55 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>`;
         }
+    }
+
+    function updateFilterDropdowns(themes, characters, environments) {
+        // Update themes dropdown
+        themesContainer.innerHTML = themes.map(theme => `
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="${theme}" id="theme-${theme}">
+                <label class="form-check-label" for="theme-${theme}">${theme}</label>
+            </div>
+        `).join('');
+
+        // Update characters dropdown
+        charactersContainer.innerHTML = characters.map(char => `
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="${char}" id="char-${char}">
+                <label class="form-check-label" for="char-${char}">${char}</label>
+            </div>
+        `).join('');
+
+        // Update environments dropdown
+        environmentsContainer.innerHTML = environments.map(env => `
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="${env}" id="env-${env}">
+                <label class="form-check-label" for="env-${env}">${env}</label>
+            </div>
+        `).join('');
+
+        // Add event listeners for filtering
+        document.querySelectorAll('.form-check-input').forEach(checkbox => {
+            checkbox.addEventListener('change', filterBundles);
+        });
+    }
+
+    function filterBundles() {
+        const selectedThemes = Array.from(document.querySelectorAll('#themesContainer input:checked')).map(cb => cb.value);
+        const selectedCharacters = Array.from(document.querySelectorAll('#charactersContainer input:checked')).map(cb => cb.value);
+        const selectedEnvironments = Array.from(document.querySelectorAll('#environmentsContainer input:checked')).map(cb => cb.value);
+
+        document.querySelectorAll('.bundle-card').forEach(card => {
+            const themes = card.dataset.themes?.split(',') || [];
+            const characters = card.dataset.characters?.split(',') || [];
+            const environments = card.dataset.environments?.split(',') || [];
+
+            const themeMatch = selectedThemes.length === 0 || themes.some(t => selectedThemes.includes(t));
+            const characterMatch = selectedCharacters.length === 0 || characters.some(c => selectedCharacters.includes(c));
+            const environmentMatch = selectedEnvironments.length === 0 || environments.some(e => selectedEnvironments.includes(e));
+
+            card.style.display = (themeMatch && characterMatch && environmentMatch) ? 'block' : 'none';
+        });
     }
 
     function groupByEmotions(analyses) {
@@ -345,47 +400,30 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function displayBundleSuggestions(themeGroups, characterGroups, emotionGroups, environmentGroups, emotionalArcGroups, characterDynamicsGroups) {
-        let html = '';
+        let html = '<div class="row g-4">';
 
-        // Emotion-based bundles
+        // Emotional Journeys Section
         if (emotionGroups.length > 0) {
             html += createBundleSection('Emotional Journeys', emotionGroups, 'emotion');
         }
 
-        // Character Dynamics
+        // Character Dynamics Section
         if (characterDynamicsGroups.length > 0) {
-            html += createBundleSection('Character Spotlights', characterDynamicsGroups, 'character');
+            html += createBundleSection('Character Arcs', characterDynamicsGroups, 'character');
         }
 
-        // Character Interactions
-        if (characterGroups.length > 0) {
-            html += createBundleSection('Dynamic Duos', characterGroups, 'character');
-        }
-
-        // Emotional Arcs
-        if (emotionalArcGroups.length > 0) {
-            html += createBundleSection('Emotional Story Arcs', emotionalArcGroups, 'emotion');
-        }
-
-        // Theme-based bundles
+        // Theme-based Collections
         if (themeGroups.length > 0) {
-            html += createBundleSection('Theme-based Collections', themeGroups, 'theme');
+            html += createBundleSection('Theme Collections', themeGroups, 'theme');
         }
 
-        // Environment-based bundles
+        // Environment-based Collections
         if (environmentGroups.length > 0) {
-            html += createBundleSection('Magical Realms', environmentGroups, 'environment');
+            html += createBundleSection('Setting Collections', environmentGroups, 'environment');
         }
 
-        if (!html) {
-            html = '<div class="col-12"><div class="alert alert-info">No bundle opportunities found</div></div>';
-        }
-
+        html += '</div>';
         bundleSuggestions.innerHTML = html;
-
-        // Initialize tooltips
-        const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-        tooltips.forEach(tooltip => new bootstrap.Tooltip(tooltip));
     }
 
     function createBundleSection(title, groups, type) {
@@ -401,9 +439,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 group.items,
                 group.emotionalContext
             );
+            const themes = group.items.map(item => item.themes).flat().filter(Boolean).join(',');
+            const characters = group.items.map(item => item.speaking_characters).flat().filter(Boolean).join(',');
+            const environments = group.items.map(item => item.environments).flat().filter(Boolean).join(',');
 
             return `
-                    <div class="card mb-3">
+                    <div class="card mb-3 bundle-card" data-themes="${themes}" data-characters="${characters}" data-environments="${environments}">
                         <div class="card-header" role="button" data-bs-toggle="collapse"
                              data-bs-target="#bundle-${type}-${group.commonality.replace(/\s+/g, '-')}"
                              aria-expanded="false">
@@ -451,7 +492,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Load bundle opportunities when the bundle tab is shown
     const bundleTab = document.getElementById('bundle-tab');
-    bundleTab.addEventListener('shown.bs.tab', findBundleOpportunities);
+    if (bundleTab) {
+        bundleTab.addEventListener('shown.bs.tab', findBundleOpportunities);
+    }
 
 
     const searchForm = document.getElementById('searchForm');
