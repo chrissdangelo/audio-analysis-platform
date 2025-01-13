@@ -77,32 +77,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Update search function to be standalone
+    // Handle form submission and checkbox changes
     async function performSearch() {
-        const selectedCharacters = [...document.querySelectorAll('#characterCheckboxes input:checked')]
-            .map(input => input.value);
-        const selectedEnvironments = [...document.querySelectorAll('#environmentCheckboxes input:checked')]
-            .map(input => input.value);
-        const selectedThemes = [...document.querySelectorAll('#themesList input:checked')]
-            .map(input => input.value);
-
-        // Build query parameters
-        const params = new URLSearchParams();
-        if (selectedCharacters.length) params.append('characters', selectedCharacters.join(','));
-        if (selectedEnvironments.length) params.append('environments', selectedEnvironments.join(','));
-        if (selectedThemes.length) params.append('themes', selectedThemes.join(','));
-
-        try {
-            const response = await fetch(`/api/search?${params.toString()}`);
-            const results = await response.json();
-            displaySearchResults(results);
-        } catch (error) {
-            console.error('Error performing search:', error);
-        }
-    }
-
-    // Handle form submission
-    function performSearch() {
         if (!searchForm) return;
 
             // Get selected values
