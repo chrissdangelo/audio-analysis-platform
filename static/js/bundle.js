@@ -390,10 +390,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function createBundleSection(title, groups, type) {
         const maxTitles = parseInt(document.getElementById('maxTitles').value) || 5;
+        const limitedGroups = groups.slice(0, maxTitles);
         return `
             <div class="col-12 mb-4">
                 <h6 class="mb-3">${title}</h6>
-                ${groups.slice(0, maxTitles).map(group => {
+                ${limitedGroups.map(group => {
                     const bundleTitle = generateBundleTitle(type, group.commonality, group.emotionalContext);
                     const elevatorPitch = generateElevatorPitch(
                         type, 
