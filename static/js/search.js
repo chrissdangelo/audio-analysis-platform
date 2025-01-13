@@ -39,13 +39,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
-            // Populate checkboxes
+            // Count occurrences
+            const characterCounts = new Map();
+            const environmentCounts = new Map();
+            const themeCounts = new Map();
+
+            analyses.forEach(analysis => {
+                if (analysis.speaking_characters) {
+                    analysis.speaking_characters.forEach(char => {
+                        characterCounts.set(char, (characterCounts.get(char) || 0) + 1);
+                    });
+                }
+                if (analysis.environments) {
+                    analysis.environments.forEach(env => {
+                        environmentCounts.set(env, (environmentCounts.get(env) || 0) + 1);
+                    });
+                }
+                if (analysis.themes) {
+                    analysis.themes.forEach(theme => {
+                        themeCounts.set(theme, (themeCounts.get(theme) || 0) + 1);
+                    });
+                }
+            });
+
+            // Populate checkboxes with counts
             characterCheckboxes.innerHTML = Array.from(characters)
                 .sort()
                 .map(char => `
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" value="${char}" id="char-${char}">
-                        <label class="form-check-label" for="char-${char}">${char}</label>
+                        <label class="form-check-label" for="char-${char}">${char} (${characterCounts.get(char) || 0})</label>
                     </div>
                 `).join('');
 
@@ -54,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .map(env => `
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" value="${env}" id="env-${env}">
-                        <label class="form-check-label" for="env-${env}">${env}</label>
+                        <label class="form-check-label" for="env-${env}">${env} (${environmentCounts.get(env) || 0})</label>
                     </div>
                 `).join('');
 
@@ -63,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .map(theme => `
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" value="${theme}" id="theme-${theme}">
-                        <label class="form-check-label" for="theme-${theme}">${theme}</label>
+                        <label class="form-check-label" for="theme-${theme}">${theme} (${themeCounts.get(theme) || 0})</label>
                     </div>
                 `).join('');
 
