@@ -21,7 +21,7 @@
     <button id="playBtn" class="btn btn-secondary"><i class="bi bi-play-fill"></i></button>
 
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    $(document).ready(function() {
         const uploadForm = document.getElementById('uploadForm');
         const uploadBtn = document.getElementById('uploadBtn');
         const spinner = uploadBtn.querySelector('.spinner-border');
@@ -102,23 +102,19 @@
         });
 
         // Initialize audio player only when elements exist
-        function initAudioPlayer() {
-            const playBtn = document.getElementById('playBtn');
-            const audio = document.getElementById('audioPlayer');
-            if (!playBtn || !audio) return;
-            playBtn.addEventListener('click', function() {
-                if (audio.paused) {
-                    audio.play();
-                    playBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
+        const audioPlayer = document.getElementById('audioPlayer');
+        const playBtn = document.getElementById('playBtn');
+        if (playBtn && audioPlayer) {
+            $(playBtn).on('click', function() {
+                if (audioPlayer.paused) {
+                    audioPlayer.play();
+                    $(this).html('<i class="bi bi-pause-fill"></i>');
                 } else {
-                    audio.pause();
-                    playBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
+                    audioPlayer.pause();
+                    $(this).html('<i class="bi bi-play-fill"></i>');
                 }
             });
         }
-
-        // Initialize controls when content is loaded
-        initAudioPlayer(); // Call the function directly here
     });
     </script>
 </body>
