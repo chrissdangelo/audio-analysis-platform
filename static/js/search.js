@@ -90,9 +90,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 `).join('');
 
-            // Add change event listeners to all checkboxes
+            // Add change event listeners to all checkboxes and search mode toggle
             document.querySelectorAll('.form-check-input').forEach(checkbox => {
-                checkbox.addEventListener('change', performSearch);
+                checkbox.addEventListener('change', (e) => {
+                    if (e.target.id === 'searchMode') {
+                        e.target.nextElementSibling.textContent = e.target.checked ? 'Has All' : 'Has One';
+                    }
+                    performSearch();
+                });
             });
 
         } catch (error) {
@@ -102,6 +107,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function performSearch() {
         try {
+            const searchMode = document.getElementById('searchMode');
             const selectedCharacters = [...document.querySelectorAll('#characterCheckboxes input:checked')]
                 .map(input => input.value);
             const selectedEnvironments = [...document.querySelectorAll('#environmentCheckboxes input:checked')]
@@ -113,6 +119,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (selectedCharacters.length) params.append('characters', selectedCharacters.join(','));
             if (selectedEnvironments.length) params.append('environments', selectedEnvironments.join(','));
             if (selectedThemes.length) params.append('themes', selectedThemes.join(','));
+            params.append('mode', searchMode.checked ? 'all' : 'any');
 
             const response = await fetch(`/api/search?${params.toString()}`);
             const results = await response.json();
