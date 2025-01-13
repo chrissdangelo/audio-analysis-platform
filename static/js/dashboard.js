@@ -1,141 +1,110 @@
 document.addEventListener('DOMContentLoaded', function() {
-    let dataTable = null;
+    // Initialize DataTable
+    const table = $('#analysisTable').DataTable({
+        destroy: true,
+        ordering: true,
+        info: false,
+        columns: [
+            null, // ID
+            null, // Title
+            null, // Filename
+            null, // Type
+            null, // Format
+            null, // Duration
+            null, // Environments
+            null, // Characters
+            null, // Speaking
+            null, // Underscore
+            null, // SFX
+            null, // Songs
+            null, // Themes
+            { orderable: false } // Actions
+        ],
+        order: [[0, 'desc']] // Sort by first column (ID) by default
+    });
 
-    function initializeDataTable() {
-        if ($.fn.DataTable.isDataTable('#analysisTable')) {
-            $('#analysisTable').DataTable().destroy();
-        }
-
-        // Basic configuration with sorting enabled
-        dataTable = $('#analysisTable').DataTable({
-            ordering: true,  // Enable sorting
-            processing: true,
-            data: [], // Will be populated by updateDashboard
-            columns: [
-                { title: "ID", data: null, render: function(data) { return data[0]; } },
-                { title: "Title", data: null, render: function(data) { return data[1]; } },
-                { title: "Filename", data: null, render: function(data) { return data[2]; } },
-                { title: "Type", data: null, render: function(data) { return data[3]; } },
-                { title: "Format", data: null, render: function(data) { return data[4]; } },
-                { title: "Duration", data: null, render: function(data) { return data[5]; } },
-                { title: "Environments", data: null, render: function(data) { return data[6]; } },
-                { title: "Characters", data: null, render: function(data) { return data[7]; } },
-                { title: "Speaking", data: null, render: function(data) { return data[8]; } },
-                { title: "Underscore", data: null, render: function(data) { return data[9]; } },
-                { title: "SFX", data: null, render: function(data) { return data[10]; } },
-                { title: "Songs", data: null, render: function(data) { return data[11]; } },
-                { title: "Themes", data: null, render: function(data) { return data[12]; } },
-                { 
-                    title: "Actions",
-                    data: null,
-                    orderable: false,
-                    render: function(data) { return data[13]; }
-                }
-            ],
-            order: [[0, 'desc']] // Default sort by ID column descending
-        });
-
-        return dataTable;
-    }
-
-    function showError(message) {
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'alert alert-danger';
-        errorDiv.textContent = message;
-        const container = document.querySelector('.container');
-        if (container) {
-            const existingErrors = container.querySelectorAll('.alert-danger');
-            existingErrors.forEach(err => err.remove());
-            container.prepend(errorDiv);
-        }
-    }
-
-    async function updateDashboard() {
-        try {
-            const response = await fetch('/api/analyses');
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            if (!Array.isArray(data)) {
-                throw new Error('Expected array of analyses');
-            }
-
-            if (dataTable) {
-                // Clear and repopulate the table
-                dataTable.clear();
-                data.forEach(analysis => {
-                    dataTable.row.add([
-                        analysis.id,
-                        analysis.title || "Untitled",
-                        analysis.filename,
-                        analysis.file_type,
-                        analysis.format,
-                        analysis.duration,
-                        (analysis.environments || []).join(', ') || '-',
-                        (analysis.characters_mentioned || []).join(', ') || '-',
-                        (analysis.speaking_characters || []).join(', ') || '-',
-                        analysis.has_underscore ? "Yes" : "No",
-                        analysis.has_sound_effects ? "Yes" : "No",
-                        analysis.songs_count,
-                        (analysis.themes || []).join(', ') || '-',
-                        `<div class="btn-group" role="group">
-                            <a href="/debug_analysis/${analysis.id}" class="btn btn-sm btn-info" data-id="${analysis.id}">Info</a>
-                            <button class="btn btn-sm btn-danger delete-btn" data-id="${analysis.id}">Delete</button>
-                        </div>`
-                    ]);
+    // Handle delete button clicks
+    $('#analysisTable').on('click', '.delete-btn', async function(e) {
+        e.preventDefault();
+        const id = $(this).data('id');
+        if (confirm('Are you sure you want to delete this analysis?')) {
+            try {
+                const response = await fetch(`/api/analysis/${id}`, {
+                    method: 'DELETE'
                 });
-                dataTable.draw();
-            }
-        } catch (error) {
-            console.error('Error updating dashboard:', error);
-            showError(`Failed to update dashboard: ${error.message}`);
-        }
-    }
 
-    // Initialize table and set up event handlers
-    if (document.getElementById('analysisTable')) {
-        dataTable = initializeDataTable();
-        updateDashboard();
-
-        // Handle delete button clicks
-        $('#analysisTable').on('click', '.delete-btn', async function(e) {
-            e.preventDefault();
-            const id = $(this).data('id');
-            if (confirm('Are you sure you want to delete this analysis?')) {
-                try {
-                    const response = await fetch(`/api/analysis/${id}`, {
-                        method: 'DELETE'
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('Delete failed');
-                    }
-
-                    dataTable.row($(this).closest('tr')).remove().draw();
-                    document.dispatchEvent(new CustomEvent('analysisDeleted'));
-                } catch (error) {
-                    console.error('Error:', error);
-                    showError(`Failed to delete analysis: ${error.message}`);
+                if (!response.ok) {
+                    throw new Error('Delete failed');
                 }
-            }
-        });
-    }
 
-    // Handle tab switching
-    document.querySelector('#analysis-tab')?.addEventListener('shown.bs.tab', function() {
-        if (dataTable) {
-            dataTable.columns.adjust();
-            updateDashboard();
+                table.row($(this).closest('tr')).remove().draw();
+                document.dispatchEvent(new CustomEvent('analysisDeleted'));
+            } catch (error) {
+                console.error('Error:', error);
+                showError(`Failed to delete analysis: ${error.message}`);
+            }
         }
     });
 
-    // Set up event listeners for updates
-    document.addEventListener('analysisAdded', updateDashboard);
-    document.addEventListener('analysisDeleted', updateDashboard);
-    setInterval(updateDashboard, 30000);
+    // Refresh data periodically
+    setInterval(updateTable, 30000);
+
+    // Listen for custom events
+    document.addEventListener('analysisAdded', updateTable);
+    document.addEventListener('analysisDeleted', updateTable);
 });
+
+function showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'alert alert-danger';
+    errorDiv.textContent = message;
+    const container = document.querySelector('.container');
+    if (container) {
+        const existingErrors = container.querySelectorAll('.alert-danger');
+        existingErrors.forEach(err => err.remove());
+        container.prepend(errorDiv);
+    }
+}
+
+async function updateTable() {
+    try {
+        const response = await fetch('/api/analyses');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const table = $('#analysisTable').DataTable();
+
+        table.clear();
+        data.forEach(analysis => {
+            table.row.add([
+                analysis.id,
+                analysis.title || "Untitled",
+                analysis.filename,
+                analysis.file_type,
+                analysis.format,
+                analysis.duration,
+                (analysis.environments || []).join(', ') || '-',
+                (analysis.characters_mentioned || []).join(', ') || '-',
+                (analysis.speaking_characters || []).join(', ') || '-',
+                analysis.has_underscore ? "Yes" : "No",
+                analysis.has_sound_effects ? "Yes" : "No",
+                analysis.songs_count,
+                (analysis.themes || []).join(', ') || '-',
+                `<div class="btn-group" role="group">
+                    <a href="/debug_analysis/${analysis.id}" class="btn btn-sm btn-info">Info</a>
+                    <button class="btn btn-sm btn-danger delete-btn" data-id="${analysis.id}">Delete</button>
+                </div>`
+            ]);
+        });
+        table.draw();
+
+    } catch (error) {
+        console.error('Error updating table:', error);
+        showError(`Failed to update table: ${error.message}`);
+    }
+}
 
 function updateCharts(data) {
     try {
@@ -633,26 +602,21 @@ function initializeCharts() {
 }
 
 
-// Initialize components
-if (document.getElementById('analysisTable')) {
-    dataTable = initializeDataTable();
-}
-
 // Initialize charts after DataTable is ready.  This ensures the width is correctly calculated
 if (initializeCharts()){
-    updateDashboard();
+    updateTable();
 }
 
 // Handle tab switching
 document.querySelector('#analysis-tab')?.addEventListener('shown.bs.tab', function() {
-    if (dataTable) {
-        dataTable.columns.adjust();
-        updateDashboard();
+    if (table) {
+        table.columns.adjust();
+        updateTable();
     }
 });
 
 // Set up event listeners
-document.addEventListener('analysisAdded', updateDashboard);
-document.addEventListener('analysisDeleted', updateDashboard);
-setInterval(updateDashboard, 30000);
+document.addEventListener('analysisAdded', updateTable);
+document.addEventListener('analysisDeleted', updateTable);
+setInterval(updateTable, 30000);
 });

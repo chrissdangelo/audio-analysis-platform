@@ -4,14 +4,65 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Audio Analyzer</title>
+
+    <!-- Bootstrap and Icons -->
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+
+    <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <!-- DataTables CSS -->
+    <link href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+
+    <!-- DataTables JavaScript -->
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+
     <style>
-        /* DataTables Bootstrap 5 Dark Theme Overrides */
+        /* DataTables Dark Theme Overrides */
+        .dataTables_wrapper {
+            color: var(--bs-light);
+        }
+
+        table.dataTable thead th {
+            color: var(--bs-light);
+            background-color: var(--bs-dark);
+            cursor: pointer;
+        }
+
+        table.dataTable thead .sorting,
+        table.dataTable thead .sorting_asc,
+        table.dataTable thead .sorting_desc {
+            background-image: none;
+            position: relative;
+        }
+
+        table.dataTable thead .sorting:after,
+        table.dataTable thead .sorting_asc:after,
+        table.dataTable thead .sorting_desc:after {
+            position: absolute;
+            right: 8px;
+            font-family: "Bootstrap Icons";
+        }
+
+        table.dataTable thead .sorting:after {
+            content: "\F282";
+            opacity: 0.3;
+        }
+
+        table.dataTable thead .sorting_asc:after {
+            content: "\F282";
+            opacity: 1;
+        }
+
+        table.dataTable thead .sorting_desc:after {
+            content: "\F286";
+            opacity: 1;
+        }
+
+        /* Table styling */
         .table {
             color: var(--bs-light);
             background-color: var(--bs-dark);
@@ -22,27 +73,16 @@
             color: var(--bs-light);
         }
 
-        .table thead th {
-            background-color: var(--bs-dark);
-            color: var(--bs-light);
-            border-bottom-color: var(--bs-gray-700);
-        }
-
-        .dataTables_wrapper .dataTables_length,
-        .dataTables_wrapper .dataTables_filter,
-        .dataTables_wrapper .dataTables_info,
-        .dataTables_wrapper .dataTables_processing {
-            color: var(--bs-light);
-        }
-
+        /* Pagination styling */
         .dataTables_wrapper .dataTables_paginate .paginate_button {
             color: var(--bs-light) !important;
+            background: var(--bs-dark);
+            border: 1px solid var(--bs-gray-700);
         }
 
-        .dataTables_wrapper .dataTables_paginate .paginate_button.current,
-        .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
-            color: var(--bs-light) !important;
-            background: var(--bs-primary);
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+            color: white !important;
+            background: var(--bs-primary) !important;
             border-color: var(--bs-primary);
         }
 
@@ -93,54 +133,9 @@
         {% block content %}{% endblock %}
     </div>
 
-    <!-- Analysis Update Status Modal -->
-    <div class="modal fade" id="analysisUpdateModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Updating Analysis</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p id="analysisUpdateStatus">Updating missing summaries and emotion scores...</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
+    <!-- Bootstrap JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-    <script>
-        // Add event listener for the Update Analysis button
-        document.getElementById('updateAnalysisBtn').addEventListener('click', function() {
-            const modal = new bootstrap.Modal(document.getElementById('analysisUpdateModal'));
-            modal.show();
 
-            fetch('/api/update_missing_analysis', {
-                method: 'POST',
-            })
-            .then(response => response.json())
-            .then(data => {
-                const statusElement = document.getElementById('analysisUpdateStatus');
-                if (data.error) {
-                    statusElement.textContent = `Error: ${data.error}`;
-                    statusElement.classList.add('text-danger');
-                } else {
-                    statusElement.textContent = data.message;
-                    statusElement.classList.add('text-success');
-                    // Reload the page after 2 seconds to show updated content
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 2000);
-                }
-            })
-            .catch(error => {
-                const statusElement = document.getElementById('analysisUpdateStatus');
-                statusElement.textContent = `Error: ${error.message}`;
-                statusElement.classList.add('text-danger');
-            });
-        });
-    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>
