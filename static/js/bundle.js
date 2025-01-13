@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     commonality: emotion,
                     items: matchingAnalyses,
                     count: matchingAnalyses.length,
-                    averageScore: matchingAnalyses.reduce((acc, curr) => 
+                    averageScore: matchingAnalyses.reduce((acc, curr) =>
                         acc + (curr.emotion_scores?.[emotion] || 0), 0) / matchingAnalyses.length
                 });
             }
@@ -117,17 +117,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function groupByEmotionalArcs(analyses) {
         const arcPatterns = new Map();
-        
+
         analyses.forEach(analysis => {
             if (!analysis.emotion_scores) return;
-            
+
             const scores = analysis.emotion_scores;
             const dominantEmotions = Object.entries(scores)
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, 2)
                 .map(([emotion]) => emotion)
                 .join(' to ');
-                
+
             if (!arcPatterns.has(dominantEmotions)) {
                 arcPatterns.set(dominantEmotions, []);
             }
@@ -149,11 +149,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function groupByCharacterDynamics(analyses) {
         const dynamics = new Map();
-        
+
         analyses.forEach(analysis => {
             const characters = analysis.speaking_characters || [];
             const emotion = analysis.dominant_emotion;
-            
+
             characters.forEach(char => {
                 if (!dynamics.has(char)) {
                     dynamics.set(char, { stories: [], emotions: new Map() });
@@ -306,7 +306,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const dominantEmotion = Object.entries(emotions)
             .sort((a, b) => b[1] - a[1])[0]?.[0];
 
-        const emotionDescriptor = dominantEmotion ? 
+        const emotionDescriptor = dominantEmotion ?
             `${dominantEmotion}-filled` : 'enchanting';
 
         const pitches = {
@@ -340,7 +340,7 @@ document.addEventListener('DOMContentLoaded', function() {
             fear: '🌘',
             surprise: '🌟'
         };
-        return emotionalContext?.dominant ? 
+        return emotionalContext?.dominant ?
             (emojis[emotionalContext.dominant] || '✨') : '✨';
     }
 
@@ -393,18 +393,18 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="col-12 mb-4">
                 <h6 class="mb-3">${title}</h6>
                 ${groups.slice(0, 5).map(group => {
-                    const bundleTitle = generateBundleTitle(type, group.commonality, group.emotionalContext);
-                    const elevatorPitch = generateElevatorPitch(
-                        type, 
-                        group.commonality, 
-                        group.count, 
-                        group.items,
-                        group.emotionalContext
-                    );
+            const bundleTitle = generateBundleTitle(type, group.commonality, group.emotionalContext);
+            const elevatorPitch = generateElevatorPitch(
+                type,
+                group.commonality,
+                group.count,
+                group.items,
+                group.emotionalContext
+            );
 
-                    return `
+            return `
                     <div class="card mb-3">
-                        <div class="card-header" role="button" data-bs-toggle="collapse" 
+                        <div class="card-header" role="button" data-bs-toggle="collapse"
                              data-bs-target="#bundle-${type}-${group.commonality.replace(/\s+/g, '-')}"
                              aria-expanded="false">
                             <div class="d-flex justify-content-between align-items-center">
@@ -416,8 +416,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                             <p class="card-text text-muted mb-0 mt-2">${elevatorPitch}</p>
                             <div class="mt-2">
-                                ${group.emotionalContext ? 
-                                    `<span class="badge bg-info me-2">
+                                ${group.emotionalContext ?
+                    `<span class="badge bg-info me-2">
                                         Mood: ${group.emotionalContext.dominant}
                                     </span>` : ''}
                                 <span class="badge bg-secondary">
@@ -452,4 +452,109 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load bundle opportunities when the bundle tab is shown
     const bundleTab = document.getElementById('bundle-tab');
     bundleTab.addEventListener('shown.bs.tab', findBundleOpportunities);
+
+
+    const searchForm = document.getElementById('searchForm');
+    const searchResults = document.getElementById('searchResults');
+    const characterCheckboxes = document.getElementById('characterCheckboxes');
+    const environmentCheckboxes = document.getElementById('environmentCheckboxes');
+
+    // Populate checkboxes when the page loads
+    fetch('/api/analyses')
+        .then(response => response.json())
+        .then(data => {
+            const characters = new Set();
+            const environments = new Set();
+
+            data.forEach(analysis => {
+                if (analysis.speaking_characters) {
+                    analysis.speaking_characters.forEach(char => characters.add(char));
+                }
+                if (analysis.environments) {
+                    analysis.environments.forEach(env => environments.add(env));
+                }
+            });
+
+            characters.forEach(character => {
+                const div = document.createElement('div');
+                div.className = 'form-check form-check-inline';
+                div.innerHTML = `
+                    <input class="form-check-input" type="checkbox" name="characters" value="${character}" id="char-${character}">
+                    <label class="form-check-label" for="char-${character}">${character}</label>
+                `;
+                characterCheckboxes.appendChild(div);
+            });
+
+            environments.forEach(environment => {
+                const div = document.createElement('div');
+                div.className = 'form-check form-check-inline';
+                div.innerHTML = `
+                    <input class="form-check-input" type="checkbox" name="environments" value="${environment}" id="env-${environment}">
+                    <label class="form-check-label" for="env-${environment}">${environment}</label>
+                `;
+                environmentCheckboxes.appendChild(div);
+            });
+        })
+        .catch(error => console.error('Error fetching data:', error));
+
+    // Handle form submission
+    searchForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(searchForm);
+        const selectedCharacters = formData.getAll('characters');
+        const selectedEnvironments = formData.getAll('environments');
+
+        fetch('/api/analyses')
+            .then(response => response.json())
+            .then(data => {
+                const filteredResults = data.filter(analysis => {
+                    const characterMatch = selectedCharacters.length === 0 ||
+                        (analysis.speaking_characters &&
+                            selectedCharacters.some(char => analysis.speaking_characters.includes(char)));
+
+                    const environmentMatch = selectedEnvironments.length === 0 ||
+                        (analysis.environments &&
+                            selectedEnvironments.some(env => analysis.environments.includes(env)));
+
+                    return characterMatch && environmentMatch;
+                });
+
+                displayResults(filteredResults);
+            })
+            .catch(error => console.error('Error searching:', error));
+    });
+
+    function displayResults(results) {
+        if (results.length === 0) {
+            searchResults.innerHTML = '<div class="alert alert-info">No matches found</div>';
+            return;
+        }
+
+        const html = `
+            <div class="table-responsive">
+                <table class="table table-dark table-hover">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Characters</th>
+                            <th>Environments</th>
+                            <th>Themes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${results.map(result => `
+                            <tr>
+                                <td>${result.title || 'Untitled'}</td>
+                                <td>${(result.speaking_characters || []).join(', ') || 'None'}</td>
+                                <td>${(result.environments || []).join(', ') || 'None'}</td>
+                                <td>${(result.themes || []).join(', ') || 'None'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+        searchResults.innerHTML = html;
+    }
 });
