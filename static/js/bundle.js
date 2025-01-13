@@ -431,7 +431,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="collapse" id="bundle-${type}-${group.commonality.replace(/\s+/g, '-')}">
                             <div class="card-body">
                                 <div class="list-group list-group-flush">
-                                    ${group.items.map(item => `
+                                    ${limitedItems.items.map(item => `
                                         <div class="list-group-item">
                                             <div class="d-flex justify-content-between align-items-center">
                                                 <span>${item.title || 'Untitled'}</span>
