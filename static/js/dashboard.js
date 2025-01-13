@@ -1,26 +1,39 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize DataTable
     const table = $('#analysisTable').DataTable({
-        destroy: true,
-        ordering: true,
-        info: false,
+        colReorder: true,  // Enable column reordering
+        scrollX: true,     // Enable horizontal scrolling
+        autoWidth: false,  // Disable automatic column width calculation
         columns: [
-            null, // ID
-            null, // Title
-            null, // Filename
-            null, // Type
-            null, // Format
-            null, // Duration
-            null, // Environments
-            null, // Characters
-            null, // Speaking
-            null, // Underscore
-            null, // SFX
-            null, // Songs
-            null, // Themes
-            { orderable: false } // Actions
+            { width: '5%' },  // ID
+            { width: '10%' }, // Title
+            { width: '10%' }, // Filename
+            { width: '5%' },  // Type
+            { width: '5%' },  // Format
+            { width: '5%' },  // Duration
+            { width: '10%' }, // Environments
+            { width: '10%' }, // Characters
+            { width: '10%' }, // Speaking
+            { width: '5%' },  // Underscore
+            { width: '5%' },  // SFX
+            { width: '5%' },  // Songs
+            { width: '10%' }, // Themes
+            { width: '5%', orderable: false }  // Actions
         ],
-        order: [[0, 'desc']] // Sort by first column (ID) by default
+        order: [[0, 'desc']] // Default sort by ID column descending
+    });
+
+    // Make columns resizable
+    $('#analysisTable th').resizable({
+        handles: 'e',
+        minWidth: 50,
+        resize: function(e, ui) {
+            const th = $(this);
+            const index = th.index();
+            table.column(index).nodes().each(function(cell, i) {
+                $(cell).width(ui.size.width);
+            });
+        }
     });
 
     // Handle delete button clicks
@@ -46,12 +59,73 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Refresh data periodically
-    setInterval(updateTable, 30000);
+    // Function to show error messages
+    function showError(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'alert alert-danger';
+        errorDiv.textContent = message;
+        const container = document.querySelector('.container');
+        if (container) {
+            const existingErrors = container.querySelectorAll('.alert-danger');
+            existingErrors.forEach(err => err.remove());
+            container.prepend(errorDiv);
+        }
+    }
 
-    // Listen for custom events
+    // Function to update table data
+    async function updateTable() {
+        try {
+            const response = await fetch('/api/analyses');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            table.clear();
+            data.forEach(analysis => {
+                table.row.add([
+                    analysis.id,
+                    analysis.title || "Untitled",
+                    analysis.filename,
+                    analysis.file_type,
+                    analysis.format,
+                    analysis.duration,
+                    (analysis.environments || []).join(', ') || '-',
+                    (analysis.characters_mentioned || []).join(', ') || '-',
+                    (analysis.speaking_characters || []).join(', ') || '-',
+                    analysis.has_underscore ? "Yes" : "No",
+                    analysis.has_sound_effects ? "Yes" : "No",
+                    analysis.songs_count,
+                    (analysis.themes || []).join(', ') || '-',
+                    `<div class="btn-group" role="group">
+                        <a href="/debug_analysis/${analysis.id}" class="btn btn-sm btn-info">Info</a>
+                        <button class="btn btn-sm btn-danger delete-btn" data-id="${analysis.id}">Delete</button>
+                    </div>`
+                ]);
+            });
+            table.draw();
+
+        } catch (error) {
+            console.error('Error updating table:', error);
+            showError(`Failed to update table: ${error.message}`);
+        }
+    }
+
+    // Set up event listeners
     document.addEventListener('analysisAdded', updateTable);
     document.addEventListener('analysisDeleted', updateTable);
+
+    // Handle tab switching
+    document.querySelector('#analysis-tab')?.addEventListener('shown.bs.tab', function() {
+        table.columns.adjust();
+        updateTable();
+    });
+
+    // Initial table update
+    updateTable();
+
+    // Periodic refresh
+    setInterval(updateTable, 30000);
 });
 
 function showError(message) {
