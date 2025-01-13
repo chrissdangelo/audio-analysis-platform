@@ -148,7 +148,7 @@ class BatchUploadManager:
         return [
             filename for filename, status in 
             self.batch_status[batch_id]['files'].items()
-            if status['status'] == 'pending' and status['attempts'] < 3
+            if (status['status'] == 'pending' or 'timeout' in str(status.get('error', '')).lower()) and status['attempts'] < 3
         ]
 
     def get_batch_status(self, batch_id: str) -> dict:

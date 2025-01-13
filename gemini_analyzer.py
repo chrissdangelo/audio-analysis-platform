@@ -20,8 +20,13 @@ class GeminiAnalyzer:
             if not api_key:
                 raise ValueError("GEMINI_API_KEY environment variable is not set")
 
-            genai.configure(api_key=api_key)
-            logger.info("Configured Gemini API with provided key")
+            # Configure with increased timeout
+            genai.configure(
+                api_key=api_key,
+                transport="rest",
+                timeout=300  # 5 minute timeout
+            )
+            logger.info("Configured Gemini API with provided key and timeout settings")
 
             # Create the model with specific configuration
             self.generation_config = {
