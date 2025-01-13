@@ -1,7 +1,5 @@
 
 document.addEventListener('DOMContentLoaded', function() {
-    let bundles = [];
-
     async function findBundleOpportunities() {
         try {
             const response = await fetch('/api/bundles');
@@ -36,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <button class="btn btn-primary" onclick="toggleBundleDetails(${index})">
                                 View Details
                             </button>
-                            <button class="btn btn-secondary download-pitch" onclick="downloadBundlePitch(${index})">
+                            <button class="btn btn-secondary" onclick="downloadBundlePitch(${index})">
                                 Download Bundle Pitch
                             </button>
                         </div>
