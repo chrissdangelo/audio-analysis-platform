@@ -7,60 +7,50 @@ document.addEventListener('DOMContentLoaded', function() {
             $('#analysisTable').DataTable().destroy();
         }
 
-        // Initialize DataTable with minimal configuration
+        // Initialize DataTable with basic sorting enabled
         dataTable = $('#analysisTable').DataTable({
-            scrollX: true,
-            pageLength: 10,
-            lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "All"]],
+            order: [[0, 'desc']], // Default sort by ID descending
             columnDefs: [{
                 targets: -1, // Last column (actions)
-                orderable: false,
-                width: '120px'
-            }],
-            drawCallback: function() {
-                // Handle button clicks
-                $('#analysisTable .btn-info').off('click').on('click', function(e) {
-                    e.preventDefault();
-                    const id = $(this).data('id');
-                    window.location.href = `/debug_analysis/${id}`;
-                });
-
-                $('#analysisTable .delete-btn').off('click').on('click', async function(e) {
-                    e.preventDefault();
-                    const id = $(this).data('id');
-                    if (confirm('Are you sure you want to delete this analysis?')) {
-                        try {
-                            const response = await fetch(`/api/analysis/${id}`, {
-                                method: 'DELETE'
-                            });
-
-                            if (!response.ok) {
-                                throw new Error('Delete failed');
-                            }
-
-                            dataTable.row($(this).closest('tr')).remove().draw();
-                            document.dispatchEvent(new CustomEvent('analysisDeleted'));
-                        } catch (error) {
-                            console.error('Error:', error);
-                            showError(`Failed to delete analysis: ${error.message}`);
-                        }
-                    }
-                });
-            }
+                orderable: false // Disable sorting on actions column
+            }]
         });
 
         return dataTable;
     }
 
+    // Handle delete button clicks
+    $('#analysisTable').on('click', '.delete-btn', async function(e) {
+        e.preventDefault();
+        const id = $(this).data('id');
+        if (confirm('Are you sure you want to delete this analysis?')) {
+            try {
+                const response = await fetch(`/api/analysis/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Delete failed');
+                }
+
+                dataTable.row($(this).closest('tr')).remove().draw();
+                document.dispatchEvent(new CustomEvent('analysisDeleted'));
+            } catch (error) {
+                console.error('Error:', error);
+                showError(`Failed to delete analysis: ${error.message}`);
+            }
+        }
+    });
+
     function showError(message) {
         const errorDiv = document.createElement('div');
         errorDiv.className = 'alert alert-danger';
         errorDiv.textContent = message;
-        const analysisTab = document.querySelector('#analysis');
-        if (analysisTab) {
-            const existingErrors = analysisTab.querySelectorAll('.alert-danger');
+        const container = document.querySelector('.container');
+        if (container) {
+            const existingErrors = container.querySelectorAll('.alert-danger');
             existingErrors.forEach(err => err.remove());
-            analysisTab.prepend(errorDiv);
+            container.prepend(errorDiv);
         }
     }
 
@@ -107,6 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+
     // Initialize DataTable when DOM is ready
     if (document.getElementById('analysisTable')) {
         dataTable = initializeDataTable();
@@ -121,9 +112,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Set up event listeners
-    document.addEventListener('analysisAdded', updateDashboard);
-    document.addEventListener('analysisDeleted', updateDashboard);
+    // Set up event listeners for table updates
+    document.addEventListener('analysisAdded', function() {
+        if (dataTable) {
+            dataTable.ajax.reload();
+        }
+    });
+
+    document.addEventListener('analysisDeleted', function() {
+        if (dataTable) {
+            dataTable.ajax.reload();
+        }
+    });
+    setInterval(updateDashboard, 30000);
 });
 
 function updateCharts(data) {
