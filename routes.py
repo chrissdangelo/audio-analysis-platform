@@ -57,7 +57,7 @@ def reset_sequence():
     """Resets the ID sequence for AudioAnalysis."""
     try:
         max_id = db.session.execute(text("""
-            SELECT COALESCE(MAX(id), 0) FROM audio_analysis;
+            SELECT COALESCE(MAX(id), 0) FROM audio_analyses;
         """)).scalar()
         db.session.execute(text(f"""
             ALTER SEQUENCE audio_analysis_id_seq RESTART WITH {max_id + 1};
@@ -570,12 +570,12 @@ def register_routes(app):
                 CREATE TEMPORARY TABLE id_mapping AS
                 SELECT id as old_id,
                        ROW_NUMBER() OVER (ORDER BY created_at, id) as new_id
-                FROM audio_analysis;
+                FROM audio_analyses;
             """))
 
             # Update the IDs using the mapping
             db.session.execute(text("""
-                UPDATE audio_analysis a
+                UPDATE audio_analyses a
                 SET id = m.new_id
                 FROM id_mapping m
                 WHERE a.id = m.old_id;
