@@ -735,13 +735,25 @@ def register_routes(app):
                     # Save batch status after each file
                     batch_manager.save_batch_status(batch_id)
 
-            # Clean up files only after all processing is complete
+            # Schedule cleanup after 30 minutes
+            from datetime import datetime, timedelta
+            cleanup_time = datetime.now() + timedelta(minutes=30)
+
+            while datetime.now() < cleanup_time:
+                # Keep checking if files are still needed
+                if any(f for f in pending_files if os.path.exists(os.path.join(app.config['UPLOAD_FOLDER'], f))):
+                    import time
+                    time.sleep(60)  # Check every minute
+                else:
+                    break
+
+            # Clean up files after delay
             for filename in pending_files:
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 if os.path.exists(filepath):
                     try:
                         os.remove(filepath)
-                        logger.info(f"Cleaned up file {filepath}")
+                        logger.info(f"Cleaned up file {filepath} after 30-minute delay")
                     except Exception as e:
                         logger.error(f"Error cleaning up file {filepath}: {str(e)}")
 
