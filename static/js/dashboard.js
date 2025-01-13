@@ -10,41 +10,59 @@ document.addEventListener('DOMContentLoaded', function() {
         }],
         order: [[0, 'desc']], // Default sort by ID column descending
         initComplete: function() {
-            // Add resizable functionality to all columns except the last one (Actions)
-            this.api().columns().every(function(index) {
-                if (index < this.api().columns().nodes().length - 1) { // Skip last column
-                    const column = this;
-                    const header = $(column.header());
+            const headerCells = $('#analysisTable thead th').not(':last'); // Skip Actions column
 
-                    // Make header resizable
-                    header.css('position', 'relative').resizable({
-                        handles: 'e',
-                        minWidth: 50,
-                        resize: function(e, ui) {
-                            const columnIndex = header.index();
-                            // Update column width
-                            table.column(columnIndex).nodes().each(function(cell, i) {
-                                $(cell).css('width', ui.size.width + 'px');
-                            });
+            // Add resize handles to each header cell
+            headerCells.each(function() {
+                const resizer = document.createElement('div');
+                resizer.className = 'resizer';
+                this.appendChild(resizer);
+            });
 
-                            // Update header width
-                            $(table.column(columnIndex).header()).css('width', ui.size.width + 'px');
+            // Initialize column resizing
+            let currentResizer;
+            let startX, startWidth;
 
-                            // Save column width
-                            localStorage.setItem(`column_${columnIndex}_width`, ui.size.width);
-                        }
-                    });
+            headerCells.on('mousedown', '.resizer', function(e) {
+                currentResizer = e.target;
+                const headerCell = currentResizer.parentElement;
+                startX = e.pageX;
+                startWidth = headerCell.offsetWidth;
 
-                    // Restore saved width if any
-                    const savedWidth = localStorage.getItem(`column_${index}_width`);
-                    if (savedWidth) {
-                        header.css('width', savedWidth + 'px');
-                        table.column(index).nodes().each(function(cell) {
-                            $(cell).css('width', savedWidth + 'px');
+                $(currentResizer).addClass('resizing');
+
+                // Add event listeners for mousemove and mouseup
+                document.addEventListener('mousemove', resize);
+                document.addEventListener('mouseup', stopResize);
+
+                // Prevent text selection while resizing
+                e.preventDefault();
+            });
+
+            function resize(e) {
+                if (currentResizer) {
+                    const headerCell = currentResizer.parentElement;
+                    const columnIndex = $(headerCell).index();
+                    const width = startWidth + (e.pageX - startX);
+
+                    // Update column width
+                    if (width >= 50) { // Minimum width
+                        $(headerCell).width(width);
+                        table.column(columnIndex).nodes().each(function(cell) {
+                            $(cell).width(width);
                         });
                     }
                 }
-            });
+            }
+
+            function stopResize() {
+                if (currentResizer) {
+                    $(currentResizer).removeClass('resizing');
+                    document.removeEventListener('mousemove', resize);
+                    document.removeEventListener('mouseup', stopResize);
+                    currentResizer = null;
+                }
+            }
         }
     });
 

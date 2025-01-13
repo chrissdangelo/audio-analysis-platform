@@ -18,32 +18,37 @@
     <link href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
 
+    <!-- DataTables JavaScript -->
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+
     <style>
-        /* Resize handle styling */
-        .ui-resizable-handle {
-            position: absolute;
-            right: -5px;
-            top: 0;
-            height: 100%;
-            width: 10px;
-            background-color: rgba(var(--bs-primary-rgb), 0.3);
-            cursor: col-resize !important;
-            transition: background-color 0.2s;
-        }
-
-        .ui-resizable-handle:hover {
-            background-color: rgba(var(--bs-primary-rgb), 0.8);
-        }
-
-        /* Table styling */
+        /* Table header and resize handle styling */
         .table th {
             position: relative;
             background-color: var(--bs-dark);
             color: var(--bs-light);
-            user-select: none;
-            padding-right: 15px !important;
+            padding-right: 20px !important;
         }
 
+        .resizer {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 5px;
+            cursor: col-resize;
+            user-select: none;
+            height: 100%;
+            background-color: rgba(var(--bs-primary-rgb), 0.3);
+            transition: background-color 0.2s;
+        }
+
+        .resizer:hover,
+        .resizer.resizing {
+            background-color: var(--bs-primary);
+        }
+
+        /* Table styling */
         .table {
             color: var(--bs-light);
             background-color: var(--bs-dark);
