@@ -649,25 +649,73 @@ function generateContentSummary(data) {
     // Collect all unique themes and characters
     const themes = new Set();
     const characters = new Set();
+    const characterAppearances = {};
+    const themeOccurrences = {};
+    const emotionPatterns = [];
+    
     data.forEach(item => {
         if (Array.isArray(item.themes)) {
-            item.themes.forEach(theme => themes.add(theme));
+            item.themes.forEach(theme => {
+                themes.add(theme);
+                themeOccurrences[theme] = (themeOccurrences[theme] || 0) + 1;
+            });
         }
         if (Array.isArray(item.characters_mentioned)) {
-            item.characters_mentioned.forEach(char => characters.add(char));
+            item.characters_mentioned.forEach(char => {
+                characters.add(char);
+                characterAppearances[char] = (characterAppearances[char] || 0) + 1;
+            });
+        }
+        if (item.emotion_scores) {
+            emotionPatterns.push(item.emotion_scores);
         }
     });
 
     // Calculate average confidence score
     const avgConfidence = data.reduce((sum, item) => sum + (item.confidence_score || 0), 0) / totalItems;
 
+    // Find most common themes and characters
+    const topThemes = Object.entries(themeOccurrences)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([theme, count]) => `${theme} (${count} times)`);
+
+    const topCharacters = Object.entries(characterAppearances)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([char, count]) => `${char} (${count} appearances)`);
+
+    // Calculate dominant emotions across corpus
+    const avgEmotions = emotionPatterns.reduce((acc, emotions) => {
+        Object.entries(emotions).forEach(([emotion, score]) => {
+            acc[emotion] = (acc[emotion] || 0) + score;
+        });
+        return acc;
+    }, {});
+
+    Object.keys(avgEmotions).forEach(key => {
+        avgEmotions[key] /= emotionPatterns.length;
+    });
+
+    const dominantEmotion = Object.entries(avgEmotions)
+        .sort((a, b) => b[1] - a[1])[0][0];
+
     // Generate summary text
-    return `This corpus contains ${totalItems} analyzed pieces of content. ` +
-           `The content is primarily ${Object.entries(formats).map(([k,v]) => `${v} ${k}`).join(' and ')}. ` +
-           `${audioStats.withNarration} pieces contain narration, ${audioStats.withMusic} have background music, ` +
-           `and ${audioStats.withSoundEffects} include sound effects. There are ${audioStats.totalSongs} total songs across all content. ` +
-           `The collection features ${characters.size} unique characters and explores ${themes.size} distinct themes. ` +
-           `Analysis confidence averages ${(avgConfidence * 100).toFixed(1)}%.`;
+    const basicSummary = `This corpus contains ${totalItems} analyzed pieces of content. ` +
+        `The content is primarily ${Object.entries(formats).map(([k,v]) => `${v} ${k}`).join(' and ')}. ` +
+        `${audioStats.withNarration} pieces contain narration, ${audioStats.withMusic} have background music, ` +
+        `and ${audioStats.withSoundEffects} include sound effects. There are ${audioStats.totalSongs} total songs across all content. ` +
+        `The collection features ${characters.size} unique characters and explores ${themes.size} distinct themes. ` +
+        `Analysis confidence averages ${(avgConfidence * 100).toFixed(1)}%.`;
+
+    const aiInsights = `\n\nAI Analysis Insights: The most prominent themes are ${topThemes.join(', ')}, ` +
+        `while the most frequently appearing characters are ${topCharacters.join(', ')}. ` +
+        `The emotional landscape is predominantly ${dominantEmotion}, suggesting a consistent tone across the corpus. ` +
+        `${characters.size > 10 ? 'The large character ensemble suggests a rich, interconnected narrative universe. ' : ''}` +
+        `${audioStats.withMusic / totalItems > 0.7 ? 'The high prevalence of background music indicates strong emphasis on mood and atmosphere. ' : ''}` +
+        `${themes.size > 5 ? 'The diverse range of themes suggests content designed to engage with multiple aspects of the audience\'s interests.' : ''}`;
+
+    return basicSummary + aiInsights;
 }
 
 function updateCharts(data) {
