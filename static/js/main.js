@@ -101,25 +101,24 @@
             }
         });
 
-        // Only initialize audio player if needed
-        function initializeAudioControls() {
+        // Initialize audio player only when elements exist
+        function initAudioPlayer() {
             const playBtn = document.getElementById('playBtn');
             const audio = document.getElementById('audioPlayer');
-            if (playBtn && audio) {
-                playBtn.addEventListener('click', function() {
-                    if (audio.paused) {
-                        audio.play();
-                        playBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
-                    } else {
-                        audio.pause();
-                        playBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
-                    }
-                });
-            }
+            if (!playBtn || !audio) return;
+            playBtn.addEventListener('click', function() {
+                if (audio.paused) {
+                    audio.play();
+                    playBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
+                } else {
+                    audio.pause();
+                    playBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
+                }
+            });
         }
 
         // Initialize controls when content is loaded
-        initializeAudioControls(); // Call the function directly here
+        initAudioPlayer(); // Call the function directly here
     });
     </script>
 </body>
