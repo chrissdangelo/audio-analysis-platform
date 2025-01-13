@@ -1,19 +1,26 @@
-
 document.addEventListener('DOMContentLoaded', function() {
     const characterCheckboxes = document.getElementById('characterCheckboxes');
     const environmentCheckboxes = document.getElementById('environmentCheckboxes');
     const themesList = document.getElementById('themesList');
     const searchResults = document.getElementById('searchResults');
 
-    // Setup collapsible sections
-    document.querySelectorAll('.card-header.collapsible').forEach(header => {
-        header.addEventListener('click', function() {
-            const target = this.getAttribute('data-target');
-            const content = document.getElementById(target);
-            
-            // Toggle current section
-            this.classList.toggle('active');
-            content.classList.toggle('show');
+    // Initialize collapse functionality
+    document.querySelectorAll('.collapsible').forEach(header => {
+        header.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('data-target');
+            const content = document.getElementById(targetId);
+
+            // Toggle the collapse state
+            if (content.classList.contains('show')) {
+                content.classList.remove('show');
+                this.querySelector('i').classList.remove('fa-chevron-up');
+                this.querySelector('i').classList.add('fa-chevron-down');
+            } else {
+                content.classList.add('show');
+                this.querySelector('i').classList.remove('fa-chevron-down');
+                this.querySelector('i').classList.add('fa-chevron-up');
+            }
         });
     });
 

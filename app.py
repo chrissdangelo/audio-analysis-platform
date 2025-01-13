@@ -2,7 +2,7 @@ import os
 import logging
 from flask import Flask
 from flask_migrate import Migrate
-from database import db
+from database import db, init_db
 
 # Configure logging
 logging.basicConfig(
@@ -41,19 +41,11 @@ def create_app():
 
         # Initialize database
         logger.info("Initializing database...")
-        db.init_app(app)
+        init_db(app)
         migrate = Migrate(app, db)
         logger.info("Initialized database and migrations")
 
         with app.app_context():
-            # Import models here to ensure they're registered with SQLAlchemy
-            from models import AudioAnalysis  # noqa: F401
-            logger.info("Imported models")
-
-            # Create tables if they don't exist
-            db.create_all()
-            logger.info("Created database tables")
-
             # Register routes after database initialization
             from routes import register_routes
             register_routes(app)
@@ -75,7 +67,7 @@ def create_app():
 try:
     app = create_app()
 except Exception as e:
-    logger.error(f"Failed to create application instance: {str(e)}", exc_info=True)
+    logger.error(f"Failed to create application instance: {str(e)}")
     raise
 
 if __name__ == '__main__':
@@ -84,5 +76,5 @@ if __name__ == '__main__':
         logger.info(f"Starting Flask server on port {port}...")
         app.run(host='0.0.0.0', port=port, debug=True)
     except Exception as e:
-        logger.error(f"Failed to start app: {str(e)}", exc_info=True)
+        logger.error(f"Failed to start app: {str(e)}")
         raise

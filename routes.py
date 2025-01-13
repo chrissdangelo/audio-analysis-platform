@@ -2,7 +2,7 @@ import os
 import json
 import logging
 from datetime import datetime
-from flask import request, jsonify, render_template, Response
+from flask import request, jsonify, render_template, Response, current_app
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
 from database import db
@@ -99,7 +99,7 @@ def register_routes(app):
 
             try:
                 filename = secure_filename(file.filename)
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
 
                 # Check for existing analysis
                 existing = AudioAnalysis.query.filter_by(filename=filename).first()
@@ -108,7 +108,7 @@ def register_routes(app):
                     return jsonify({'error': 'File has already been processed'}), 400
 
                 # Ensure upload directory exists
-                os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+                os.makedirs(current_app.config['UPLOAD_FOLDER'], exist_ok=True)
 
                 file.save(filepath)
                 logger.info(f"File saved successfully to {filepath}")
@@ -260,7 +260,7 @@ def register_routes(app):
                 }
             else:
                 criteria = request.get_json()
-            
+
             logger.debug(f"Search criteria received: {criteria}")
 
             # Start with all analyses
@@ -326,6 +326,27 @@ def register_routes(app):
             logger.error(f"Error deleting analysis {analysis_id}: {str(e)}")
             return jsonify({'error': 'Error deleting analysis'}), 500
 
+    @app.route('/api/analysis/<int:analysis_id>/update_title', methods=['POST'])
+    def update_analysis_title(analysis_id):
+        """Update the title of an analysis."""
+        try:
+            data = request.get_json()
+            if not data or 'title' not in data:
+                return jsonify({'error': 'Title is required'}), 400
+
+            analysis = AudioAnalysis.query.get_or_404(analysis_id)
+            analysis.title = data['title']
+            db.session.commit()
+
+            return jsonify({
+                'message': 'Title updated successfully',
+                'title': analysis.title
+            }), 200
+        except Exception as e:
+            logger.error(f"Error updating title for analysis {analysis_id}: {str(e)}")
+            db.session.rollback()
+            return jsonify({'error': 'Error updating title'}), 500
+
     @app.route('/api/upload/batch', methods=['POST'])
     def upload_batch():
         try:
@@ -335,7 +356,7 @@ def register_routes(app):
                 return jsonify({'error': 'No files uploaded'}), 400
 
             # Create uploads directory if it doesn't exist
-            os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+            os.makedirs(current_app.config['UPLOAD_FOLDER'], exist_ok=True)
             os.makedirs('data', exist_ok=True)  # For batch status files
 
             # Filter out duplicates and check file sizes
@@ -390,19 +411,19 @@ def register_routes(app):
                     if file.filename and allowed_file(file.filename):
                         filename = secure_filename(file.filename)
                         if filename in filenames:  # Only save non-duplicate files
-                            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                            filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
                             file.save(filepath)
                             # Verify file was saved
                             if not os.path.exists(filepath):
                                 raise IOError(f"Failed to save file {filename}")
                             saved_files.append(filepath)
                             logger.info(f"Saved and verified file {filename} for batch {batch_id}")
-                
+
                 # Double check all files exist before starting batch
                 missing_files = [f for f in saved_files if not os.path.exists(f)]
                 if missing_files:
                     raise IOError(f"Files missing after save: {', '.join(missing_files)}")
-                
+
             except Exception as e:
                 logger.error(f"Error saving files: {str(e)}")
                 # Clean up any saved files
@@ -416,7 +437,7 @@ def register_routes(app):
 
             # Start processing in a separate thread
             from threading import Thread
-            thread = Thread(target=process_batch, args=(app, batch_id))
+            thread = Thread(target=process_batch, args=(current_app, batch_id))
             thread.daemon = True
             thread.start()
 
@@ -478,7 +499,7 @@ def register_routes(app):
 
         # Start processing in a separate thread
         from threading import Thread
-        thread = Thread(target=process_batch, args=(app, batch_id))
+        thread = Thread(target=process_batch, args=(current_app, batch_id))
         thread.daemon = True
         thread.start()
 
