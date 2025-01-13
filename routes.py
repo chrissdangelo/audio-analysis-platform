@@ -586,7 +586,7 @@ def register_routes(app):
                 SELECT COALESCE(MAX(id), 0) + 1 FROM audio_analysis;
             """)).scalar()
             db.session.execute(text(f"""
-                ALTER SEQUENCE audio_analysis_id_seq RESTART WITH {max_id};
+                ALTER SEQUENCE audio_analyses_id_seq RESTART WITH {max_id};
             """))
 
             db.session.commit()
