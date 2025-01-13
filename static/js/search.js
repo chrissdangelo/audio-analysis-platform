@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function normalizeTerms(items) {
         const normalized = new Map();
 
-        // Common variations to combine
+        // Common variations to combine (all in lowercase)
         const variations = {
             'mom': ['mum', 'mommy', 'mummy', 'mother'],
             'dad': ['daddy', 'father', 'papa'],
@@ -17,14 +17,25 @@ document.addEventListener('DOMContentLoaded', function() {
             'grandpa': ['grandfather', 'granddad', 'grandpapa'],
             'house': ['home', 'residence', 'dwelling'],
             'forest': ['woods', 'woodland', 'grove'],
-            'school': ['classroom', 'schoolhouse', 'academy']
+            'school': ['classroom', 'schoolhouse', 'academy'],
+            'garage': ['carport', 'car garage'],
+            'garden': ['backyard garden', 'vegetable garden'],
+            'kitchen': ['kitchenette', 'cooking area'],
+            'bedroom': ['bed room', 'sleeping room'],
+            'living room': ['livingroom', 'sitting room', 'family room'],
+            'bathroom': ['bath', 'restroom', 'washroom']
         };
+
+        // Create a Set to track processed terms
+        const processedTerms = new Set();
 
         items.forEach(item => {
             if (!item) return; // Skip null/undefined items
 
             let normalizedTerm = item.toLowerCase().trim();
-            if (!normalizedTerm) return; // Skip empty strings
+            if (!normalizedTerm || processedTerms.has(normalizedTerm)) return; // Skip empty strings and duplicates
+            
+            processedTerms.add(normalizedTerm);
 
             // Check if this term is a variation of another
             for (const [main, variants] of Object.entries(variations)) {
