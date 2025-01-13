@@ -723,16 +723,18 @@ def register_routes(app):
                             except Exception as e:
                                 logger.error(f"Error cleaning up analyzer: {str(e)}")
 
-                        # Only remove the file after successful processing or if it failed
-                        if os.path.exists(filepath):
-                            try:
-                                os.remove(filepath)
-                                logger.info(f"Cleaned up file {filepath}")
-                            except Exception as e:
-                                logger.error(f"Error cleaning up file {filepath}: {str(e)}")
-
                     # Save batch status after each file
                     batch_manager.save_batch_status(batch_id)
+
+            # Clean up files only after all processing is complete
+            for filename in pending_files:
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                if os.path.exists(filepath):
+                    try:
+                        os.remove(filepath)
+                        logger.info(f"Cleaned up file {filepath}")
+                    except Exception as e:
+                        logger.error(f"Error cleaning up file {filepath}: {str(e)}")
 
             logger.info(f"Completed batch processing for batch {batch_id}")
 
