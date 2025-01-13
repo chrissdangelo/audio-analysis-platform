@@ -73,6 +73,10 @@ document.addEventListener('DOMContentLoaded', function() {
             'Fantasy & Magical': {
                 items: ['castle', 'magical forest', 'enchanted garden', 'fairy kingdom'],
                 pattern: /(castle|magical|enchanted|fairy|kingdom|realm|mystical)/i
+            },
+            'Holidays & Celebrations': {
+                items: ['christmas', 'birthday', 'halloween', 'thanksgiving', 'wedding', 'festival'],
+                pattern: /(christmas|birthday|halloween|thanksgiving|wedding|festival|holiday|celebration|party)/i
             }
         };
 
