@@ -117,17 +117,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function groupByEmotionalArcs(analyses) {
         const arcPatterns = new Map();
-        
+
         analyses.forEach(analysis => {
             if (!analysis.emotion_scores) return;
-            
+
             const scores = analysis.emotion_scores;
             const dominantEmotions = Object.entries(scores)
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, 2)
                 .map(([emotion]) => emotion)
                 .join(' to ');
-                
+
             if (!arcPatterns.has(dominantEmotions)) {
                 arcPatterns.set(dominantEmotions, []);
             }
@@ -149,11 +149,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function groupByCharacterDynamics(analyses) {
         const dynamics = new Map();
-        
+
         analyses.forEach(analysis => {
             const characters = analysis.speaking_characters || [];
             const emotion = analysis.dominant_emotion;
-            
+
             characters.forEach(char => {
                 if (!dynamics.has(char)) {
                     dynamics.set(char, { stories: [], emotions: new Map() });
@@ -205,12 +205,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
             return Array.from(groups.entries())
                 .filter(([_, items]) => items.length > 1)
-                .map(([key, items]) => ({
-                    commonality: key,
-                    items: items,
-                    count: items.length,
-                    emotionalContext: emotionField ? getEmotionalContext(items) : null
-                }))
+                .map(([key, items]) => {
+                    // Group by series (first part of filename before underscore)
+                    const seriesGroups = new Map();
+                    items.forEach(item => {
+                        const series = item.filename.split('_')[0];
+                        if (!seriesGroups.has(series)) {
+                            seriesGroups.set(series, []);
+                        }
+                        seriesGroups.get(series).push(item);
+                    });
+
+                    // Ensure diversity by taking max 2 items from each series
+                    let diverseItems = [];
+                    seriesGroups.forEach(seriesItems => {
+                        diverseItems.push(...seriesItems.slice(0, 2));
+                    });
+
+                    // Sort by confidence score if available
+                    diverseItems.sort((a, b) => (b.confidence_score || 0) - (a.confidence_score || 0));
+
+                    return {
+                        commonality: key,
+                        items: diverseItems,
+                        count: items.length,
+                        emotionalContext: emotionField ? getEmotionalContext(items) : null
+                    };
+                })
                 .sort((a, b) => b.count - a.count);
 
         } catch (error) {
@@ -455,7 +476,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load bundle opportunities when the bundle tab is shown
     const bundleTab = document.getElementById('bundle-tab');
     bundleTab.addEventListener('shown.bs.tab', findBundleOpportunities);
-    
+
     // Update bundles when max titles changes
     document.getElementById('maxTitles')?.addEventListener('change', findBundleOpportunities);
 });
