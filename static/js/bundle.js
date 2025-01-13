@@ -454,7 +454,7 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
     }
 
-    async function downloadBundlePitch(type, group) {
+    window.downloadBundlePitch = async function(type, group) {
         try {
             const response = await fetch('/api/bundle-pitch', {
                 method: 'POST',
@@ -464,11 +464,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify({ type, group })
             });
             
-            if (!response.ok) throw new Error('Failed to generate pitch');
+            if (!response.ok) {
+                const error = await response.text();
+                throw new Error(error || 'Failed to generate pitch');
+            }
             
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
+            a.style.display = 'none';
             a.href = url;
             a.download = `${group.commonality.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_bundle_pitch.pdf`;
             document.body.appendChild(a);
@@ -477,7 +481,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.removeChild(a);
         } catch (error) {
             console.error('Error downloading bundle pitch:', error);
-            alert('Failed to download bundle pitch');
+            alert('Failed to download bundle pitch: ' + error.message);
         }
     }
 
