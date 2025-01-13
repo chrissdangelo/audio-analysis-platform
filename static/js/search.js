@@ -64,6 +64,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             <label class="form-check-label" for="theme-${theme}">${theme}</label>
                         </div>
                     `).join('');
+
+                // Add change event listeners to all checkboxes
+                document.querySelectorAll('#characterCheckboxes input, #environmentCheckboxes input, #themesList input')
+                    .forEach(checkbox => {
+                        checkbox.addEventListener('change', performSearch);
+                    });
             }
 
         } catch (error) {
@@ -71,10 +77,33 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Update search function to be standalone
+    async function performSearch() {
+        const selectedCharacters = [...document.querySelectorAll('#characterCheckboxes input:checked')]
+            .map(input => input.value);
+        const selectedEnvironments = [...document.querySelectorAll('#environmentCheckboxes input:checked')]
+            .map(input => input.value);
+        const selectedThemes = [...document.querySelectorAll('#themesList input:checked')]
+            .map(input => input.value);
+
+        // Build query parameters
+        const params = new URLSearchParams();
+        if (selectedCharacters.length) params.append('characters', selectedCharacters.join(','));
+        if (selectedEnvironments.length) params.append('environments', selectedEnvironments.join(','));
+        if (selectedThemes.length) params.append('themes', selectedThemes.join(','));
+
+        try {
+            const response = await fetch(`/api/search?${params.toString()}`);
+            const results = await response.json();
+            displaySearchResults(results);
+        } catch (error) {
+            console.error('Error performing search:', error);
+        }
+    }
+
     // Handle form submission
-    if (searchForm) {
-        searchForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
+    function performSearch() {
+        if (!searchForm) return;
 
             // Get selected values
             const selectedCharacters = [...document.querySelectorAll('#characterCheckboxes input:checked')]

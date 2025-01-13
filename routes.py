@@ -251,7 +251,16 @@ def register_routes(app):
     @app.route('/api/search', methods=['GET', 'POST'])
     def search_content():
         try:
-            criteria = request.get_json()
+            # Handle both GET and POST methods
+            if request.method == 'GET':
+                criteria = {
+                    'themes': request.args.get('themes', '').split(',') if request.args.get('themes') else [],
+                    'characters': request.args.get('characters', '').split(',') if request.args.get('characters') else [],
+                    'environments': request.args.get('environments', '').split(',') if request.args.get('environments') else []
+                }
+            else:
+                criteria = request.get_json()
+            
             logger.debug(f"Search criteria received: {criteria}")
 
             # Start with all analyses
@@ -261,33 +270,39 @@ def register_routes(app):
             if criteria.get('themes'):
                 theme_conditions = []
                 for theme in criteria['themes']:
-                    # Add logging to debug the theme search
-                    logger.debug(f"Searching for theme: {theme}")
-                    # Search for the theme within the JSON array
-                    theme_conditions.append(
-                        AudioAnalysis.themes.cast(db.Text).like(f'%"{theme}"%')
-                    )
-                query = query.filter(db.or_(*theme_conditions))
+                    if theme:  # Skip empty strings
+                        theme = theme.lower()  # Case-insensitive search
+                        theme_conditions.append(
+                            db.func.lower(AudioAnalysis.themes).like(f'%"{theme}"%')
+                        )
+                if theme_conditions:
+                    query = query.filter(db.or_(*theme_conditions))
 
             # Apply character filters if provided
             if criteria.get('characters'):
                 char_conditions = []
                 for character in criteria['characters']:
-                    logger.debug(f"Searching for character: {character}")
-                    char_conditions.append(
-                        AudioAnalysis.characters_mentioned.cast(db.Text).like(f'%"{character}"%')
-                    )
-                query = query.filter(db.or_(*char_conditions))
+                    if character:  # Skip empty strings
+                        character = character.lower()  # Case-insensitive search
+                        logger.debug(f"Searching for character: {character}")
+                        char_conditions.append(
+                            db.func.lower(AudioAnalysis.characters_mentioned).like(f'%"{character}"%')
+                        )
+                if char_conditions:
+                    query = query.filter(db.or_(*char_conditions))
 
             # Apply environment filters if provided
             if criteria.get('environments'):
                 env_conditions = []
                 for environment in criteria['environments']:
-                    logger.debug(f"Searching for environment: {environment}")
-                    env_conditions.append(
-                        AudioAnalysis.environments.cast(db.Text).like(f'%"{environment}"%')
-                    )
-                query = query.filter(db.or_(*env_conditions))
+                    if environment:  # Skip empty strings
+                        environment = environment.lower()  # Case-insensitive search
+                        logger.debug(f"Searching for environment: {environment}")
+                        env_conditions.append(
+                            db.func.lower(AudioAnalysis.environments).like(f'%"{environment}"%')
+                        )
+                if env_conditions:
+                    query = query.filter(db.or_(*env_conditions))
 
             # Execute query and convert results to dictionaries
             results = [analysis.to_dict() for analysis in query.all()]
