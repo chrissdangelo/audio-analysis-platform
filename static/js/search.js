@@ -216,23 +216,13 @@ document.addEventListener('DOMContentLoaded', function() {
             populateCategorizedCheckboxes(themeCheckboxes, categorizedThemes, 'theme');
             populateCategorizedCheckboxes(environmentCheckboxes, categorizedEnvironments, 'environment');
 
-            // For characters, we'll just use a simple list for now
-            const charactersList = Array.from(new Set(characters)).sort();
-            characterCheckboxes.innerHTML = `
-                <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex flex-wrap gap-2">
-                            ${charactersList.map(char => `
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="checkbox" 
-                                           id="character_${char}" name="character" value="${char}">
-                                    <label class="form-check-label" for="character_${char}">${char}</label>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                </div>
-            `;
+            // Create a single category for characters
+            const characterCategories = {
+                'Characters': new Set(characters)
+            };
+
+            // Use the same categorized checkbox format for characters
+            populateCategorizedCheckboxes(characterCheckboxes, characterCategories, 'character');
 
             // Initialize tooltips
             const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
