@@ -243,6 +243,10 @@ def register_routes(app):
             logger.error(f"Error fetching analysis debug: {str(e)}")
             return jsonify({'error': 'Error fetching analysis debug info'}), 500
 
+    @app.route('/search')
+    def search_page():
+        return render_template('search.html')
+
     @app.route('/api/search', methods=['POST'])
     def search_content():
         try:
