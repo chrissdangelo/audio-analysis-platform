@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize audio player if present
     const audioPlayer = document.getElementById('audioPlayer');
     const playBtn = document.getElementById('playBtn');
-    if (playBtn && audioPlayer) {
+    if (playBtn && audioPlayer && playBtn.addEventListener) {
         playBtn.addEventListener('click', function() {
             if (audioPlayer.paused) {
                 audioPlayer.play();
