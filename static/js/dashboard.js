@@ -1,10 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize DataTable with column management features
     const table = $('#analysisTable').DataTable({
-        colReorder: {
-            fixedColumnsLeft: 0,  // Allow all columns to be reordered
-            realtime: true        // Update column positions in real-time while dragging
-        },
         scrollX: true,     // Enable horizontal scrolling
         autoWidth: false,  // Disable automatic column width calculation
         columnDefs: [{
@@ -13,24 +9,40 @@ document.addEventListener('DOMContentLoaded', function() {
             width: '100px'
         }],
         order: [[0, 'desc']], // Default sort by ID column descending
-        drawCallback: function() {
-            // Re-initialize column resize handles after table redraw
-            this.api().columns().every(function() {
-                const column = this;
-                const header = $(column.header());
+        initComplete: function() {
+            // Add resizable functionality to all columns except the last one (Actions)
+            this.api().columns().every(function(index) {
+                if (index < this.api().columns().nodes().length - 1) { // Skip last column
+                    const column = this;
+                    const header = $(column.header());
 
-                // Only make resizable if not the actions column
-                if (!header.hasClass('no-resize')) {
-                    header.resizable({
+                    // Make header resizable
+                    header.css('position', 'relative').resizable({
                         handles: 'e',
                         minWidth: 50,
-                        resize: function(event, ui) {
+                        resize: function(e, ui) {
+                            const columnIndex = header.index();
                             // Update column width
-                            column.nodes().each(function(cell) {
-                                $(cell).css('width', ui.size.width);
+                            table.column(columnIndex).nodes().each(function(cell, i) {
+                                $(cell).css('width', ui.size.width + 'px');
                             });
+
+                            // Update header width
+                            $(table.column(columnIndex).header()).css('width', ui.size.width + 'px');
+
+                            // Save column width
+                            localStorage.setItem(`column_${columnIndex}_width`, ui.size.width);
                         }
                     });
+
+                    // Restore saved width if any
+                    const savedWidth = localStorage.getItem(`column_${index}_width`);
+                    if (savedWidth) {
+                        header.css('width', savedWidth + 'px');
+                        table.column(index).nodes().each(function(cell) {
+                            $(cell).css('width', savedWidth + 'px');
+                        });
+                    }
                 }
             });
         }
@@ -104,7 +116,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 ]);
             });
             table.draw();
-
         } catch (error) {
             console.error('Error updating table:', error);
             showError(`Failed to update table: ${error.message}`);

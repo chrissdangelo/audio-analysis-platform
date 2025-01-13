@@ -17,55 +17,31 @@
     <!-- DataTables CSS -->
     <link href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
-    <link href="https://cdn.datatables.net/colreorder/1.5.4/css/colReorder.bootstrap5.min.css" rel="stylesheet">
-
-    <!-- DataTables JavaScript -->
-    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
-    <script src="https://cdn.datatables.net/colreorder/1.5.4/js/dataTables.colReorder.min.js"></script>
 
     <style>
-        /* Column resize handle styling */
-        .table th {
-            position: relative;
-            padding-right: 10px !important;
-        }
-
-        .table th::after {
-            content: '';
+        /* Resize handle styling */
+        .ui-resizable-handle {
             position: absolute;
-            right: 0;
-            top: 25%;
-            height: 50%;
-            width: 5px;
+            right: -5px;
+            top: 0;
+            height: 100%;
+            width: 10px;
             background-color: rgba(var(--bs-primary-rgb), 0.3);
-            cursor: col-resize;
+            cursor: col-resize !important;
             transition: background-color 0.2s;
         }
 
-        .table th:hover::after {
+        .ui-resizable-handle:hover {
             background-color: rgba(var(--bs-primary-rgb), 0.8);
         }
 
-        /* Column reorder styling */
+        /* Table styling */
         .table th {
-            cursor: move;
-            user-select: none;
+            position: relative;
             background-color: var(--bs-dark);
-            border-right: 1px solid rgba(var(--bs-primary-rgb), 0.2);
-        }
-
-        .table th.dt-colreorder-move {
-            background-color: rgba(var(--bs-primary-rgb), 0.2);
-        }
-
-        .table th.dt-colreorder-hover {
-            background-color: rgba(var(--bs-primary-rgb), 0.1);
-        }
-
-        /* DataTables styling */
-        .dataTables_wrapper {
             color: var(--bs-light);
+            user-select: none;
+            padding-right: 15px !important;
         }
 
         .table {
