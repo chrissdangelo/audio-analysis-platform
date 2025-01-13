@@ -389,10 +389,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function createBundleSection(title, groups, type) {
+        const maxTitles = parseInt(document.getElementById('maxTitles').value) || 5;
         return `
             <div class="col-12 mb-4">
                 <h6 class="mb-3">${title}</h6>
-                ${groups.slice(0, 5).map(group => {
+                ${groups.slice(0, maxTitles).map(group => {
                     const bundleTitle = generateBundleTitle(type, group.commonality, group.emotionalContext);
                     const elevatorPitch = generateElevatorPitch(
                         type, 
@@ -452,4 +453,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load bundle opportunities when the bundle tab is shown
     const bundleTab = document.getElementById('bundle-tab');
     bundleTab.addEventListener('shown.bs.tab', findBundleOpportunities);
+    
+    // Update bundles when max titles changes
+    document.getElementById('maxTitles')?.addEventListener('change', findBundleOpportunities);
 });

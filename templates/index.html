@@ -259,7 +259,19 @@
         <div class="tab-pane fade" id="bundle" role="tabpanel">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">Content Bundle Suggestions</h5>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="card-title mb-0">Content Bundle Suggestions</h5>
+                        <div class="d-flex align-items-center">
+                            <label for="maxTitles" class="me-2">Max titles per bundle:</label>
+                            <select id="maxTitles" class="form-select" style="width: auto;">
+                                <option value="3">3</option>
+                                <option value="5" selected>5</option>
+                                <option value="10">10</option>
+                                <option value="15">15</option>
+                                <option value="20">20</option>
+                            </select>
+                        </div>
+                    </div>
                     <div id="bundleSuggestions" class="row g-4">
                         <!-- Dynamically populated with bundle suggestions -->
                     </div>
