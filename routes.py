@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+from datetime import datetime
 from flask import request, jsonify, render_template, Response
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
@@ -471,12 +472,12 @@ def register_routes(app):
         try:
             analyses = AudioAnalysis.query.order_by(AudioAnalysis.created_at.desc()).all()
             output = "ID,Title,Filename,Format,Duration,Has Narration,Has Music,Has Sound Effects,Songs Count,Environments,Characters,Themes\n"
-            
+
             for analysis in analyses:
                 environments = "|".join(analysis._parse_list_field(analysis.environments))
                 characters = "|".join(analysis._parse_list_field(analysis.characters_mentioned))
                 themes = "|".join(analysis._parse_list_field(analysis.themes))
-                
+
                 row = f"{analysis.id},{analysis.title},{analysis.filename},{analysis.format},"
                 row += f"{analysis.duration},{analysis.has_narration},{analysis.has_underscore},"
                 row += f"{analysis.has_sound_effects},{analysis.songs_count},"
@@ -654,6 +655,9 @@ def register_routes(app):
                         logger.error(f"File not found before processing: {filepath}")
                         batch_manager.mark_file_failed(batch_id, filename, "File not found before processing")
                         batch_manager.save_batch_status(batch_id)
+                        # Mark batch as complete if all files are processed or failed
+                        if batch_manager._is_batch_complete(batch_id):
+                            batch_manager.batch_status[batch_id]['completed_at'] = datetime.now().isoformat()
                         continue
 
                     batch_manager.mark_file_started(batch_id, filename)
