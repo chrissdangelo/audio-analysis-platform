@@ -18,16 +18,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            // Group by themes
-            const themeGroups = groupByCommonality(analyses, 'themes');
+            // Group by themes with emotion context
+            const themeGroups = groupByCommonality(analyses, 'themes', 'emotion_scores');
 
-            // Group by characters
-            const characterGroups = groupByCommonality(analyses, 'characters_mentioned');
+            // Group by characters with interaction context
+            const characterGroups = groupByCharacterInteractions(analyses);
 
-            // Group by environments
-            const environmentGroups = groupByCommonality(analyses, 'environments');
+            // Group by emotional patterns
+            const emotionGroups = groupByEmotions(analyses);
 
-            displayBundleSuggestions(themeGroups, characterGroups, environmentGroups);
+            // Group by environments with emotional context
+            const environmentGroups = groupByCommonality(analyses, 'environments', 'emotion_scores');
+
+            displayBundleSuggestions(themeGroups, characterGroups, emotionGroups, environmentGroups);
 
         } catch (error) {
             console.error('Error finding bundle opportunities:', error);
@@ -41,24 +44,72 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function groupByCommonality(analyses, field) {
+    function groupByEmotions(analyses) {
+        const emotionGroups = [];
+        const emotions = ['joy', 'sadness', 'anger', 'fear', 'surprise'];
+
+        emotions.forEach(emotion => {
+            const matchingAnalyses = analyses.filter(analysis => {
+                const scores = analysis.emotion_scores || {};
+                return scores[emotion] && scores[emotion] > 0.6; // High emotion threshold
+            });
+
+            if (matchingAnalyses.length > 1) {
+                emotionGroups.push({
+                    commonality: emotion,
+                    items: matchingAnalyses,
+                    count: matchingAnalyses.length,
+                    averageScore: matchingAnalyses.reduce((acc, curr) => 
+                        acc + (curr.emotion_scores?.[emotion] || 0), 0) / matchingAnalyses.length
+                });
+            }
+        });
+
+        return emotionGroups.sort((a, b) => b.averageScore - a.averageScore);
+    }
+
+    function groupByCharacterInteractions(analyses) {
+        const characterPairs = new Map();
+
+        analyses.forEach(analysis => {
+            const characters = analysis.speaking_characters || [];
+
+            // Create pairs of characters that appear together
+            for (let i = 0; i < characters.length; i++) {
+                for (let j = i + 1; j < characters.length; j++) {
+                    const pair = [characters[i], characters[j]].sort().join(' & ');
+                    if (!characterPairs.has(pair)) {
+                        characterPairs.set(pair, []);
+                    }
+                    characterPairs.get(pair).push(analysis);
+                }
+            }
+        });
+
+        return Array.from(characterPairs.entries())
+            .filter(([_, items]) => items.length > 1)
+            .map(([pair, items]) => ({
+                commonality: pair,
+                items: items,
+                count: items.length
+            }))
+            .sort((a, b) => b.count - a.count);
+    }
+
+    function groupByCommonality(analyses, field, emotionField = null) {
         try {
             const groups = new Map();
 
             analyses.forEach(analysis => {
-                // Handle potential null/undefined values
                 let items = analysis[field] || [];
-
-                // Ensure items is an array
                 if (!Array.isArray(items)) {
-                    console.warn(`${field} is not an array:`, items);
                     items = [items].filter(Boolean);
                 }
 
                 items.forEach(item => {
-                    if (!item) return; // Skip null/undefined items
+                    if (!item) return;
                     const key = item.toString().trim();
-                    if (!key) return; // Skip empty strings
+                    if (!key) return;
 
                     if (!groups.has(key)) {
                         groups.set(key, []);
@@ -67,13 +118,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
 
-            // Filter groups to only include those with multiple items
             return Array.from(groups.entries())
                 .filter(([_, items]) => items.length > 1)
                 .map(([key, items]) => ({
                     commonality: key,
                     items: items,
-                    count: items.length
+                    count: items.length,
+                    emotionalContext: emotionField ? getEmotionalContext(items) : null
                 }))
                 .sort((a, b) => b.count - a.count);
 
@@ -83,84 +134,138 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function generateBundleTitle(type, commonality) {
+    function getEmotionalContext(items) {
+        const emotionTotals = {
+            joy: 0, sadness: 0, anger: 0, fear: 0, surprise: 0
+        };
+        let count = 0;
+
+        items.forEach(item => {
+            if (item.emotion_scores) {
+                count++;
+                Object.entries(item.emotion_scores).forEach(([emotion, score]) => {
+                    emotionTotals[emotion] = (emotionTotals[emotion] || 0) + score;
+                });
+            }
+        });
+
+        if (count === 0) return null;
+
+        const dominantEmotion = Object.entries(emotionTotals)
+            .sort((a, b) => b[1] - a[1])[0];
+
+        return {
+            dominant: dominantEmotion[0],
+            score: dominantEmotion[1] / count
+        };
+    }
+
+    function generateBundleTitle(type, commonality, emotionalContext = null) {
+        const emotions = {
+            joy: ['✨', '🌟', '💫'],
+            sadness: ['💫', '🌙', '✨'],
+            anger: ['⚡', '🔥', '💥'],
+            fear: ['🌘', '💫', '✨'],
+            surprise: ['✨', '🌟', '💫']
+        };
+
+        const getEmoji = () => {
+            if (emotionalContext?.dominant && emotions[emotionalContext.dominant]) {
+                const emojis = emotions[emotionalContext.dominant];
+                return emojis[Math.floor(Math.random() * emojis.length)];
+            }
+            return '✨';
+        };
+
         const titles = {
             theme: [
-                `✨ Tales of ${commonality}: Where Magic Begins`,
-                `🌟 The ${commonality} Chronicles: Untold Wonders`,
-                `🎭 Once Upon a ${commonality}`,
-                `💫 Whispers of ${commonality}`,
-                `🌈 ${commonality}: A Tapestry of Tales`,
-                `✨ Through the Lens of ${commonality}`
+                `${getEmoji()} Tales of ${commonality}: Where Magic Begins`,
+                `${getEmoji()} The ${commonality} Chronicles: Untold Wonders`,
+                `${getEmoji()} Once Upon a ${commonality}`
             ],
             character: [
-                `🦸 ${commonality}'s Epic Adventures`,
-                `⚔️ ${commonality}: Legend in the Making`,
-                `🎭 The ${commonality} Saga: Heroes Rise`,
-                `✨ ${commonality}'s Magical Moments`,
-                `🌟 Legends of ${commonality}`,
-                `💫 ${commonality}: Beyond the Story`
+                `${getEmoji()} ${commonality}'s Epic Adventures`,
+                `${getEmoji()} ${commonality}: Legend in the Making`,
+                `${getEmoji()} The ${commonality} Saga`
+            ],
+            emotion: [
+                `${getEmoji()} Journey through ${commonality}`,
+                `${getEmoji()} Tales of ${commonality}`,
+                `${getEmoji()} Moments of ${commonality}`
             ],
             environment: [
-                `🏰 Secrets of the ${commonality}`,
-                `🌌 ${commonality}: A World of Wonder`,
-                `🌳 Hidden Tales of the ${commonality}`,
-                `🌊 The Magic of ${commonality}`,
-                `🗺️ Lost in the ${commonality}`,
-                `✨ ${commonality}: Realm of Dreams`
+                `${getEmoji()} Secrets of the ${commonality}`,
+                `${getEmoji()} ${commonality}: A World of Wonder`,
+                `${getEmoji()} Hidden Tales of the ${commonality}`
             ]
         };
 
         const options = titles[type] || titles.theme;
-        const index = Math.floor(Math.random() * options.length);
-        return options[index];
+        return options[Math.floor(Math.random() * options.length)];
     }
 
-    function generateElevatorPitch(type, commonality, count, items) {
-        // Extract some example titles or names to make the pitch more specific
+    function generateElevatorPitch(type, commonality, count, items, emotionalContext = null) {
         const examples = items
             .slice(0, 3)
             .map(item => item.title || 'Untitled')
             .filter(title => title !== 'Untitled');
 
-        // Get example characters if available
-        const speakingCharacters = items
-            .flatMap(item => item.speaking_characters || [])
-            .filter(Boolean)
-            .slice(0, 3);
+        const emotions = items
+            .filter(item => item.dominant_emotion)
+            .map(item => item.dominant_emotion)
+            .reduce((acc, emotion) => {
+                acc[emotion] = (acc[emotion] || 0) + 1;
+                return acc;
+            }, {});
 
-        // Get example themes if available
-        const relatedThemes = items
-            .flatMap(item => item.themes || [])
-            .filter(Boolean)
-            .filter(theme => theme !== commonality)
-            .slice(0, 2);
+        const dominantEmotion = Object.entries(emotions)
+            .sort((a, b) => b[1] - a[1])[0]?.[0];
+
+        const emotionDescriptor = dominantEmotion ? 
+            `${dominantEmotion}-filled` : 'enchanting';
 
         const pitches = {
             theme: [
-                `🎭 Step into a realm of wonder with ${count} enchanted tales that weave the magic of "${commonality}"! From the spellbinding "${examples[0]}"${examples[1] ? ` to the mesmerizing "${examples[1]}"` : ''}${relatedThemes.length ? `, where themes of ${relatedThemes.join(' and ')} dance together in perfect harmony` : ''}.`,
-                `✨ Discover a treasure trove of ${count} magical stories that bring "${commonality}" to vivid life. Journey from the captivating "${examples[0]}"${examples[1] ? ` through the enchanted world of "${examples[1]}"` : ''}, where every tale is a doorway to adventure.`,
-                `🌟 Embark on an extraordinary voyage through ${count} handpicked gems exploring "${commonality}". Let "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''} transport you to worlds beyond imagination${relatedThemes.length ? `, where ${relatedThemes.join(' and ')} weave their own special magic` : ''}.`
+                `${getEmoji(emotionalContext)} Experience ${count} ${emotionDescriptor} tales celebrating "${commonality}"! From "${examples[0]}"${examples[1] ? ` to "${examples[1]}"` : ''}, each story weaves a unique perspective on this timeless theme.`,
+                `${getEmoji(emotionalContext)} Discover a collection of ${count} ${emotionDescriptor} adventures exploring "${commonality}". Journey from "${examples[0]}"${examples[1] ? ` through "${examples[1]}"` : ''}, where every story adds depth to the theme.`
             ],
             character: [
-                `⚔️ Join the legendary ${commonality} on ${count} epic quests${speakingCharacters.length ? `, alongside beloved heroes ${speakingCharacters.join(', ')}` : ''}! Your adventure begins with the thrilling "${examples[0]}"${examples[1] ? ` and soars through "${examples[1]}"` : ''}.`,
-                `🦸 Experience ${count} legendary tales where ${commonality} becomes a beacon of hope${speakingCharacters.length ? `. Stand with ${speakingCharacters.join(' and ')} as they` : ''}. The saga unfolds in "${examples[0]}"${examples[1] ? ` and reaches new heights in "${examples[1]}"` : ''}!`,
-                `🎭 Witness the extraordinary journey of ${commonality} through ${count} spellbinding adventures${speakingCharacters.length ? `. Join forces with ${speakingCharacters.join(', ')}` : ''} as you dive into "${examples[0]}"${examples[1] ? ` and uncover the mysteries of "${examples[1]}"` : ''}.`
+                `${getEmoji(emotionalContext)} Follow ${commonality} through ${count} ${emotionDescriptor} quests! From "${examples[0]}"${examples[1] ? ` to "${examples[1]}"` : ''}, witness their growth and adventures.`,
+                `${getEmoji(emotionalContext)} Join ${commonality} in ${count} ${emotionDescriptor} tales, starting with "${examples[0]}"${examples[1] ? ` and continuing through "${examples[1]}"` : ''}.`
+            ],
+            emotion: [
+                `${getEmoji(emotionalContext)} Immerse yourself in ${count} stories flowing with ${commonality}. Experience "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''} in this emotional journey.`,
+                `${getEmoji(emotionalContext)} Explore the depths of ${commonality} through ${count} moving tales, including "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''}.`
             ],
             environment: [
-                `🏰 Unlock the mysteries of the ${commonality} in ${count} breathtaking tales! Your journey begins with "${examples[0]}"${examples[1] ? ` and ventures deep into "${examples[1]}"` : ''}${relatedThemes.length ? `. Each step reveals ${relatedThemes.join(' and ')}` : ''}.`,
-                `🌌 Step through the gateway to the enchanted ${commonality}, where ${count} remarkable stories await. From the wondrous "${examples[0]}"${examples[1] ? ` to the magical "${examples[1]}"` : ''}, each tale holds secrets yearning to be discovered.`,
-                `🗺️ Chart a course through the mystical ${commonality} with ${count} unforgettable adventures! "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''} will be your guides${relatedThemes.length ? ` as you explore themes of ${relatedThemes.join(' and ')}` : ''}.`
+                `${getEmoji(emotionalContext)} Venture into ${count} ${emotionDescriptor} stories set in the ${commonality}. Begin with "${examples[0]}"${examples[1] ? ` and journey to "${examples[1]}"` : ''}.`,
+                `${getEmoji(emotionalContext)} Explore the magical ${commonality} through ${count} ${emotionDescriptor} adventures, featuring "${examples[0]}"${examples[1] ? ` and "${examples[1]}"` : ''}.`
             ]
         };
 
         const options = pitches[type] || pitches.theme;
-        const index = Math.floor(Math.random() * options.length);
-        return options[index];
+        return options[Math.floor(Math.random() * options.length)];
     }
 
-    function displayBundleSuggestions(themeGroups, characterGroups, environmentGroups) {
+    function getEmoji(emotionalContext) {
+        const emojis = {
+            joy: '✨',
+            sadness: '💫',
+            anger: '⚡',
+            fear: '🌘',
+            surprise: '🌟'
+        };
+        return emotionalContext?.dominant ? 
+            (emojis[emotionalContext.dominant] || '✨') : '✨';
+    }
+
+    function displayBundleSuggestions(themeGroups, characterGroups, emotionGroups, environmentGroups) {
         let html = '';
+
+        // Emotion-based bundles
+        if (emotionGroups.length > 0) {
+            html += createBundleSection('Emotional Journeys', emotionGroups, 'emotion');
+        }
 
         // Theme-based bundles
         if (themeGroups.length > 0) {
@@ -169,7 +274,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Character-based bundles
         if (characterGroups.length > 0) {
-            html += createBundleSection('Character-based Adventures', characterGroups, 'character');
+            html += createBundleSection('Character Adventures', characterGroups, 'character');
         }
 
         // Environment-based bundles
@@ -183,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         bundleSuggestions.innerHTML = html;
 
-        // Initialize all tooltips
+        // Initialize tooltips
         const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
         tooltips.forEach(tooltip => new bootstrap.Tooltip(tooltip));
     }
@@ -193,8 +298,14 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="col-12 mb-4">
                 <h6 class="mb-3">${title}</h6>
                 ${groups.slice(0, 5).map(group => {
-                    const bundleTitle = generateBundleTitle(type, group.commonality);
-                    const elevatorPitch = generateElevatorPitch(type, group.commonality, group.count, group.items);
+                    const bundleTitle = generateBundleTitle(type, group.commonality, group.emotionalContext);
+                    const elevatorPitch = generateElevatorPitch(
+                        type, 
+                        group.commonality, 
+                        group.count, 
+                        group.items,
+                        group.emotionalContext
+                    );
 
                     return `
                     <div class="card mb-3">
@@ -210,7 +321,13 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                             <p class="card-text text-muted mb-0 mt-2">${elevatorPitch}</p>
                             <div class="mt-2">
-                                <span class="badge bg-secondary">${type}: ${group.commonality}</span>
+                                ${group.emotionalContext ? 
+                                    `<span class="badge bg-info me-2">
+                                        Mood: ${group.emotionalContext.dominant}
+                                    </span>` : ''}
+                                <span class="badge bg-secondary">
+                                    ${type}: ${group.commonality}
+                                </span>
                             </div>
                         </div>
                         <div class="collapse" id="bundle-${type}-${group.commonality.replace(/\s+/g, '-')}">
@@ -220,6 +337,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <div class="list-group-item">
                                             <div class="d-flex justify-content-between align-items-center">
                                                 <span>${item.title || 'Untitled'}</span>
+                                                ${item.emotion_scores ? `
+                                                    <span class="badge bg-info">
+                                                        ${item.dominant_emotion || 'Neutral'}
+                                                    </span>
+                                                ` : ''}
                                             </div>
                                         </div>
                                     `).join('')}
