@@ -1,4 +1,3 @@
-
 document.addEventListener('DOMContentLoaded', function() {
     const uploadForm = document.getElementById('uploadForm');
     const uploadBtn = document.getElementById('uploadBtn');
@@ -24,6 +23,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updateTable() {
+        // Only fetch and update if we're on a page with the analysis table
+        const analysisTable = document.querySelector('table tbody');
+        if (!analysisTable) return;
+
         fetch('/api/analyses')
             .then(response => response.json())
             .then(data => {
@@ -88,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Update the table with the new data
                 updateTable();
-                
+
                 // Clear the file input
                 audioFileInput.value = '';
 
