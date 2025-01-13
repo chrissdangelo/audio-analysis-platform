@@ -266,40 +266,43 @@ def register_routes(app):
             # Start with all analyses
             query = AudioAnalysis.query
 
-            search_mode = request.args.get('mode', 'any')
-            logger.debug(f"Search mode: {search_mode}")
+            # Apply theme filters if provided
+            if criteria.get('themes'):
+                theme_conditions = []
+                for theme in criteria['themes']:
+                    if theme:  # Skip empty strings
+                        theme = theme.lower()  # Case-insensitive search
+                        theme_conditions.append(
+                            db.func.lower(AudioAnalysis.themes).like(f'%"{theme}"%')
+                        )
+                if theme_conditions:
+                    query = query.filter(db.or_(*theme_conditions))
 
-            def apply_filters(field_name, values, field):
-                if not values:
-                    return None
-                conditions = []
-                for value in values:
-                    if value:  # Skip empty strings
-                        value = value.lower()  # Case-insensitive search
-                        logger.debug(f"Searching for {field_name}: {value}")
-                        conditions.append(db.func.lower(field).like(f'%"{value}"%'))
-                if conditions:
-                    return db.and_(*conditions) if search_mode == 'all' else db.or_(*conditions)
-                return None
+            # Apply character filters if provided
+            if criteria.get('characters'):
+                char_conditions = []
+                for character in criteria['characters']:
+                    if character:  # Skip empty strings
+                        character = character.lower()  # Case-insensitive search
+                        logger.debug(f"Searching for character: {character}")
+                        char_conditions.append(
+                            db.func.lower(AudioAnalysis.characters_mentioned).like(f'%"{character}"%')
+                        )
+                if char_conditions:
+                    query = query.filter(db.or_(*char_conditions))
 
-            # Apply all filters
-            filters = []
-            theme_filter = apply_filters('theme', criteria.get('themes'), AudioAnalysis.themes)
-            char_filter = apply_filters('character', criteria.get('characters'), AudioAnalysis.characters_mentioned)
-            env_filter = apply_filters('environment', criteria.get('environments'), AudioAnalysis.environments)
-
-            # Add non-None filters
-            for f in [theme_filter, char_filter, env_filter]:
-                if f is not None:
-                    filters.append(f)
-
-            # Apply filters based on search mode
-            if filters:
-                if search_mode == 'all':
-                    for f in filters:
-                        query = query.filter(f)
-                else:  # 'any' mode
-                    query = query.filter(db.or_(*filters))
+            # Apply environment filters if provided
+            if criteria.get('environments'):
+                env_conditions = []
+                for environment in criteria['environments']:
+                    if environment:  # Skip empty strings
+                        environment = environment.lower()  # Case-insensitive search
+                        logger.debug(f"Searching for environment: {environment}")
+                        env_conditions.append(
+                            db.func.lower(AudioAnalysis.environments).like(f'%"{environment}"%')
+                        )
+                if env_conditions:
+                    query = query.filter(db.or_(*env_conditions))
 
             # Execute query and convert results to dictionaries
             results = [analysis.to_dict() for analysis in query.all()]
