@@ -485,7 +485,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error downloading bundle pitch:', error);
             alert('Failed to download bundle pitch: ' + error.message);
         });
-    }
+    };
 
     // Load bundle opportunities when the bundle tab is shown
     const bundleTab = document.getElementById('bundle-tab');
