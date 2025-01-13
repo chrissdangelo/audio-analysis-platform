@@ -760,15 +760,16 @@ def register_routes(app):
     @app.route('/api/bundle-pitch', methods=['POST'])
     def generate_bundle_pitch():
         try:
-            data = request.get_json()
-            type = data['type']
-            group = data['group']
-
+            from flask import send_file
             from reportlab.lib import colors
             from reportlab.lib.pagesizes import letter
             from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
             from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
             from io import BytesIO
+            
+            data = request.get_json()
+            type = data['type']
+            group = data['group']
 
             # Create PDF buffer
             buffer = BytesIO()
@@ -786,7 +787,28 @@ def register_routes(app):
             story.append(Paragraph(f"Bundle Pitch: {group['commonality']}", title_style))
 
             # Summary
-            summary_text = generateElevatorPitch(type, group['commonality'], group['count'], group['items'], group.get('emotionalContext'))
+            def get_emoji(emotion_context):
+                emojis = {
+                    'joy': '✨',
+                    'sadness': '💫',
+                    'anger': '⚡',
+                    'fear': '🌘',
+                    'surprise': '🌟'
+                }
+                return emojis.get(emotion_context.get('dominant')) if emotion_context else '✨'
+
+            def generate_elevator_pitch(type, commonality, count, items, emotion_context):
+                emotion_descriptor = emotion_context.get('dominant', 'enchanting') if emotion_context else 'enchanting'
+                examples = [item.get('title', 'Untitled') for item in items[:3]]
+                
+                pitch = f"{get_emoji(emotion_context)} Experience {count} {emotion_descriptor} tales featuring '{commonality}'! "
+                if examples:
+                    pitch += f"Including '{examples[0]}'"
+                    if len(examples) > 1:
+                        pitch += f" and '{examples[1]}'"
+                return pitch
+
+            summary_text = generate_elevator_pitch(type, group['commonality'], group['count'], group['items'], group.get('emotionalContext'))
             story.append(Paragraph("Summary", styles['Heading2']))
             story.append(Paragraph(summary_text, styles['Normal']))
             story.append(Spacer(1, 20))

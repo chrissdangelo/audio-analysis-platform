@@ -31,4 +31,5 @@ dependencies = [
     "google-api-python-client>=2.157.0",
     "flask-login>=0.6.3",
     "oauthlib>=3.2.2",
+    "reportlab>=4.2.5",
 ]
