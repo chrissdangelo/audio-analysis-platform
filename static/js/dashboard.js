@@ -89,6 +89,97 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Handle title editing
+    $('#analysisTable').on('click', '.edit-title', async function(e) {
+        e.preventDefault();
+        const cell = $(this).closest('td');
+        const titleSpan = cell.find('.title-text');
+        const currentTitle = titleSpan.text();
+        const id = $(this).data('id');
+
+        // Create input field
+        const input = $('<input>')
+            .attr('type', 'text')
+            .val(currentTitle)
+            .addClass('form-control');
+
+        // Replace title with input
+        titleSpan.hide();
+        $(this).hide();
+        cell.append(input);
+        input.focus();
+
+        // Add save and cancel buttons
+        const saveBtn = $('<button>')
+            .addClass('btn btn-sm btn-success me-1')
+            .html('<i class="bi bi-check"></i>');
+        const cancelBtn = $('<button>')
+            .addClass('btn btn-sm btn-danger')
+            .html('<i class="bi bi-x"></i>');
+
+        const btnGroup = $('<div>')
+            .addClass('btn-group ms-2')
+            .append(saveBtn)
+            .append(cancelBtn);
+        cell.append(btnGroup);
+
+        // Handle save
+        saveBtn.on('click', async function() {
+            const newTitle = input.val().trim();
+            if (!newTitle) {
+                showError('Title cannot be empty');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/analysis/${id}/update_title`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ title: newTitle }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to update title');
+                }
+
+                const result = await response.json();
+                titleSpan.text(result.title);
+                resetTitleCell();
+            } catch (error) {
+                console.error('Error:', error);
+                showError(`Failed to update title: ${error.message}`);
+            }
+        });
+
+        // Handle cancel
+        cancelBtn.on('click', function() {
+            resetTitleCell();
+        });
+
+        // Handle Enter key
+        input.on('keypress', function(e) {
+            if (e.which === 13) {
+                saveBtn.click();
+            }
+        });
+
+        // Handle Escape key
+        input.on('keyup', function(e) {
+            if (e.key === 'Escape') {
+                cancelBtn.click();
+            }
+        });
+
+        function resetTitleCell() {
+            input.remove();
+            btnGroup.remove();
+            titleSpan.show();
+            cell.find('.edit-title').show();
+        }
+    });
+
     // Function to show error messages
     function showError(message) {
         const errorDiv = document.createElement('div');
@@ -115,7 +206,12 @@ document.addEventListener('DOMContentLoaded', function() {
             data.forEach(analysis => {
                 table.row.add([
                     analysis.id,
-                    analysis.title || "Untitled",
+                    `<div class="d-flex align-items-center">
+                        <span class="title-text">${analysis.title || "Untitled"}</span>
+                        <button class="btn btn-sm btn-link edit-title ms-2" data-id="${analysis.id}">
+                            <i class="bi bi-pencil-square"></i>
+                        </button>
+                    </div>`,
                     analysis.filename,
                     analysis.file_type,
                     analysis.format,
@@ -142,14 +238,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Set up event listeners
-    document.addEventListener('analysisAdded', updateTable);
-    document.addEventListener('analysisDeleted', updateTable);
-
     // Handle tab switching
     document.querySelector('#analysis-tab')?.addEventListener('shown.bs.tab', function() {
         updateTable();
     });
+
+    // Set up event listeners
+    document.addEventListener('analysisAdded', updateTable);
+    document.addEventListener('analysisDeleted', updateTable);
 
     // Initial table update
     updateTable();

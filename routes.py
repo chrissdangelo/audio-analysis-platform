@@ -686,3 +686,32 @@ def register_routes(app):
                     batch_manager.save_batch_status(batch_id)
 
             logger.info(f"Completed batch processing for batch {batch_id}")
+
+    @app.route('/api/analysis/<int:analysis_id>/update_title', methods=['POST'])
+    def update_title(analysis_id):
+        """Update the title of an analysis."""
+        try:
+            # Get the analysis record
+            analysis = AudioAnalysis.query.get_or_404(analysis_id)
+
+            # Get the new title from request
+            data = request.get_json()
+            new_title = data.get('title', '').strip()
+
+            if not new_title:
+                return jsonify({'error': 'Title cannot be empty'}), 400
+
+            # Update the title
+            analysis.title = new_title
+            db.session.commit()
+            logger.info(f"Updated title for analysis {analysis_id} to '{new_title}'")
+
+            return jsonify({
+                'message': 'Title updated successfully',
+                'title': new_title
+            }), 200
+
+        except Exception as e:
+            logger.error(f"Error updating title for analysis {analysis_id}: {str(e)}")
+            db.session.rollback()
+            return jsonify({'error': 'Error updating title'}), 500
