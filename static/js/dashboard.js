@@ -612,14 +612,23 @@ function formatCorrelations(correlations) {
         .join('<br>');
 }
 
-// Initialize charts after DataTable is ready.  This ensures the width is correctly calculated
-if (initializeCharts()){
-    updateTable();
-}
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize charts and update data when the analysis tab is shown
+    const analysisTab = document.querySelector('#analysis-tab');
+    if (analysisTab) {
+        analysisTab.addEventListener('shown.bs.tab', function() {
+            if (!formatChart) {
+                initializeCharts();
+            }
+            updateTable();
+        });
+    }
 
-// Handle tab switching
-document.querySelector('#analysis-tab')?.addEventListener('shown.bs.tab', function() {
-    updateTable();
+    // Initial load if we're already on the analysis tab
+    if (document.querySelector('.tab-pane.active#analysis')) {
+        initializeCharts();
+        updateTable();
+    }
 });
 
 // Set up event listeners
