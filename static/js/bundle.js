@@ -454,22 +454,23 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
     }
 
-    window.downloadBundlePitch = async function(type, group) {
-        try {
-            const response = await fetch('/api/bundle-pitch', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ type, group })
-            });
-            
+    window.downloadBundlePitch = function(type, group) {
+        fetch('/api/bundle-pitch', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ type, group })
+        })
+        .then(response => {
             if (!response.ok) {
-                const error = await response.text();
-                throw new Error(error || 'Failed to generate pitch');
+                return response.text().then(text => {
+                    throw new Error(text || 'Failed to generate pitch');
+                });
             }
-            
-            const blob = await response.blob();
+            return response.blob();
+        })
+        .then(blob => {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.style.display = 'none';
@@ -479,10 +480,11 @@ document.addEventListener('DOMContentLoaded', function() {
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
-        } catch (error) {
+        })
+        .catch(error => {
             console.error('Error downloading bundle pitch:', error);
             alert('Failed to download bundle pitch: ' + error.message);
-        }
+        });
     }
 
     // Load bundle opportunities when the bundle tab is shown
