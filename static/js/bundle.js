@@ -61,12 +61,31 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             if (matchingAnalyses.length > 1) {
+                // Group by series
+                const seriesGroups = new Map();
+                matchingAnalyses.forEach(item => {
+                    const series = item.filename.split('_')[0];
+                    if (!seriesGroups.has(series)) {
+                        seriesGroups.set(series, []);
+                    }
+                    seriesGroups.get(series).push(item);
+                });
+
+                // Take max 2 from each series
+                let diverseItems = [];
+                seriesGroups.forEach(seriesItems => {
+                    diverseItems.push(...seriesItems.slice(0, 2));
+                });
+
+                // Sort by emotion score
+                diverseItems.sort((a, b) => (b.emotion_scores?.[emotion] || 0) - (a.emotion_scores?.[emotion] || 0));
+
                 emotionGroups.push({
                     commonality: emotion,
-                    items: matchingAnalyses,
+                    items: diverseItems,
                     count: matchingAnalyses.length,
-                    averageScore: matchingAnalyses.reduce((acc, curr) => 
-                        acc + (curr.emotion_scores?.[emotion] || 0), 0) / matchingAnalyses.length
+                    averageScore: diverseItems.reduce((acc, curr) => 
+                        acc + (curr.emotion_scores?.[emotion] || 0), 0) / diverseItems.length
                 });
             }
         });
@@ -102,12 +121,28 @@ document.addEventListener('DOMContentLoaded', function() {
         return Array.from(characterPairs.entries())
             .filter(([_, items]) => items.length > 1)
             .map(([pair, items]) => {
+                // Group by series
+                const seriesGroups = new Map();
+                items.forEach(item => {
+                    const series = item.filename.split('_')[0];
+                    if (!seriesGroups.has(series)) {
+                        seriesGroups.set(series, []);
+                    }
+                    seriesGroups.get(series).push(item);
+                });
+
+                // Take max 2 from each series
+                let diverseItems = [];
+                seriesGroups.forEach(seriesItems => {
+                    diverseItems.push(...seriesItems.slice(0, 2));
+                });
+
                 const emotions = characterEmotions.get(pair);
                 const dominantEmotion = Array.from(emotions?.entries() || [])
                     .sort((a, b) => b[1] - a[1])[0]?.[0];
                 return {
                     commonality: pair,
-                    items: items,
+                    items: diverseItems,
                     count: items.length,
                     emotionalContext: dominantEmotion ? { dominant: dominantEmotion } : null
                 };
