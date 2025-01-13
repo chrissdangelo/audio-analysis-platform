@@ -1,21 +1,24 @@
+
 .card-header.collapsible {
     cursor: pointer;
     background-color: #f8f9fa;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid rgba(0,0,0,.125);
 }
 
 .collapse-content {
     max-height: 0;
     overflow: hidden;
     transition: max-height 0.3s ease-out;
-    padding: 0;
+    padding: 0 1rem;
 }
 
 .collapse-content.expanded {
     max-height: 500px;
-    padding: 15px;
+    padding: 1rem;
 }
 
 .card-header .fa-chevron-down {
@@ -24,4 +27,9 @@
 
 .card-header.expanded .fa-chevron-down {
     transform: rotate(180deg);
+}
+
+/* Remove Bootstrap collapse styles */
+.collapse:not(.show) {
+    display: block !important;
 }

@@ -1,15 +1,33 @@
+
 document.addEventListener('DOMContentLoaded', function() {
     const characterCheckboxes = document.getElementById('characterCheckboxes');
     const environmentCheckboxes = document.getElementById('environmentCheckboxes');
     const themesList = document.getElementById('themesList');
     const searchResults = document.getElementById('searchResults');
 
+    // Initialize all sections as collapsed
+    document.querySelectorAll('.collapse-content').forEach(content => {
+        content.style.maxHeight = '0px';
+        content.classList.remove('expanded');
+    });
+
     function toggleSection(id) {
         const content = document.getElementById(id);
         const header = content.previousElementSibling;
+        const icon = header.querySelector('.fa-chevron-down');
 
-        content.classList.toggle('expanded');
-        header.classList.toggle('expanded');
+        // Remove any bootstrap classes that might interfere
+        content.classList.remove('show', 'collapse', 'collapsing');
+        
+        if (content.classList.contains('expanded')) {
+            content.style.maxHeight = '0px';
+            content.classList.remove('expanded');
+            header.classList.remove('expanded');
+        } else {
+            content.style.maxHeight = content.scrollHeight + 'px';
+            content.classList.add('expanded');
+            header.classList.add('expanded');
+        }
     }
 
     async function loadFilterOptions() {
