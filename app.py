@@ -31,7 +31,7 @@ def create_app():
             "pool_pre_ping": True,
         }
         app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-        app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # Increased to 500MB
+        app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500MB limit
         app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
         logger.info("Configured Flask application settings")
 
@@ -43,24 +43,23 @@ def create_app():
         logger.info("Initializing database...")
         init_db(app)
         migrate = Migrate(app, db)
-        logger.info("Initialized database and migrations")
+        logger.info("Database initialization completed")
 
+        # Register routes and blueprints
         with app.app_context():
-            # Register routes after database initialization
             from routes import register_routes
             register_routes(app)
-            logger.info("Registered routes")
+            logger.info("Routes registered successfully")
 
-            # Register Google Drive blueprint
             from google_drive import google_drive
             app.register_blueprint(google_drive)
-            logger.info("Registered Google Drive blueprint")
+            logger.info("Google Drive blueprint registered")
 
         logger.info("Application setup completed successfully")
         return app
 
     except Exception as e:
-        logger.error(f"Failed to create app: {str(e)}", exc_info=True)
+        logger.error(f"Failed to create app: {str(e)}")
         raise
 
 # Create the application instance

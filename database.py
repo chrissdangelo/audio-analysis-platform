@@ -13,8 +13,13 @@ db = SQLAlchemy()
 
 def init_db(app):
     """Initialize the SQLAlchemy app."""
-    db.init_app(app)
-    with app.app_context():
-        import models  # noqa: F401
-        db.create_all()
-        logger.info("Created database tables")
+    try:
+        db.init_app(app)
+        with app.app_context():
+            # Import models here to avoid circular imports
+            from models import AudioAnalysis  # noqa: F401
+            db.create_all()
+            logger.info("Database initialization completed successfully")
+    except Exception as e:
+        logger.error(f"Database initialization failed: {str(e)}")
+        raise
