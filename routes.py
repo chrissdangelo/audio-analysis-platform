@@ -437,7 +437,11 @@ def register_routes(app):
 
             # Start processing in a separate thread
             from threading import Thread
-            thread = Thread(target=process_batch, args=(current_app, batch_id))
+            def process_with_context():
+                with app.app_context():
+                    process_batch(app, batch_id)
+            
+            thread = Thread(target=process_with_context)
             thread.daemon = True
             thread.start()
 
