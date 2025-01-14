@@ -4,7 +4,26 @@ document.addEventListener('DOMContentLoaded', function() {
     const uploadBtn = document.getElementById('uploadBtn');
     const batchStatus = document.getElementById('batchStatus');
 
-    async function uploadFiles(files) {
+    async function updateTable(results) {
+    const searchResults = document.getElementById('searchResults');
+    if (!results.length) {
+        searchResults.innerHTML = '<div class="alert alert-info">No matches found</div>';
+        return;
+    }
+    // Update table with results
+    let html = '<table class="table"><thead><tr><th>Title</th><th>Format</th><th>Duration</th></tr></thead><tbody>';
+    results.forEach(result => {
+        html += `<tr>
+            <td>${result.title}</td>
+            <td>${result.format}</td>
+            <td>${result.duration}</td>
+        </tr>`;
+    });
+    html += '</tbody></table>';
+    searchResults.innerHTML = html;
+}
+
+async function uploadFiles(files) {
         if (files.length === 0) {
             batchStatus.innerHTML = '<div class="alert alert-warning">Please select at least one file.</div>';
             return;
