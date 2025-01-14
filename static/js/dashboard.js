@@ -3,6 +3,29 @@ document.addEventListener('DOMContentLoaded', function() {
     const table = $('#analysisTable').DataTable({
         scrollX: true,     // Enable horizontal scrolling
         autoWidth: false,  // Disable automatic column width calculation
+        dom: 'Bfrtip',     // Add buttons to the DataTable
+        buttons: [
+            {
+                extend: 'colvis',
+                text: 'Toggle Columns',
+                className: 'btn btn-secondary'
+            },
+            {
+                text: 'Reset Columns',
+                className: 'btn btn-secondary',
+                action: function (e, dt, node, config) {
+                    // Clear stored column widths
+                    localStorage.removeItem('analysisTableColumnWidths');
+                    // Reset column visibility
+                    table.columns().visible(true);
+                    // Reset column widths to default
+                    table.columns().every(function() {
+                        $(this.header()).width('auto');
+                    });
+                    table.draw();
+                }
+            }
+        ],
         columnDefs: [
             {
                 targets: 1,  // Title column (second column)
@@ -23,6 +46,18 @@ document.addEventListener('DOMContentLoaded', function() {
         order: [[0, 'desc']], // Sort by first column (ID) by default
         initComplete: function() {
             const headerCells = $('#analysisTable thead th').not(':last'); // Skip Actions column
+
+            // Load saved column widths
+            const savedWidths = JSON.parse(localStorage.getItem('analysisTableColumnWidths') || '{}');
+            headerCells.each(function(index) {
+                const width = savedWidths[index];
+                if (width) {
+                    $(this).width(width);
+                    table.column(index).nodes().each(function(cell) {
+                        $(cell).width(width);
+                    });
+                }
+            });
 
             // Add resize handles to each header cell
             headerCells.each(function() {
@@ -63,6 +98,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         table.column(columnIndex).nodes().each(function(cell) {
                             $(cell).width(width);
                         });
+
+                        // Save column widths to localStorage
+                        const savedWidths = JSON.parse(localStorage.getItem('analysisTableColumnWidths') || '{}');
+                        savedWidths[columnIndex] = width;
+                        localStorage.setItem('analysisTableColumnWidths', JSON.stringify(savedWidths));
                     }
                 }
             }
@@ -73,6 +113,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.removeEventListener('mousemove', resize);
                     document.removeEventListener('mouseup', stopResize);
                     currentResizer = null;
+
+                    // Force table redraw to ensure proper layout
+                    table.columns.adjust().draw();
                 }
             }
         }
@@ -652,7 +695,7 @@ function generateContentSummary(data) {
     const characterAppearances = {};
     const themeOccurrences = {};
     const emotionPatterns = [];
-    
+
     data.forEach(item => {
         if (Array.isArray(item.themes)) {
             item.themes.forEach(theme => {
