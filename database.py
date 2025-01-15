@@ -1,5 +1,6 @@
 import logging
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import DeclarativeBase
 
 # Configure logging
 logging.basicConfig(
@@ -8,8 +9,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Initialize SQLAlchemy without binding to app
-db = SQLAlchemy()
+# Define base class for SQLAlchemy models
+class Base(DeclarativeBase):
+    pass
+
+# Initialize SQLAlchemy with the base class
+db = SQLAlchemy(model_class=Base)
 
 def init_db(app):
     """Initialize the SQLAlchemy app."""

@@ -41,19 +41,26 @@ def create_app():
 
         # Initialize database
         logger.info("Initializing database...")
-        init_db(app)
-        migrate = Migrate(app, db)
+        init_db(app)  # Initialize database first
+        migrate = Migrate(app, db)  # Then set up migrations
         logger.info("Database initialization completed")
 
         # Register routes and blueprints
         with app.app_context():
-            from routes import register_routes
-            register_routes(app)
-            logger.info("Routes registered successfully")
+            try:
+                from routes import register_routes
+                register_routes(app)
+                logger.info("Routes registered successfully")
+            except Exception as e:
+                logger.error(f"Failed to register routes: {str(e)}")
+                raise
 
-            from google_drive import google_drive
-            app.register_blueprint(google_drive)
-            logger.info("Google Drive blueprint registered")
+            try:
+                from google_drive import google_drive
+                app.register_blueprint(google_drive)
+                logger.info("Google Drive blueprint registered")
+            except Exception as e:
+                logger.warning(f"Failed to register Google Drive blueprint: {str(e)}")
 
         logger.info("Application setup completed successfully")
         return app
