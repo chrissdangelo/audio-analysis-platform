@@ -1,5 +1,48 @@
 document.addEventListener('DOMContentLoaded', function() {
     const bundleSuggestions = document.getElementById('bundleSuggestions');
+    
+    function updateTable(data) {
+        try {
+            if ($.fn.DataTable.isDataTable('#analysisTable')) {
+                $('#analysisTable').DataTable().destroy();
+            }
+            
+            const tbody = $('#analysisTable tbody');
+            tbody.empty();
+            
+            data.forEach(analysis => {
+                const row = `
+                    <tr data-id="${analysis.id}">
+                        <td>${analysis.id}</td>
+                        <td>${analysis.title || "Untitled"}</td>
+                        <td>${analysis.filename}</td>
+                        <td>${analysis.file_type}</td>
+                        <td>${analysis.format}</td>
+                        <td>${analysis.duration}</td>
+                        <td>${analysis.environments?.join(', ') || '-'}</td>
+                        <td>${analysis.characters_mentioned?.join(', ') || '-'}</td>
+                        <td>${analysis.speaking_characters?.join(', ') || '-'}</td>
+                        <td>${analysis.has_underscore ? "Yes" : "No"}</td>
+                        <td>${analysis.has_sound_effects ? "Yes" : "No"}</td>
+                        <td>${analysis.songs_count}</td>
+                        <td>${analysis.themes?.join(', ') || '-'}</td>
+                        <td>
+                            <a href="/debug_analysis/${analysis.id}" class="btn btn-sm btn-info mb-1">Info</a>
+                            <button class="btn btn-sm btn-danger delete-btn" data-id="${analysis.id}">Delete</button>
+                        </td>
+                    </tr>
+                `;
+                tbody.append(row);
+            });
+            
+            $('#analysisTable').DataTable({
+                colReorder: true,
+                pageLength: 25
+            });
+        } catch (error) {
+            console.error("Error updating table:", error);
+        }
+    }
 
     async function findBundleOpportunities() {
         try {
