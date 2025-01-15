@@ -3,6 +3,7 @@ import logging
 from flask import Flask
 from flask_migrate import Migrate
 from database import db, init_db
+from flask_cors import CORS
 
 # Configure logging
 logging.basicConfig(
@@ -17,13 +18,17 @@ def create_app():
         app = Flask(__name__)
         logger.info("Created Flask application")
 
-        # Configure Flask app
+        # Configure Flask app for public access
         app.secret_key = os.environ.get("FLASK_SECRET_KEY") or "a secret key"
 
-        # Explicitly disable authentication and configure for public access
+        # Disable all authentication and security restrictions for public access
         app.config['LOGIN_DISABLED'] = True
         app.config['SESSION_COOKIE_SECURE'] = False
         app.config['SESSION_PROTECTION'] = None
+        app.config['PUBLIC'] = True
+
+        # Enable CORS for all origins
+        CORS(app, resources={r"/*": {"origins": "*"}})
 
         # Configure database
         if not os.environ.get("DATABASE_URL"):
