@@ -238,7 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
 
-            return Array.from(groups.entries())
+            let result = Array.from(groups.entries())
                 .filter(([_, items]) => items.length > 1)
                 .map(([key, items]) => {
                     // Group by series (first part of filename before underscore)
@@ -266,8 +266,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         count: items.length,
                         emotionalContext: emotionField ? getEmotionalContext(items) : null
                     };
-                })
-                .sort((a, b) => b.count - a.count);
+                });
+
+            // Filter groups to only show those with the minimum number of items
+            const minSize = Math.min(...result.map(group => group.items.length));
+            result = result.filter(group => group.items.length === minSize);
+
+            return result.sort((a, b) => b.count - a.count);
 
         } catch (error) {
             console.error('Error in groupByCommonality:', error);
@@ -445,13 +450,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function createBundleSection(title, groups, type) {
-        const maxTitles = parseInt(document.getElementById('maxTitles').value) || 5;
         return `
             <div class="col-12 mb-4">
                 <h6 class="mb-3">${title}</h6>
                 ${groups.map(group => {
-                    // Limit the items in each group
-                    const limitedItems = {...group, items: group.items.slice(0, maxTitles)};
                     const bundleTitle = generateBundleTitle(type, group.commonality, group.emotionalContext);
                     const elevatorPitch = generateElevatorPitch(
                         type, 
@@ -471,7 +473,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     ${bundleTitle}
                                     <i class="bi bi-chevron-down ms-2"></i>
                                 </h5>
-                                <span class="badge bg-primary">${limitedItems.items.length} stories</span>
+                                <span class="badge bg-primary">${group.items.length} stories</span>
                             </div>
                             <p class="card-text text-muted mb-0 mt-2">${elevatorPitch}</p>
                             <div class="mt-2">
@@ -487,7 +489,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="collapse" id="bundle-${type}-${group.commonality.replace(/\s+/g, '-')}">
                             <div class="card-body">
                                 <div class="list-group list-group-flush">
-                                    ${limitedItems.items.map(item => `
+                                    ${group.items.map(item => `
                                         <div class="list-group-item">
                                             <div class="d-flex justify-content-between align-items-center">
                                                 <span>${item.title || 'Untitled'}</span>
