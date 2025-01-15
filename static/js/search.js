@@ -171,22 +171,24 @@ document.addEventListener('DOMContentLoaded', function() {
             // Filter results locally based on selected criteria
             const filteredResults = analyses.filter(analysis => {
                 const matchesCharacters = selectedCharacters.length === 0 || 
-                    selectedCharacters.every(char => analysis.speaking_characters && analysis.speaking_characters.includes(char));
+                    (matchAll ? selectedCharacters.every(char => analysis.speaking_characters && analysis.speaking_characters.includes(char))
+                             : selectedCharacters.some(char => analysis.speaking_characters && analysis.speaking_characters.includes(char)));
 
                 const matchesEnvironments = selectedEnvironments.length === 0 || 
-                    selectedEnvironments.every(env => analysis.environments && analysis.environments.includes(env));
+                    (matchAll ? selectedEnvironments.every(env => analysis.environments && analysis.environments.includes(env))
+                             : selectedEnvironments.some(env => analysis.environments && analysis.environments.includes(env)));
 
                 const matchesThemes = selectedThemes.length === 0 || 
-                    selectedThemes.every(theme => analysis.themes && analysis.themes.includes(theme));
+                    (matchAll ? selectedThemes.every(theme => analysis.themes && analysis.themes.includes(theme))
+                             : selectedThemes.some(theme => analysis.themes && analysis.themes.includes(theme)));
 
                 if (matchAll) {
                     // Must match all selected criteria
                     return matchesCharacters && matchesEnvironments && matchesThemes;
                 } else {
-                    // Match any of the selected criteria
-                    return (selectedCharacters.length > 0 && matchesCharacters) ||
-                           (selectedEnvironments.length > 0 && matchesEnvironments) ||
-                           (selectedThemes.length > 0 && matchesThemes);
+                    // Match any of the selected criteria (if any criteria are selected)
+                    return (selectedCharacters.length === 0 && selectedEnvironments.length === 0 && selectedThemes.length === 0) ? false :
+                           (matchesCharacters || matchesEnvironments || matchesThemes);
                 }
             });
 
