@@ -20,6 +20,9 @@ def create_app():
         # Configure Flask app
         app.secret_key = os.environ.get("FLASK_SECRET_KEY") or "a secret key"
 
+        # Explicitly disable authentication for public access
+        app.config['LOGIN_DISABLED'] = True
+
         # Configure database
         if not os.environ.get("DATABASE_URL"):
             logger.error("DATABASE_URL environment variable is not set")
@@ -78,9 +81,10 @@ except Exception as e:
 
 if __name__ == '__main__':
     try:
+        # Ensure we're binding to all interfaces and using the correct port
         port = int(os.environ.get('PORT', 5000))
         logger.info(f"Starting Flask server on port {port}...")
-        app.run(host='0.0.0.0', port=port, debug=True)
+        app.run(host='0.0.0.0', port=port, debug=True, threaded=True)
     except Exception as e:
         logger.error(f"Failed to start app: {str(e)}")
         raise
