@@ -7,6 +7,67 @@ document.addEventListener('DOMContentLoaded', function() {
     errorAlert.className = 'alert alert-danger alert-dismissible fade';
     errorAlert.setAttribute('role', 'alert');
 
+    // Initialize DataTable with resizable columns
+    const table = $('#analysisTable').DataTable({
+        scrollX: true,
+        autoWidth: false,
+        columnDefs: [
+            { width: '200px', targets: 1 }, // Title column
+            { width: '150px', targets: 2 }, // Filename column
+            { width: '100px', targets: '_all' } // Default width for other columns
+        ]
+    });
+
+    // Add resizer handles to each header cell
+    $('#analysisTable thead th').each(function() {
+        const resizer = document.createElement('div');
+        resizer.classList.add('resizer');
+        this.appendChild(resizer);
+        createResizableColumn(this, resizer);
+    });
+
+    function createResizableColumn(th, resizer) {
+        let startX, startWidth;
+
+        function startDragging(e) {
+            startX = e.pageX;
+            startWidth = th.offsetWidth;
+            resizer.classList.add('resizing');
+
+            // Add event listeners for dragging
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('mouseup', stopDragging);
+
+            // Prevent text selection while dragging
+            document.body.style.userSelect = 'none';
+        }
+
+        function onDrag(e) {
+            if (!startX) return;
+
+            const diffX = e.pageX - startX;
+            const newWidth = Math.max(100, startWidth + diffX); // Minimum width of 100px
+
+            // Update column width
+            th.style.width = `${newWidth}px`;
+            th.style.minWidth = `${newWidth}px`;
+
+            // Force DataTables to recalculate column widths
+            table.columns.adjust();
+        }
+
+        function stopDragging() {
+            resizer.classList.remove('resizing');
+            document.removeEventListener('mousemove', onDrag);
+            document.removeEventListener('mouseup', stopDragging);
+            document.body.style.userSelect = '';
+            startX = null;
+        }
+
+        // Add mousedown event listener to resizer
+        resizer.addEventListener('mousedown', startDragging);
+    }
+
     function showError(message) {
         // Remove any existing error alerts
         const existingAlert = document.querySelector('.alert-danger');
@@ -30,27 +91,12 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch('/api/analyses')
             .then(response => response.json())
             .then(data => {
-                const tbody = document.querySelector('table tbody');
-                if (!tbody) return;
-
-                tbody.innerHTML = ''; // Clear existing rows
-                data.forEach(item => {
-                    // Create table row
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${item.id}</td>
-                        <td>${item.title}</td>
-                        <td>${item.filename}</td>
-                        <td>${item.format}</td>
-                        <td>${item.duration}</td>
-                        <td>${item.environments}</td>
-                        <td>${item.characters_mentioned}</td>
-                    `;
-                    tbody.appendChild(row);
-                });
+                //Instead of manually updating the table, reload the DataTable
+                table.clear().rows.add(data).draw();
             })
             .catch(error => console.error('Error updating table:', error));
     }
+
 
     // Handle file upload
     if (uploadForm) {
@@ -89,8 +135,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     throw new Error(result.error || 'Upload failed');
                 }
 
-                // Update the table with the new data
-                updateTable();
+                // Refresh the DataTable
+                table.ajax.reload();
 
                 // Clear the file input
                 audioFileInput.value = '';
