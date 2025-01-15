@@ -183,17 +183,18 @@ def register_routes(app):
             logger.error(f"Unexpected error: {str(e)}", exc_info=True)
             return jsonify({'error': f'An unexpected error occurred: {str(e)}'}), 500
         finally:
-            # Clean up resources
+            # Clean up analyzer resources
             if analyzer:
                 try:
                     analyzer.cleanup()
                 except Exception as e:
                     logger.error(f"Error cleaning up analyzer: {str(e)}")
 
-            if filepath and os.path.exists(filepath):
+            # Only clean up file if processing was successful
+            if filepath and os.path.exists(filepath) and 'analysis' in locals() and analysis.id:
                 try:
                     os.remove(filepath)
-                    logger.info(f"Cleaned up uploaded file: {filepath}")
+                    logger.info(f"Cleaned up successfully processed file: {filepath}")
                 except Exception as e:
                     logger.error(f"Error cleaning up file {filepath}: {str(e)}")
 
