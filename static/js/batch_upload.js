@@ -96,14 +96,13 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateBatchStatus(status) {
         const totalFiles = status.total_files;
         const processedFiles = status.processed_files + status.failed_files;
-        const completedFiles = status.processed_files;
 
         let statusHtml = `<div class="alert alert-info">
             Processing ${processedFiles}/${totalFiles} files
         </div>`;
 
         if (status.files) {
-            statusHtml = ''; // Clear previous status
+            statusHtml += '<div class="file-status-container">';
             Object.entries(status.files).forEach(([filename, fileStatus]) => {
                 const statusClass = {
                     'pending': 'text-muted',
@@ -112,7 +111,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     'failed': 'text-danger'
                 }[fileStatus.status] || 'text-muted';
 
-                const statusMsg = fileStatus.detailed_status || fileStatus.current_operation || 'waiting';
+                const operation = fileStatus.current_operation || 'waiting';
 
                 statusHtml += `
                     <div class="file-status ${fileStatus.status} mb-2">
@@ -123,9 +122,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                 ${fileStatus.error ? `<i class="fas fa-exclamation-circle" title="${fileStatus.error}"></i>` : ''}
                             </span>
                         </div>
-                        <div class="small text-muted mt-1">
-                            ${statusMsg}
-                        </div>
+                        ${fileStatus.status === 'processing' ? `
+                            <div class="small text-muted mt-1">
+                                ${operation}...
+                            </div>
+                        ` : ''}
                         ${fileStatus.error ? `
                             <div class="error-message small text-danger mt-1">
                                 ${fileStatus.error}
@@ -134,8 +135,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 `;
             });
-        } else {
-            statusHtml = `<div class="alert alert-info">Processing ${completedFiles}/${totalFiles} files...</div>`;
+            statusHtml += '</div>';
         }
 
         batchStatus.innerHTML = statusHtml;
