@@ -440,7 +440,7 @@ def register_routes(app):
             def process_with_context():
                 with app.app_context():
                     process_batch(app, batch_id)
-            
+
             thread = Thread(target=process_with_context)
             thread.daemon = True
             thread.start()
@@ -787,7 +787,7 @@ def register_routes(app):
             # Schedule cleanup after 30 minutes
             from datetime import datetime, timedelta
             cleanup_time = datetime.now() + timedelta(minutes=30)
-
+            MAX_PROCESSING_TIME = 1800  # 30 minutes timeout
             while datetime.now() < cleanup_time:
                 # Keep checking if files are still needed
                 if any(f for f in pending_files if os.path.exists(os.path.join(app.config['UPLOAD_FOLDER'], f))):
