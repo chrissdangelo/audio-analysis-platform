@@ -27,9 +27,6 @@ def create_app():
         app.config['SESSION_PROTECTION'] = None
         app.config['PUBLIC'] = True
 
-        # Enable CORS for all origins
-        CORS(app, resources={r"/*": {"origins": "*"}})
-
         # Configure database
         if not os.environ.get("DATABASE_URL"):
             logger.error("DATABASE_URL environment variable is not set")
@@ -49,6 +46,10 @@ def create_app():
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
         logger.info(f"Created upload directory at {app.config['UPLOAD_FOLDER']}")
 
+        # Enable CORS after basic configuration
+        CORS(app, resources={r"/*": {"origins": "*"}})
+        logger.info("CORS configuration enabled")
+
         # Initialize database
         logger.info("Initializing database...")
         init_db(app)  # Initialize database first
@@ -62,7 +63,7 @@ def create_app():
                 register_routes(app)
                 logger.info("Routes registered successfully")
             except Exception as e:
-                logger.error(f"Failed to register routes: {str(e)}")
+                logger.error(f"Failed to register routes: {str(e)}", exc_info=True)
                 raise
 
             try:
@@ -70,28 +71,27 @@ def create_app():
                 app.register_blueprint(google_drive)
                 logger.info("Google Drive blueprint registered")
             except Exception as e:
-                logger.warning(f"Failed to register Google Drive blueprint: {str(e)}")
+                logger.warning(f"Failed to register Google Drive blueprint: {str(e)}", exc_info=True)
 
         logger.info("Application setup completed successfully")
         return app
 
     except Exception as e:
-        logger.error(f"Failed to create app: {str(e)}")
+        logger.error(f"Failed to create app: {str(e)}", exc_info=True)
         raise
 
 # Create the application instance
 try:
     app = create_app()
 except Exception as e:
-    logger.error(f"Failed to create application instance: {str(e)}")
+    logger.error(f"Failed to create application instance: {str(e)}", exc_info=True)
     raise
 
 if __name__ == '__main__':
     try:
-        # Ensure we're binding to all interfaces and using the correct port
         port = int(os.environ.get('PORT', 5000))
         logger.info(f"Starting Flask server on port {port}...")
-        app.run(host='0.0.0.0', port=port, debug=True, threaded=True)
+        app.run(host='0.0.0.0', port=port, debug=True)
     except Exception as e:
-        logger.error(f"Failed to start app: {str(e)}")
+        logger.error(f"Failed to start app: {str(e)}", exc_info=True)
         raise
