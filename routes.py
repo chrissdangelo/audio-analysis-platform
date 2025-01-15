@@ -774,17 +774,31 @@ def register_routes(app):
                         batch_manager.mark_file_failed(batch_id, filename, str(e))
 
                     finally:
-                        # Clean up resources
+                        # Clean up analyzer resources
                         if analyzer:
                             try:
                                 analyzer.cleanup()
                             except Exception as e:
                                 logger.error(f"Error cleaning up analyzer: {str(e)}")
 
+                        # Save batch status after each file
+                        batch_manager.save_batch_status(batch_id)
+
+                        # Clean up the file only if successfully processed or failed permanently
+                        file_status = batch_manager.batch_status[batch_id]['files'][filename]
+                        if file_status['status'] in ['completed', 'failed'] or file_status['attempts'] >= 3:
+                            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                            if os.path.exists(filepath):
+                                try:
+                                    os.remove(filepath)
+                                    logger.info(f"Cleaned up file {filepath} after processing")
+                                except Exception as e:
+                                    logger.error(f"Error cleaning up file {filepath}: {str(e)}")
+
                     # Save batch status after each file
                     batch_manager.save_batch_status(batch_id)
 
-            # Schedule cleanup after 30 minutes
+            # Schedule any remaining cleanup after 30 minutes
             from datetime import datetime, timedelta
             cleanup_time = datetime.now() + timedelta(minutes=30)
             MAX_PROCESSING_TIME = 1800  # 30 minutes timeout
