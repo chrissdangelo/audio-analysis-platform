@@ -29,6 +29,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
+            // Populate checkboxes
+            characterCheckboxes.querySelector('.d-flex').innerHTML = Array.from(characters)
+                .sort()
+                .map(char => `
+                    <div class="form-check me-3">
+                        <input class="form-check-input" type="checkbox" value="${char}" id="char-${char}">
+                        <label class="form-check-label" for="char-${char}">${char}</label>
+                    </div>
+                `).join('');
+
+            environmentCheckboxes.querySelector('.d-flex').innerHTML = Array.from(environments)
+                .sort()
+                .map(env => `
+                    <div class="form-check me-3">
+                        <input class="form-check-input" type="checkbox" value="${env}" id="env-${env}">
+                        <label class="form-check-label" for="env-${env}">${env}</label>
+                    </div>
+                `).join('');
+
+            themesList.querySelector('.d-flex').innerHTML = Array.from(themes)
+                .sort()
+                .map(theme => `
+                    <div class="form-check me-3">
+                        <input class="form-check-input" type="checkbox" value="${theme}" id="theme-${theme}">
+                        <label class="form-check-label" for="theme-${theme}">${theme}</label>
+                    </div>
+                `).join('');
+
             updateFilterCounts();
 
             // Add change event listeners to all checkboxes
@@ -183,6 +211,20 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
     }
+
+    // Initialize collapse functionality for criteria sections
+    document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(button => {
+        button.addEventListener('click', function() {
+            const icon = this.querySelector('i');
+            if (this.getAttribute('aria-expanded') === 'true') {
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+            } else {
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+            }
+        });
+    });
 
     // Initialize
     loadFilterOptions();
