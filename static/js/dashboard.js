@@ -743,6 +743,11 @@ function generateContentSummary(data) {
     const dominantEmotion = Object.entries(avgEmotions)
         .sort((a, b) => b[1] - a[1])[0][0];
 
+    // Calculate total duration
+    const totalSeconds = data.reduce((sum, item) => sum + (item.duration || 0), 0);
+    const totalDuration = new Date(totalSeconds * 1000).toISOString().substr(11, 8);
+
+
     // Generate summary text
     const basicSummary = `This corpus contains ${totalItems} analyzed pieces of content. ` +
         `The content is primarily ${Object.entries(formats).map(([k,v]) => `${v} ${k}`).join(' and ')}. ` +
@@ -758,7 +763,7 @@ function generateContentSummary(data) {
         `${audioStats.withMusic / totalItems > 0.7 ? 'The high prevalence of background music indicates strong emphasis on mood and atmosphere. ' : ''}` +
         `${themes.size > 5 ? 'The diverse range of themes suggests content designed to engage with multiple aspects of the audience\'s interests.' : ''}`;
 
-    return basicSummary + aiInsights;
+    return basicSummary + aiInsights + `\n\nTotal Duration: ${totalDuration}`;
 }
 
 function updateCharts(data) {

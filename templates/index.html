@@ -108,6 +108,7 @@
                     <h5 class="card-title">Content Overview</h5>
                     <div id="content-summary" class="content-summary">
                         Loading content summary...
+                        <p>Total Duration: <span id="totalDuration">-</span></p>
                     </div>
                 </div>
             </div>
@@ -299,4 +300,22 @@
 <script src="{{ url_for('static', filename='js/batch_upload.js') }}"></script>
 <script src="{{ url_for('static', filename='js/search.js') }}"></script>
 <script src="{{ url_for('static', filename='js/bundle.js') }}"></script>
+<script>
+  //Assumed existing code to get durations
+  let totalSeconds = 0;
+  const durations = document.querySelectorAll('#analysisTable td:nth-child(6)');
+  durations.forEach(durationElement => {
+    let duration = durationElement.textContent.trim();
+    if (duration !== '-') {
+      let [minutes, seconds] = duration.split(':').map(Number);
+      totalSeconds += minutes * 60 + seconds;
+    }
+  });
+
+  const totalDurationElement = document.getElementById('totalDuration');
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  totalDurationElement.textContent = `${hours}:${minutes}:${seconds}`;
+</script>
 {% endblock %}
