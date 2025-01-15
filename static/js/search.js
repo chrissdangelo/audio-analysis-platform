@@ -88,55 +88,59 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const matchAll = criteriaModeToggle.checked;
 
-        // Count matching items for each criterion
-        analyses.forEach(analysis => {
-            // Update character counts
-            document.querySelectorAll('#characterCheckboxes input').forEach(input => {
-                const char = input.value;
-                const label = input.parentElement.querySelector('label');
-                const count = countMatches(char, 'speaking_characters', selectedCharacters, selectedEnvironments, selectedThemes, matchAll);
-                label.textContent = `${char} (${count})`;
-            });
+        // Update character counts
+        document.querySelectorAll('#characterCheckboxes input').forEach(input => {
+            const char = input.value;
+            const label = input.parentElement.querySelector('label');
+            const count = countMatchesForCriterion(char, 'speaking_characters', selectedCharacters, selectedEnvironments, selectedThemes, matchAll);
+            label.textContent = `${char} (${count})`;
+        });
 
-            // Update environment counts
-            document.querySelectorAll('#environmentCheckboxes input').forEach(input => {
-                const env = input.value;
-                const label = input.parentElement.querySelector('label');
-                const count = countMatches(env, 'environments', selectedCharacters, selectedEnvironments, selectedThemes, matchAll);
-                label.textContent = `${env} (${count})`;
-            });
+        // Update environment counts
+        document.querySelectorAll('#environmentCheckboxes input').forEach(input => {
+            const env = input.value;
+            const label = input.parentElement.querySelector('label');
+            const count = countMatchesForCriterion(env, 'environments', selectedCharacters, selectedEnvironments, selectedThemes, matchAll);
+            label.textContent = `${env} (${count})`;
+        });
 
-            // Update theme counts
-            document.querySelectorAll('#themesList input').forEach(input => {
-                const theme = input.value;
-                const label = input.parentElement.querySelector('label');
-                const count = countMatches(theme, 'themes', selectedCharacters, selectedEnvironments, selectedThemes, matchAll);
-                label.textContent = `${theme} (${count})`;
-            });
+        // Update theme counts
+        document.querySelectorAll('#themesList input').forEach(input => {
+            const theme = input.value;
+            const label = input.parentElement.querySelector('label');
+            const count = countMatchesForCriterion(theme, 'themes', selectedCharacters, selectedEnvironments, selectedThemes, matchAll);
+            label.textContent = `${theme} (${count})`;
         });
     }
 
-    function countMatches(value, type, selectedCharacters, selectedEnvironments, selectedThemes, matchAll) {
+    function countMatchesForCriterion(value, type, selectedCharacters, selectedEnvironments, selectedThemes, matchAll) {
         return analyses.filter(analysis => {
-            const hasValue = analysis[type] && analysis[type].includes(value);
+            // Check if the item has the current criterion
+            const hasCurrentCriterion = analysis[type] && analysis[type].includes(value);
+            if (!hasCurrentCriterion) return false;
 
-            if (!hasValue) return false;
-
+            // If no other criteria are selected, just count items with this criterion
             if (selectedCharacters.length === 0 && selectedEnvironments.length === 0 && selectedThemes.length === 0) {
                 return true;
             }
 
-            const matchesCharacters = selectedCharacters.length === 0 || 
+            // For other selected criteria, check if they match based on the mode
+            const matchesSelectedCharacters = type === 'speaking_characters' ? true :
+                selectedCharacters.length === 0 || 
                 selectedCharacters.some(char => analysis.speaking_characters && analysis.speaking_characters.includes(char));
-            const matchesEnvironments = selectedEnvironments.length === 0 || 
+
+            const matchesSelectedEnvironments = type === 'environments' ? true :
+                selectedEnvironments.length === 0 || 
                 selectedEnvironments.some(env => analysis.environments && analysis.environments.includes(env));
-            const matchesThemes = selectedThemes.length === 0 || 
+
+            const matchesSelectedThemes = type === 'themes' ? true :
+                selectedThemes.length === 0 || 
                 selectedThemes.some(theme => analysis.themes && analysis.themes.includes(theme));
 
             if (matchAll) {
-                return matchesCharacters && matchesEnvironments && matchesThemes;
+                return matchesSelectedCharacters && matchesSelectedEnvironments && matchesSelectedThemes;
             } else {
-                return matchesCharacters || matchesEnvironments || matchesThemes;
+                return true; // In "Any" mode, we count all items that have this criterion
             }
         }).length;
     }
