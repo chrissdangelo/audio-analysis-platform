@@ -768,7 +768,7 @@ def register_routes(app):
                         db.session.commit()
 
                         batch_manager.mark_file_complete(batch_id, filename, analysis.id)
-                        logger.info(f"Successfully processed file {filename} in batch {batch_id}")
+                        logger.info(f"Successfully processed file {filename in batch {batch_id}")
 
                     except Exception as e:
                         logger.error(f"Error processing {filename}: {str(e)}")

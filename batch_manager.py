@@ -29,7 +29,8 @@ class BatchUploadManager:
                     'processed_at': None,
                     'upload_progress': 0,  # Track individual file upload progress
                     'processing_progress': 0,  # Track processing progress
-                    'current_operation': 'waiting'  # Current operation being performed
+                    'current_operation': 'waiting',  # Current operation being performed
+                    'detailed_status': 'Waiting to start...'  # Detailed status message
                 } for filename in file_list
             },
             'total_files': len(file_list),
@@ -89,6 +90,7 @@ class BatchUploadManager:
                 file_status['current_operation'] = 'analyzing content'
                 file_status['upload_progress'] = 100  # File is uploaded
                 file_status['processing_progress'] = 0  # Start processing
+                file_status['detailed_status'] = 'Analyzing content...' #Added detailed status
                 logger.info(f"Started processing {filename} (Attempt {file_status['attempts']})")
                 self.save_batch_status(batch_id)
 
@@ -103,6 +105,7 @@ class BatchUploadManager:
                 file_status['upload_progress'] = 100
                 file_status['processing_progress'] = 100
                 file_status['current_operation'] = 'completed'
+                file_status['detailed_status'] = 'Processing complete' #Added detailed status
                 self.batch_status[batch_id]['processed_files'] += 1
                 logger.info(f"Completed processing {filename}")
 
@@ -126,11 +129,13 @@ class BatchUploadManager:
                     file_status['current_operation'] = 'failed'
                     file_status['upload_progress'] = 100  # File was uploaded
                     file_status['processing_progress'] = 100  # Processing ended (in failure)
+                    file_status['detailed_status'] = f'Processing failed: {error}' #Added detailed status
                     self.batch_status[batch_id]['failed_files'] += 1
                     logger.error(f"Failed to process {filename} after {file_status['attempts']} attempts: {error}")
                 else:
                     file_status['status'] = 'pending'
                     file_status['error'] = error
+                    file_status['detailed_status'] = f'Attempt {file_status["attempts"]} failed: {error}' #Added detailed status
                     logger.warning(f"Processing attempt {file_status['attempts']} failed for {filename}: {error}")
                 self.save_batch_status(batch_id)
 
@@ -143,6 +148,7 @@ class BatchUploadManager:
                 if file_status['status'] == 'pending':
                     file_status['status'] = 'cancelled'
                     file_status['current_operation'] = 'cancelled'
+                    file_status['detailed_status'] = 'Cancelled' #Added detailed status
             self.save_batch_status(batch_id)
             logger.info(f"Cancelled batch {batch_id}")
 
