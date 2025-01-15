@@ -495,10 +495,12 @@ class GeminiAnalyzer:
         retry_count = 0
         max_retries = 8
 
+        # Configure longer timeout for large file uploads
+        import httplib2
+        httplib2.TIMEOUT = 300  # 5 minute timeout for each attempt
+
         while response is None and time.time() - start_time < timeout and retry_count < max_retries:
             try:
-                # Set a shorter timeout for the actual API call
-                genai.configure(timeout_secs=600)  # 10 minute timeout per API call
                 response = self.chat.send_message(message)
                 break
             except Exception as e:
