@@ -200,87 +200,95 @@
 
         <!-- Search Criteria Tab (Bundle Builder) -->
         <div class="tab-pane fade" id="search" role="tabpanel">
-            <div class="split-panel-container">
-                <!-- Left Panel: Search Criteria -->
-                <div class="split-panel split-panel-left">
-                    <div class="panel-header">
-                        <h5 class="mb-0">Build Your Bundle</h5>
-                        <p class="text-muted small mb-0">Select criteria to find matching content</p>
-                    </div>
-                    <div class="panel-content">
-                        <form id="searchForm">
-                            <div class="criteria-card">
-                                <div class="card-body">
-                                    <h6 class="card-subtitle mb-2">
-                                        <button class="btn btn-link p-0 text-decoration-none" type="button" 
-                                                data-bs-toggle="collapse" data-bs-target="#themesList">
-                                            <i class="fas fa-chevron-down me-2"></i>Themes
-                                        </button>
-                                    </h6>
-                                    <div id="themesList" class="collapse show">
-                                        <div class="d-flex flex-wrap gap-2 mt-3">
-                                            <!-- Dynamically populated -->
+                <div class="split-panel-container">
+                    <!-- Left Panel: Search Criteria -->
+                    <div class="split-panel split-panel-left">
+                        <div class="panel-header">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <h5 class="mb-0">Build Your Bundle</h5>
+                                    <p class="text-muted small mb-0">Select criteria to find matching content</p>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="criteriaMode" checked>
+                                    <label class="form-check-label" for="criteriaMode">Match All Criteria</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel-content">
+                            <form id="searchForm">
+                                <div class="criteria-card">
+                                    <div class="card-body">
+                                        <h6 class="card-subtitle mb-2">
+                                            <button class="btn btn-link p-0 text-decoration-none" type="button" 
+                                                    data-bs-toggle="collapse" data-bs-target="#themesList">
+                                                <i class="fas fa-chevron-down me-2"></i>Themes
+                                            </button>
+                                        </h6>
+                                        <div id="themesList" class="collapse show">
+                                            <div class="d-flex flex-wrap gap-2 mt-3">
+                                                <!-- Dynamically populated -->
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div class="criteria-card">
-                                <div class="card-body">
-                                    <h6 class="card-subtitle mb-2">
-                                        <button class="btn btn-link p-0 text-decoration-none" type="button" 
-                                                data-bs-toggle="collapse" data-bs-target="#characterCheckboxes">
-                                            <i class="fas fa-chevron-down me-2"></i>Characters
-                                        </button>
-                                    </h6>
-                                    <div id="characterCheckboxes" class="collapse show">
-                                        <div class="d-flex flex-wrap gap-2 mt-3">
-                                            <!-- Dynamically populated -->
+                                <div class="criteria-card">
+                                    <div class="card-body">
+                                        <h6 class="card-subtitle mb-2">
+                                            <button class="btn btn-link p-0 text-decoration-none" type="button" 
+                                                    data-bs-toggle="collapse" data-bs-target="#characterCheckboxes">
+                                                <i class="fas fa-chevron-down me-2"></i>Characters
+                                            </button>
+                                        </h6>
+                                        <div id="characterCheckboxes" class="collapse show">
+                                            <div class="d-flex flex-wrap gap-2 mt-3">
+                                                <!-- Dynamically populated -->
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div class="criteria-card">
-                                <div class="card-body">
-                                    <h6 class="card-subtitle mb-2">
-                                        <button class="btn btn-link p-0 text-decoration-none" type="button" 
-                                                data-bs-toggle="collapse" data-bs-target="#environmentCheckboxes">
-                                            <i class="fas fa-chevron-down me-2"></i>Environments
-                                        </button>
-                                    </h6>
-                                    <div id="environmentCheckboxes" class="collapse show">
-                                        <div class="d-flex flex-wrap gap-2 mt-3">
-                                            <!-- Dynamically populated -->
+                                <div class="criteria-card">
+                                    <div class="card-body">
+                                        <h6 class="card-subtitle mb-2">
+                                            <button class="btn btn-link p-0 text-decoration-none" type="button" 
+                                                    data-bs-toggle="collapse" data-bs-target="#environmentCheckboxes">
+                                                <i class="fas fa-chevron-down me-2"></i>Environments
+                                            </button>
+                                        </h6>
+                                        <div id="environmentCheckboxes" class="collapse show">
+                                            <div class="d-flex flex-wrap gap-2 mt-3">
+                                                <!-- Dynamically populated -->
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <button type="submit" class="btn btn-primary w-100 mt-4">
-                                <i class="fas fa-magic me-2"></i>Build Bundle
-                            </button>
-                        </form>
+                                <button type="submit" class="btn btn-primary w-100 mt-4">
+                                    <i class="fas fa-magic me-2"></i>Build Bundle
+                                </button>
+                            </form>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Right Panel: Search Results -->
-                <div class="split-panel split-panel-right">
-                    <div class="panel-header">
-                        <h5 class="mb-0">Matching Content</h5>
-                        <p class="text-muted small mb-0" id="resultsCount"></p>
-                    </div>
-                    <div class="panel-content">
-                        <div id="searchResults">
-                            <div class="alert alert-info">
-                                <i class="fas fa-info-circle me-2"></i>
-                                Select criteria from the left panel to see matching content
+                    <!-- Right Panel: Search Results -->
+                    <div class="split-panel split-panel-right">
+                        <div class="panel-header">
+                            <h5 class="mb-0">Matching Content</h5>
+                            <p class="text-muted small mb-0" id="resultsCount"></p>
+                        </div>
+                        <div class="panel-content">
+                            <div id="searchResults">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Select criteria from the left panel to see matching content
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
         <!-- Bundle Opportunities Tab -->
         <div class="tab-pane fade" id="bundle" role="tabpanel">

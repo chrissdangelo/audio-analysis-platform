@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const environmentCheckboxes = document.getElementById('environmentCheckboxes');
     const themesList = document.getElementById('themesList');
     const searchResults = document.getElementById('searchResults');
+    const criteriaModeToggle = document.getElementById('criteriaMode');
 
     // Initialize collapse functionality
     document.querySelectorAll('.collapsible').forEach(header => {
@@ -102,6 +103,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 checkbox.addEventListener('change', performSearch);
             });
 
+            // Add change event listener to criteria mode toggle
+            criteriaModeToggle.addEventListener('change', performSearch);
+
         } catch (error) {
             console.error('Error loading filter options:', error);
         }
@@ -116,22 +120,49 @@ document.addEventListener('DOMContentLoaded', function() {
             const selectedThemes = [...document.querySelectorAll('#themesList input:checked')]
                 .map(input => input.value);
 
+            // If no criteria are selected, show the default message
+            if (!selectedCharacters.length && !selectedEnvironments.length && !selectedThemes.length) {
+                searchResults.innerHTML = `
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Select criteria from the left panel to see matching content
+                    </div>
+                `;
+                return;
+            }
+
             const params = new URLSearchParams();
             if (selectedCharacters.length) params.append('characters', selectedCharacters.join(','));
             if (selectedEnvironments.length) params.append('environments', selectedEnvironments.join(','));
             if (selectedThemes.length) params.append('themes', selectedThemes.join(','));
+            params.append('match_all', criteriaModeToggle.checked ? 'true' : 'false');
 
             const response = await fetch(`/api/search?${params.toString()}`);
             const results = await response.json();
             displaySearchResults(results);
         } catch (error) {
             console.error('Error performing search:', error);
+            searchResults.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    Error performing search. Please try again.
+                </div>
+            `;
         }
     }
 
-    function updateTable(results) {
+    function displaySearchResults(results) {
+        // Update results count
+        const resultsCount = document.querySelector('#resultsCount');
+        resultsCount.textContent = `${results.length} items found`;
+
         if (!results.length) {
-            searchResults.innerHTML = '<div class="alert alert-info">No matches found</div>';
+            searchResults.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No matches found for the selected criteria
+                </div>
+            `;
             return;
         }
 
@@ -148,10 +179,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 `).join('')}
             </div>
         `;
-    }
-
-    function displaySearchResults(results) {
-        updateTable(results);
     }
 
     // Initialize
