@@ -89,9 +89,9 @@ except Exception as e:
 
 if __name__ == '__main__':
     try:
-        port = int(os.environ.get('PORT', 5000))
+        port = int(os.environ.get('PORT', 3000))
         logger.info(f"Starting Flask server on port {port}...")
-        app.run(host='0.0.0.0', port=port, debug=True)
+        app.run(host='0.0.0.0', port=port, debug=False)
     except Exception as e:
         logger.error(f"Failed to start app: {str(e)}", exc_info=True)
         raise

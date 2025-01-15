@@ -1,3 +1,21 @@
+function updateTable(data) {
+    const tbody = document.querySelector('table tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    data.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${item.id}</td>
+            <td>${item.title}</td>
+            <td>${item.filename}</td>
+            <td>${item.format}</td>
+            <td>${item.duration}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const uploadForm = document.getElementById('uploadForm');
     const uploadBtn = document.getElementById('uploadBtn');
