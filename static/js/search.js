@@ -166,15 +166,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            const params = new URLSearchParams();
-            if (selectedCharacters.length) params.append('characters', selectedCharacters.join(','));
-            if (selectedEnvironments.length) params.append('environments', selectedEnvironments.join(','));
-            if (selectedThemes.length) params.append('themes', selectedThemes.join(','));
-            params.append('match_all', criteriaModeToggle.checked ? 'true' : 'false');
+            const matchAll = criteriaModeToggle.checked;
 
-            const response = await fetch(`/api/search?${params.toString()}`);
-            const results = await response.json();
-            displaySearchResults(results);
+            // Filter results locally based on selected criteria
+            const filteredResults = analyses.filter(analysis => {
+                const matchesCharacters = selectedCharacters.length === 0 || 
+                    selectedCharacters.every(char => analysis.speaking_characters && analysis.speaking_characters.includes(char));
+
+                const matchesEnvironments = selectedEnvironments.length === 0 || 
+                    selectedEnvironments.every(env => analysis.environments && analysis.environments.includes(env));
+
+                const matchesThemes = selectedThemes.length === 0 || 
+                    selectedThemes.every(theme => analysis.themes && analysis.themes.includes(theme));
+
+                if (matchAll) {
+                    // Must match all selected criteria
+                    return matchesCharacters && matchesEnvironments && matchesThemes;
+                } else {
+                    // Match any of the selected criteria
+                    return (selectedCharacters.length > 0 && matchesCharacters) ||
+                           (selectedEnvironments.length > 0 && matchesEnvironments) ||
+                           (selectedThemes.length > 0 && matchesThemes);
+                }
+            });
+
+            displaySearchResults(filteredResults);
         } catch (error) {
             console.error('Error performing search:', error);
             searchResults.innerHTML = `
