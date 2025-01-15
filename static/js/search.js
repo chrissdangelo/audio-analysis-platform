@@ -5,30 +5,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchResults = document.getElementById('searchResults');
     const criteriaModeToggle = document.getElementById('criteriaMode');
 
-    // Initialize collapse functionality
-    document.querySelectorAll('.collapsible').forEach(header => {
-        header.addEventListener('click', function(e) {
-            e.preventDefault();
-            const targetId = this.getAttribute('data-target');
-            const content = document.getElementById(targetId);
-
-            // Toggle the collapse state
-            if (content.classList.contains('show')) {
-                content.classList.remove('show');
-                this.querySelector('i').classList.remove('fa-chevron-up');
-                this.querySelector('i').classList.add('fa-chevron-down');
-            } else {
-                content.classList.add('show');
-                this.querySelector('i').classList.remove('fa-chevron-down');
-                this.querySelector('i').classList.add('fa-chevron-up');
-            }
-        });
-    });
+    let analyses = []; // Store all analyses data
 
     async function loadFilterOptions() {
         try {
             const response = await fetch('/api/analyses');
-            const analyses = await response.json();
+            analyses = await response.json();
 
             // Extract unique values
             const characters = new Set();
@@ -47,68 +29,88 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
-            // Count occurrences
-            const characterCounts = new Map();
-            const environmentCounts = new Map();
-            const themeCounts = new Map();
-
-            analyses.forEach(analysis => {
-                if (analysis.speaking_characters) {
-                    analysis.speaking_characters.forEach(char => {
-                        characterCounts.set(char, (characterCounts.get(char) || 0) + 1);
-                    });
-                }
-                if (analysis.environments) {
-                    analysis.environments.forEach(env => {
-                        environmentCounts.set(env, (environmentCounts.get(env) || 0) + 1);
-                    });
-                }
-                if (analysis.themes) {
-                    analysis.themes.forEach(theme => {
-                        themeCounts.set(theme, (themeCounts.get(theme) || 0) + 1);
-                    });
-                }
-            });
-
-            // Populate checkboxes with counts
-            characterCheckboxes.innerHTML = Array.from(characters)
-                .sort()
-                .map(char => `
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" value="${char}" id="char-${char}">
-                        <label class="form-check-label" for="char-${char}">${char} (${characterCounts.get(char) || 0})</label>
-                    </div>
-                `).join('');
-
-            environmentCheckboxes.innerHTML = Array.from(environments)
-                .sort()
-                .map(env => `
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" value="${env}" id="env-${env}">
-                        <label class="form-check-label" for="env-${env}">${env} (${environmentCounts.get(env) || 0})</label>
-                    </div>
-                `).join('');
-
-            themesList.innerHTML = Array.from(themes)
-                .sort()
-                .map(theme => `
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" value="${theme}" id="theme-${theme}">
-                        <label class="form-check-label" for="theme-${theme}">${theme} (${themeCounts.get(theme) || 0})</label>
-                    </div>
-                `).join('');
+            updateFilterCounts();
 
             // Add change event listeners to all checkboxes
             document.querySelectorAll('.form-check-input').forEach(checkbox => {
-                checkbox.addEventListener('change', performSearch);
+                checkbox.addEventListener('change', () => {
+                    performSearch();
+                    updateFilterCounts();
+                });
             });
 
             // Add change event listener to criteria mode toggle
-            criteriaModeToggle.addEventListener('change', performSearch);
+            criteriaModeToggle.addEventListener('change', () => {
+                performSearch();
+                updateFilterCounts();
+            });
 
         } catch (error) {
             console.error('Error loading filter options:', error);
         }
+    }
+
+    function updateFilterCounts() {
+        const selectedCharacters = [...document.querySelectorAll('#characterCheckboxes input:checked')]
+            .map(input => input.value);
+        const selectedEnvironments = [...document.querySelectorAll('#environmentCheckboxes input:checked')]
+            .map(input => input.value);
+        const selectedThemes = [...document.querySelectorAll('#themesList input:checked')]
+            .map(input => input.value);
+
+        const matchAll = criteriaModeToggle.checked;
+
+        // Count matching items for each criterion
+        analyses.forEach(analysis => {
+            // Update character counts
+            document.querySelectorAll('#characterCheckboxes input').forEach(input => {
+                const char = input.value;
+                const label = input.parentElement.querySelector('label');
+                const count = countMatches(char, 'speaking_characters', selectedCharacters, selectedEnvironments, selectedThemes, matchAll);
+                label.textContent = `${char} (${count})`;
+            });
+
+            // Update environment counts
+            document.querySelectorAll('#environmentCheckboxes input').forEach(input => {
+                const env = input.value;
+                const label = input.parentElement.querySelector('label');
+                const count = countMatches(env, 'environments', selectedCharacters, selectedEnvironments, selectedThemes, matchAll);
+                label.textContent = `${env} (${count})`;
+            });
+
+            // Update theme counts
+            document.querySelectorAll('#themesList input').forEach(input => {
+                const theme = input.value;
+                const label = input.parentElement.querySelector('label');
+                const count = countMatches(theme, 'themes', selectedCharacters, selectedEnvironments, selectedThemes, matchAll);
+                label.textContent = `${theme} (${count})`;
+            });
+        });
+    }
+
+    function countMatches(value, type, selectedCharacters, selectedEnvironments, selectedThemes, matchAll) {
+        return analyses.filter(analysis => {
+            const hasValue = analysis[type] && analysis[type].includes(value);
+
+            if (!hasValue) return false;
+
+            if (selectedCharacters.length === 0 && selectedEnvironments.length === 0 && selectedThemes.length === 0) {
+                return true;
+            }
+
+            const matchesCharacters = selectedCharacters.length === 0 || 
+                selectedCharacters.some(char => analysis.speaking_characters && analysis.speaking_characters.includes(char));
+            const matchesEnvironments = selectedEnvironments.length === 0 || 
+                selectedEnvironments.some(env => analysis.environments && analysis.environments.includes(env));
+            const matchesThemes = selectedThemes.length === 0 || 
+                selectedThemes.some(theme => analysis.themes && analysis.themes.includes(theme));
+
+            if (matchAll) {
+                return matchesCharacters && matchesEnvironments && matchesThemes;
+            } else {
+                return matchesCharacters || matchesEnvironments || matchesThemes;
+            }
+        }).length;
     }
 
     async function performSearch() {
@@ -128,6 +130,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         Select criteria from the left panel to see matching content
                     </div>
                 `;
+                document.querySelector('#resultsCount').textContent = '0 items found';
                 return;
             }
 
