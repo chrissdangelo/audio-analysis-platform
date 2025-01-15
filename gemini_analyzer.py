@@ -488,27 +488,32 @@ class GeminiAnalyzer:
             logger.error(f"Error regenerating summary: {str(e)}", exc_info=True)
             raise ValueError(f"Error regenerating summary: {str(e)}")
 
-    def _send_message_with_timeout(self, message, timeout=1800):
+    def _send_message_with_timeout(self, message, timeout=3600):
         """Sends a message to the Gemini chat with a timeout."""
         start_time = time.time()
         response = None
         retry_count = 0
-        max_retries = 5
+        max_retries = 8
 
         while response is None and time.time() - start_time < timeout and retry_count < max_retries:
             try:
+                # Set a shorter timeout for the actual API call
+                genai.configure(timeout_secs=600)  # 10 minute timeout per API call
                 response = self.chat.send_message(message)
                 break
             except Exception as e:
                 retry_count += 1
-                wait_time = min(30, 5 * retry_count)  # Exponential backoff
+                wait_time = min(60, 10 * retry_count)  # Longer exponential backoff
                 logger.warning(f"Gemini API request failed (attempt {retry_count}/{max_retries}): {e}. Waiting {wait_time}s...")
                 time.sleep(wait_time)
                 
-                # Reset chat session on SSL errors
-                if "SSL" in str(e):
-                    logger.info("SSL error detected, resetting chat session...")
-                    self.chat = self.model.start_chat(history=[])
+                # Reset chat session on errors
+                logger.info("Resetting chat session after error...")
+                self.chat = self.model.start_chat(history=[])
+                
+                # If it's a timeout, wait longer before retry
+                if "timeout" in str(e).lower():
+                    time.sleep(30)  # Additional wait for timeouts
 
         if response is None:
             raise TimeoutError(f"Gemini API request timed out after {timeout} seconds.")
