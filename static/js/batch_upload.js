@@ -5,25 +5,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const batchStatus = document.getElementById('batchStatus');
 
     async function updateTable(results) {
-    const searchResults = document.getElementById('searchResults');
-    if (!results.length) {
-        searchResults.innerHTML = '<div class="alert alert-info">No matches found</div>';
-        return;
+        const searchResults = document.getElementById('searchResults');
+        if (!results.length) {
+            searchResults.innerHTML = '<div class="alert alert-info">No matches found</div>';
+            return;
+        }
+        // Update table with results
+        let html = '<table class="table"><thead><tr><th>Title</th><th>Format</th><th>Duration</th></tr></thead><tbody>';
+        results.forEach(result => {
+            html += `<tr>
+                <td>${result.title}</td>
+                <td>${result.format}</td>
+                <td>${result.duration}</td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        searchResults.innerHTML = html;
     }
-    // Update table with results
-    let html = '<table class="table"><thead><tr><th>Title</th><th>Format</th><th>Duration</th></tr></thead><tbody>';
-    results.forEach(result => {
-        html += `<tr>
-            <td>${result.title}</td>
-            <td>${result.format}</td>
-            <td>${result.duration}</td>
-        </tr>`;
-    });
-    html += '</tbody></table>';
-    searchResults.innerHTML = html;
-}
 
-async function uploadFiles(files) {
+    async function uploadFiles(files) {
         if (files.length === 0) {
             batchStatus.innerHTML = '<div class="alert alert-warning">Please select at least one file.</div>';
             return;
@@ -71,15 +71,15 @@ async function uploadFiles(files) {
         while (true) {
             try {
                 const response = await fetch(statusUrl);
-                if (!response.ok) {
-                    throw new Error('Failed to get batch status');
-                }
-
+                if (!response.ok) throw new Error('Failed to fetch status');
                 const status = await response.json();
+
+                // Update UI with current status
                 updateBatchStatus(status);
 
                 if (status.is_complete || status.completed_at) {
                     showCompletionStatus(status);
+                    window.location.reload(); // Reload page to show new entries
                     break;
                 }
 
@@ -165,41 +165,20 @@ async function uploadFiles(files) {
         }
 
         batchStatus.innerHTML = message;
-        if (failedFiles === 0) {
-            setTimeout(() => window.location.reload(), 2000);
-        }
     }
 
-    async function updateBatchStatus(status, batchId) {
-    if (status.error || (status.files && Object.values(status.files).some(f => f.status === 'failed'))) {
-        batchStatus.innerHTML = `
-            <div class="alert alert-danger">
-                ${status.error || 'Some files failed to process'}
-                <button onclick="retryBatch('${batchId}')" class="btn btn-warning btn-sm float-end">
-                    Retry Failed Files
-                </button>
-            </div>`;
-    }
-}
+    async function retryBatch(batchId) {
+        try {
+            const response = await fetch(`/api/upload/batch/${batchId}/retry`);
+            if (!response.ok) throw new Error('Failed to retry batch');
+            const result = await response.json();
 
-window.retryBatch = async function(batchId) {
-    try {
-        const response = await fetch(`/api/upload/batch/${batchId}/retry`);
-        if (!response.ok) {
-            throw new Error('Failed to retry batch');
+            // Start polling status again
+            pollBatchStatus(batchId, result.status_url);
+        } catch (error) {
+            batchStatus.innerHTML = `<div class="alert alert-danger">Error retrying batch: ${error.message}</div>`;
         }
-        const result = await response.json();
-        batchStatus.innerHTML = 'Retrying failed files...';
-        await pollBatchStatus(batchId, result.status_url);
-    } catch (error) {
-        batchStatus.innerHTML = `<div class="alert alert-danger">
-            Error retrying batch: ${error.message}
-            <button onclick="retryBatch('${batchId}')" class="btn btn-warning btn-sm float-end">
-                Retry Again
-            </button>
-        </div>`;
     }
-};
 
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
