@@ -6,7 +6,6 @@ from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 from flask import Blueprint, session, redirect, url_for, request, jsonify
-from flask_login import login_required, current_user
 import json
 import io
 
@@ -34,7 +33,6 @@ def require_drive_auth(f):
     return decorated_function
 
 @google_drive.route('/drive/authorize')
-@login_required
 def authorize():
     try:
         flow = Flow.from_client_config(
@@ -53,7 +51,6 @@ def authorize():
         return jsonify({"error": "Failed to initiate Google Drive authorization"}), 500
 
 @google_drive.route('/drive/oauth2callback')
-@login_required
 def oauth2callback():
     try:
         state = session['google_auth_state']
@@ -63,7 +60,7 @@ def oauth2callback():
             state=state,
             redirect_uri=url_for('google_drive.oauth2callback', _external=True)
         )
-        
+
         flow.fetch_token(authorization_response=request.url)
         credentials = flow.credentials
         session['google_drive_credentials'] = {
@@ -80,7 +77,6 @@ def oauth2callback():
         return jsonify({"error": "Failed to complete Google Drive authentication"}), 500
 
 @google_drive.route('/drive/files')
-@login_required
 @require_drive_auth
 def list_files():
     try:
@@ -89,7 +85,7 @@ def list_files():
             SCOPES
         )
         service = build('drive', 'v3', credentials=credentials)
-        
+
         # Only list audio files
         query = "mimeType contains 'audio/' and trashed = false"
         results = service.files().list(
@@ -97,7 +93,7 @@ def list_files():
             pageSize=10,
             fields="files(id, name, mimeType)"
         ).execute()
-        
+
         files = results.get('files', [])
         return jsonify({"files": files})
     except Exception as e:
@@ -105,7 +101,6 @@ def list_files():
         return jsonify({"error": "Failed to list Google Drive files"}), 500
 
 @google_drive.route('/drive/download/<file_id>')
-@login_required
 @require_drive_auth
 def download_file(file_id):
     try:
@@ -114,10 +109,10 @@ def download_file(file_id):
             SCOPES
         )
         service = build('drive', 'v3', credentials=credentials)
-        
+
         # Get file metadata
         file_metadata = service.files().get(fileId=file_id).execute()
-        
+
         # Download file
         request = service.files().get_media(fileId=file_id)
         file = io.BytesIO()
@@ -125,7 +120,7 @@ def download_file(file_id):
         done = False
         while done is False:
             status, done = downloader.next_chunk()
-        
+
         file.seek(0)
         return jsonify({
             "success": True,

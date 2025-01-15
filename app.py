@@ -20,8 +20,10 @@ def create_app():
         # Configure Flask app
         app.secret_key = os.environ.get("FLASK_SECRET_KEY") or "a secret key"
 
-        # Explicitly disable authentication for public access
+        # Explicitly disable authentication and configure for public access
         app.config['LOGIN_DISABLED'] = True
+        app.config['SESSION_COOKIE_SECURE'] = False
+        app.config['SESSION_PROTECTION'] = None
 
         # Configure database
         if not os.environ.get("DATABASE_URL"):
