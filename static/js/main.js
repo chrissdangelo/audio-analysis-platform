@@ -8,23 +8,32 @@ document.addEventListener('DOMContentLoaded', function() {
     errorAlert.setAttribute('role', 'alert');
 
     // Initialize DataTable with resizable columns
-    const table = $('#analysisTable').DataTable({
-        scrollX: true,
-        autoWidth: false,
-        columnDefs: [
-            { width: '200px', targets: 1 }, // Title column
-            { width: '150px', targets: 2 }, // Filename column
-            { width: '100px', targets: '_all' } // Default width for other columns
-        ]
-    });
+    let table;
 
-    // Add resizer handles to each header cell
-    $('#analysisTable thead th').each(function() {
-        const resizer = document.createElement('div');
-        resizer.classList.add('resizer');
-        this.appendChild(resizer);
-        createResizableColumn(this, resizer);
-    });
+    function initializeDataTable() {
+        if ($.fn.DataTable.isDataTable('#analysisTable')) {
+            table = $('#analysisTable').DataTable();
+        } else {
+            table = $('#analysisTable').DataTable({
+                scrollX: true,
+                autoWidth: false,
+                columnDefs: [
+                    { width: '300px', targets: 1 }, // Title column wider
+                    { width: '200px', targets: 2 }, // Filename column
+                    { width: '100px', targets: '_all' } // Default width for other columns
+                ]
+            });
+
+            // Add resizer handles to each header cell
+            $('#analysisTable thead th').each(function() {
+                const resizer = document.createElement('div');
+                resizer.classList.add('resizer');
+                this.appendChild(resizer);
+                createResizableColumn(this, resizer);
+            });
+        }
+        return table;
+    }
 
     function createResizableColumn(th, resizer) {
         let startX, startWidth;
@@ -53,7 +62,9 @@ document.addEventListener('DOMContentLoaded', function() {
             th.style.minWidth = `${newWidth}px`;
 
             // Force DataTables to recalculate column widths
-            table.columns.adjust();
+            if (table) {
+                table.columns.adjust();
+            }
         }
 
         function stopDragging() {
@@ -85,18 +96,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateTable() {
         // Only fetch and update if we're on a page with the analysis table
-        const analysisTable = document.querySelector('table tbody');
+        const analysisTable = document.querySelector('#analysisTable');
         if (!analysisTable) return;
+
+        if (!table) {
+            table = initializeDataTable();
+        }
 
         fetch('/api/analyses')
             .then(response => response.json())
             .then(data => {
-                //Instead of manually updating the table, reload the DataTable
                 table.clear().rows.add(data).draw();
             })
             .catch(error => console.error('Error updating table:', error));
     }
-
 
     // Handle file upload
     if (uploadForm) {
@@ -118,7 +131,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Show spinner
             if (spinner) {
-                spinner.style.display = 'inline-block';
+                spinner.classList.add('d-inline-block');
+                spinner.classList.remove('d-none');
             }
 
             const formData = new FormData();
@@ -135,8 +149,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     throw new Error(result.error || 'Upload failed');
                 }
 
-                // Refresh the DataTable
-                table.ajax.reload();
+                // Refresh the table
+                updateTable();
 
                 // Clear the file input
                 audioFileInput.value = '';
@@ -146,7 +160,8 @@ document.addEventListener('DOMContentLoaded', function() {
             } finally {
                 // Hide spinner
                 if (spinner) {
-                    spinner.style.display = 'none';
+                    spinner.classList.remove('d-inline-block');
+                    spinner.classList.add('d-none');
                 }
             }
         });
