@@ -744,8 +744,15 @@ function generateContentSummary(data) {
         .sort((a, b) => b[1] - a[1])[0][0];
 
     // Calculate total duration
-    const totalSeconds = data.reduce((sum, item) => sum + (item.duration || 0), 0);
-    const totalDuration = new Date(totalSeconds * 1000).toISOString().substr(11, 8);
+    const totalSeconds = data.reduce((sum, item) => {
+        if (!item.duration) return sum;
+        const [hours, minutes, seconds] = item.duration.split(':').map(Number);
+        return sum + (hours * 3600 + minutes * 60 + seconds);
+    }, 0);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const totalDuration = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
 
     // Generate summary text
@@ -764,6 +771,25 @@ function generateContentSummary(data) {
         `${themes.size > 5 ? 'The diverse range of themes suggests content designed to engage with multiple aspects of the audience\'s interests.' : ''}`;
 
     return basicSummary + aiInsights + `\n\nTotal Duration: ${totalDuration}`;
+}
+
+function updateTable(results) {
+    const resultsTable = document.getElementById('analysisTable');
+    if (!resultsTable) return;
+    
+    const tbody = resultsTable.querySelector('tbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = results.map(result => `
+        <tr>
+            <td>${result.id}</td>
+            <td>${result.title}</td>
+            <td>${result.filename}</td>
+            <td>${result.file_type}</td>
+            <td>${result.format}</td>
+            <td>${result.duration || '00:00:00'}</td>
+        </tr>
+    `).join('');
 }
 
 function updateCharts(data) {
