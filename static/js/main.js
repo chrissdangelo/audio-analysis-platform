@@ -7,6 +7,40 @@ document.addEventListener('DOMContentLoaded', function() {
     errorAlert.className = 'alert alert-danger alert-dismissible fade';
     errorAlert.setAttribute('role', 'alert');
 
+    let accessToken = null;
+
+    // Function to get guest access token
+    async function getGuestAccessToken() {
+        try {
+            const response = await fetch('/api/guest-access', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    duration_days: 1,
+                    access_level: 'read-write'
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to get access token');
+            }
+
+            const data = await response.json();
+            return data.access.access_token;
+        } catch (error) {
+            console.error('Error getting access token:', error);
+            showError('Error accessing the application. Please try again later.');
+            return null;
+        }
+    }
+
+    // Initialize access token
+    (async function initializeAccess() {
+        accessToken = await getGuestAccessToken();
+    })();
+
     function showError(message) {
         // Remove any existing error alerts
         const existingAlert = document.querySelector('.alert-danger');
@@ -22,40 +56,63 @@ document.addEventListener('DOMContentLoaded', function() {
         uploadForm.insertBefore(errorAlert, uploadForm.firstChild);
     }
 
-    function updateTable() {
+    async function updateTable() {
         // Only fetch and update if we're on a page with the analysis table
         const analysisTable = document.querySelector('table tbody');
         if (!analysisTable) return;
 
-        fetch('/api/analyses')
-            .then(response => response.json())
-            .then(data => {
-                const tbody = document.querySelector('table tbody');
-                if (!tbody) return;
+        if (!accessToken) {
+            console.error('No access token available');
+            return;
+        }
 
-                tbody.innerHTML = ''; // Clear existing rows
-                data.forEach(item => {
-                    // Create table row
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${item.id}</td>
-                        <td>${item.title}</td>
-                        <td>${item.filename}</td>
-                        <td>${item.format}</td>
-                        <td>${item.duration}</td>
-                        <td>${item.environments}</td>
-                        <td>${item.characters_mentioned}</td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            })
-            .catch(error => console.error('Error updating table:', error));
+        try {
+            const response = await fetch(`/api/analyses?access_token=${accessToken}`);
+            if (!response.ok) {
+                if (response.status === 401) {
+                    // Token might be expired, try to get a new one
+                    accessToken = await getGuestAccessToken();
+                    if (accessToken) {
+                        // Retry with new token
+                        return updateTable();
+                    }
+                }
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const tbody = document.querySelector('table tbody');
+            if (!tbody) return;
+
+            tbody.innerHTML = ''; // Clear existing rows
+            data.forEach(item => {
+                // Create table row
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.id}</td>
+                    <td>${item.title}</td>
+                    <td>${item.filename}</td>
+                    <td>${item.format}</td>
+                    <td>${item.duration}</td>
+                    <td>${item.environments}</td>
+                    <td>${item.characters_mentioned}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        } catch (error) {
+            console.error('Error updating table:', error);
+        }
     }
 
     // Handle file upload
     if (uploadForm) {
         uploadForm.addEventListener('submit', async function(e) {
             e.preventDefault();
+
+            if (!accessToken) {
+                showError('Unable to authenticate. Please refresh the page and try again.');
+                return;
+            }
 
             const file = audioFileInput.files[0];
             if (!file) {
@@ -79,7 +136,7 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('file', file);
 
             try {
-                const response = await fetch('/api/upload', {
+                const response = await fetch(`/api/upload?access_token=${accessToken}`, {
                     method: 'POST',
                     body: formData
                 });

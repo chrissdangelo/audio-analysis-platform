@@ -11,6 +11,7 @@ from gemini_analyzer import GeminiAnalyzer
 from batch_manager import BatchUploadManager
 from sqlalchemy import text
 from functools import wraps
+from threading import Thread
 
 logger = logging.getLogger(__name__)
 batch_manager = BatchUploadManager()
@@ -545,75 +546,6 @@ def register_routes(app):
                 except Exception as e:
                     logger.error(f"Error cleaning up file {filepath}: {str(e)}")
 
-    @app.route('/search')
-    def search_page():
-        return render_template('search.html')
-
-    @app.route('/api/search', methods=['GET', 'POST'])
-    def search_content():
-        try:
-            # Handle both GET and POST methods
-            if request.method == 'GET':
-                criteria = {
-                    'themes': request.args.get('themes', '').split(',') if request.args.get('themes') else [],
-                    'characters': request.args.get('characters', '').split(',') if request.args.get('characters') else [],
-                    'environments': request.args.get('environments', '').split(',') if request.args.get('environments') else []
-                }
-            else:
-                criteria = request.get_json()
-
-            logger.debug(f"Search criteria received: {criteria}")
-
-            # Start with all analyses
-            query = AudioAnalysis.query
-
-            # Apply theme filters if provided
-            if criteria.get('themes'):
-                theme_conditions = []
-                for theme in criteria['themes']:
-                    if theme:  # Skip empty strings
-                        theme = theme.lower()  # Case-insensitive search
-                        theme_conditions.append(
-                            db.func.lower(AudioAnalysis.themes).like(f'%"{theme}"%')
-                        )
-                if theme_conditions:
-                    query = query.filter(db.or_(*theme_conditions))
-
-            # Apply character filters if provided
-            if criteria.get('characters'):
-                char_conditions = []
-                for character in criteria['characters']:
-                    if character:  # Skip empty strings
-                        character = character.lower()  # Case-insensitive search
-                        logger.debug(f"Searching for character: {character}")
-                        char_conditions.append(
-                            db.func.lower(AudioAnalysis.characters_mentioned).like(f'%"{character}"%')
-                        )
-                if char_conditions:
-                    query = query.filter(db.or_(*char_conditions))
-
-            # Apply environment filters if provided
-            if criteria.get('environments'):
-                env_conditions = []
-                for environment in criteria['environments']:
-                    if environment:  # Skip empty strings
-                        environment = environment.lower()  # Case-insensitive search
-                        logger.debug(f"Searching for environment: {environment}")
-                        env_conditions.append(
-                            db.func.lower(AudioAnalysis.environments).like(f'%"{environment}"%')
-                        )
-                if env_conditions:
-                    query = query.filter(db.or_(*env_conditions))
-
-            # Execute query and convert results to dictionaries
-            results = [analysis.to_dict() for analysis in query.all()]
-            logger.debug(f"Search returned {len(results)} results")
-            return jsonify(results)
-
-        except Exception as e:
-            logger.error(f"Error performing search: {str(e)}")
-            return jsonify({"error": "Error performing search"}), 500
-
     @app.route('/api/upload/batch', methods=['POST'])
     def upload_batch():
         try:
@@ -703,7 +635,6 @@ def register_routes(app):
                 return jsonify({'error': 'Error saving files'}), 500
 
             # Start processing in a separate thread
-            from threading import Thread
             def process_with_context():
                 with app.app_context():
                     process_batch(app, batch_id)
@@ -756,44 +687,206 @@ def register_routes(app):
 
     @app.route('/api/upload/batch/<batch_id>/retry')
     def retry_batch(batch_id):
-        status = batch_manager.load_batch_status(batch_id)
-        if not status:
-            return jsonify({'error': 'Batch not found'}), 404
+        """Retry failed files in a batch."""
+        try:
+            status = batch_manager.load_batch_status(batch_id)
+            if not status:
+                return jsonify({'error': 'Batch not found'}), 404
 
-        # Reset failed files to pending
-        for filename, file_status in status['files'].items():
-            if file_status['status'] == 'failed':
-                file_status['status'] = 'pending'
-                file_status['error'] = None
-                file_status['attempts'] = 0
-        batch_manager.save_batch_status(batch_id)
+            # Reset failed files to pending
+            for filename, file_status in status['files'].items():
+                if file_status['status'] == 'failed':
+                    file_status['status'] = 'pending'
+                    file_status['error'] = None
+                    file_status['attempts'] = 0
+            batch_manager.save_batch_status(batch_id)
 
-        # Start processing in a separate thread
-        from threading import Thread
-        thread = Thread(target=process_batch, args=(current_app, batch_id))
-        thread.daemon = True
-        thread.start()
+            # Start processing in a separate thread
+            def process_with_context():
+                with app.app_context():
+                    process_batch(app, batch_id)
 
-        return jsonify({
-            'message': 'Batch processing restarted',
-            'status_url': f'/api/upload/batch/{batch_id}/status'
-        }), 202
+            thread = Thread(target=process_with_context)
+            thread.daemon = True
+            thread.start()
+
+            return jsonify({
+                'message': 'Batch processing restarted',
+                'status_url': f'/api/upload/batch/{batch_id}/status'
+            }), 202
+
+        except Exception as e:
+            logger.error(f"Error retrying batch: {str(e)}")
+            return jsonify({'error': 'Error retrying batch'}), 500
 
     @app.route('/api/upload/batch/<batch_id>/cancel', methods=['POST'])
     def cancel_batch(batch_id):
         """Cancel a batch upload."""
         try:
-            if not batch_manager.load_batch_status(batch_id):
-                return jsonify({'error': 'Batch not found'}), 404
-
             batch_manager.cancel_batch(batch_id)
             return jsonify({'message': 'Batch cancelled successfully'}), 200
         except Exception as e:
             logger.error(f"Error cancelling batch: {str(e)}")
             return jsonify({'error': 'Error cancelling batch'}), 500
 
-    # Remove the now-redundant protected routes.
-    #These routes were already consolidated in the edited register_routes function.
+    def process_batch(app, batch_id):
+        """Process each file in the batch sequentially."""
+        logger.info(f"Starting batch processing for batch {batch_id}")
 
+        with app.app_context():
+            try:
+                pending_files = batch_manager.get_pending_files(batch_id)
+                if not pending_files:
+                    logger.info(f"No pending files found for batch {batch_id}")
+                    return
+
+                for filename in pending_files:
+                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    process_single_file(app, batch_id, filename, filepath)
+
+                logger.info(f"Completed batch processing for batch {batch_id}")
+
+            except Exception as e:
+                logger.error(f"Error in batch processing: {str(e)}")
+                batch_manager.mark_batch_failed(batch_id, str(e))
+
+    def process_single_file(app, batch_id, filename, filepath):
+        """Process a single file from a batch."""
+        analyzer = None
+        try:
+            # Create analyzer instance
+            analyzer = GeminiAnalyzer()
+            logger.info(f"Starting content analysis for file {filename} in batch {batch_id}")
+
+            # Get MIME type
+            mime_type = get_mime_type(filename)
+            logger.info(f"Determined MIME type: {mime_type}")
+
+            analysis_result = analyzer.upload_to_gemini(filepath, mime_type)
+            logger.debug(f"Raw analysis result: {analysis_result}")
+
+            # Prepare array fields for storage
+            for field in ['environments', 'characters_mentioned', 'speaking_characters', 'themes']:
+                if field in analysis_result:
+                    analysis_result[field] = prepare_list_for_storage(analysis_result[field])
+
+            # Create database entry
+            analysis = AudioAnalysis(
+                title=title_case(os.path.splitext(filename)[0]),
+                filename=filename,
+                file_type='Audio' if mime_type.startswith(('audio/', 'video/')) else 'Image',
+                format=analysis_result.get('format', 'narrated episode'),
+                duration=analysis_result.get('duration', '00:00:00'),
+                has_narration=analysis_result.get('has_narration', False),
+                has_underscore=analysis_result.get('has_underscore', False),
+                has_sound_effects=analysis_result.get('sound_effects_count', 0) > 0,
+                songs_count=analysis_resultresult.get('songs_count', 0),
+                environments=analysis_result.get('environments', '[]'),
+                characters_mentioned=analysis_result.get('characters_mentioned', '[]'),
+                speaking_characters=analysis_result.get('speaking_characters', '[]'),
+                themes=analysis_result.get('themes', '[]'),
+                transcript=analysis_result.get('transcript', ''),
+                summary=analysis_result.get('summary', ''),
+                emotion_scores=json.dumps(analysis_result.get('emotion_scores', {
+                    'joy': 0, 'sadness': 0, 'anger': 0,
+                    'fear': 0, 'surprise': 0
+                })),
+                dominant_emotion=analysis_result.get('dominant_emotion', ''),
+                tone_analysis=json.dumps(analysis_result.get('tone_analysis', {})),
+                confidence_score=analysis_result.get('confidence_score', 0.0)
+            )
+
+            db.session.add(analysis)
+            db.session.commit()
+            logger.info(f"Analysis saved to database for {filename}")
+            batch_manager.mark_file_complete(batch_id, filename)
+
+        except Exception as e:
+            logger.error(f"Error processing file {filename}: {str(e)}")
+            batch_manager.mark_file_failed(batch_id, filename, str(e))
+        finally:
+            # Clean up analyzer resources
+            if analyzer:
+                try:
+                    analyzer.cleanup()
+                except Exception as e:
+                    logger.error(f"Error cleaning up analyzer: {str(e)}")
+
+            # Clean up file
+            if os.path.exists(filepath):
+                try:
+                    os.remove(filepath)
+                    logger.info(f"Cleaned up processed file: {filepath}")
+                except Exception as e:
+                    logger.error(f"Error cleaning up file {filepath}: {str(e)}")
+
+    @app.route('/search')
+    def search_page():
+        return render_template('search.html')
+
+    @app.route('/api/search', methods=['GET', 'POST'])
+    def search_content():
+        try:
+            # Handle both GET and POST methods
+            if request.method == 'GET':
+                criteria = {
+                    'themes': request.args.get('themes', '').split(',') if request.args.get('themes') else [],
+                    'characters': request.args.get('characters', '').split(',') if request.args.get('characters') else [],
+                    'environments': request.args.get('environments', '').split(',') if request.args.get('environments') else []
+                }
+            else:
+                criteria = request.get_json()
+
+            logger.debug(f"Search criteria received: {criteria}")
+
+            # Start with all analyses
+            query = AudioAnalysis.query
+
+            # Apply theme filters if provided
+            if criteria.get('themes'):
+                theme_conditions = []
+                for theme in criteria['themes']:
+                    if theme:  # Skip empty strings
+                        theme = theme.lower()  # Case-insensitive search
+                        theme_conditions.append(
+                            db.func.lower(AudioAnalysis.themes).like(f'%"{theme}"%')
+                        )
+                if theme_conditions:
+                    query = query.filter(db.or_(*theme_conditions))
+
+            # Apply character filters if provided
+            if criteria.get('characters'):
+                char_conditions = []
+                for character in criteria['characters']:
+                    if character:  # Skip empty strings
+                        character = character.lower()  # Case-insensitive search
+                        logger.debug(f"Searching for character: {character}")
+                        char_conditions.append(
+                            db.func.lower(AudioAnalysis.characters_mentioned).like(f'%"{character}"%')
+                        )
+                if char_conditions:
+                    query = query.filter(db.or_(*char_conditions))
+
+            # Apply environment filters if provided
+            if criteria.get('environments'):
+                env_conditions = []
+                for environment in criteria['environments']:
+                    if environment:  # Skip empty strings
+                        environment = environment.lower()  # Case-insensitive search
+                        logger.debug(f"Searching for environment: {environment}")
+                        env_conditions.append(
+                            db.func.lower(AudioAnalysis.environments).like(f'%"{environment}"%')
+                        )
+                if env_conditions:
+                    query = query.filter(db.or_(*env_conditions))
+
+            # Execute query and convert results to dictionaries
+            results = [analysis.to_dict() for analysis in query.all()]
+            logger.debug(f"Search returned {len(results)} results")
+            return jsonify(results)
+
+        except Exception as e:
+            logger.error(f"Error performing search: {str(e)}")
+            return jsonify({"error": "Error performing search"}), 500
 
     return app
