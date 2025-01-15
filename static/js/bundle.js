@@ -458,6 +458,16 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function displayBundleSuggestions(themeGroups, characterGroups, emotionGroups, environmentGroups, emotionalArcGroups, characterDynamicsGroups) {
+        const minTitles = parseInt(document.getElementById('minTitles')?.value || '2');
+        
+        // Filter all groups to meet minimum titles requirement
+        emotionGroups = emotionGroups.filter(group => group.items.length >= minTitles);
+        characterGroups = characterGroups.filter(group => group.items.length >= minTitles);
+        themeGroups = themeGroups.filter(group => group.items.length >= minTitles);
+        environmentGroups = environmentGroups.filter(group => group.items.length >= minTitles);
+        emotionalArcGroups = emotionalArcGroups.filter(group => group.items.length >= minTitles);
+        characterDynamicsGroups = characterDynamicsGroups.filter(group => group.items.length >= minTitles);
+
         let html = '';
 
         // Emotion-based bundles
