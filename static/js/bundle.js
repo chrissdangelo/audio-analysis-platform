@@ -96,12 +96,17 @@ document.addEventListener('DOMContentLoaded', function() {
     function groupByEmotions(analyses) {
         const emotionGroups = [];
         const emotions = ['joy', 'sadness', 'anger', 'fear', 'surprise'];
+        const minTitles = parseInt(document.getElementById('minTitles')?.value || '2');
 
         emotions.forEach(emotion => {
             const matchingAnalyses = analyses.filter(analysis => {
                 const scores = analysis.emotion_scores || {};
                 return scores[emotion] && scores[emotion] > 0.6; // High emotion threshold
             });
+
+            if (matchingAnalyses.length < minTitles) {
+                return;
+            }
 
             if (matchingAnalyses.length > 1) {
                 // Group by series
@@ -262,6 +267,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function groupByCommonality(analyses, field, emotionField = null) {
         try {
             const groups = new Map();
+            const minTitles = parseInt(document.getElementById('minTitles')?.value || '2');
 
             analyses.forEach(analysis => {
                 let items = analysis[field] || [];
@@ -280,14 +286,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     groups.get(key).push(analysis);
                 });
             });
-
-            const minTitles = parseInt(document.getElementById('minTitles')?.value || '2');
             
-            // First filter to only get groups that meet minimum titles
+            // Filter groups to only those that meet minimum titles requirement
             const validGroups = Array.from(groups.entries())
                 .filter(([_, items]) => items.length >= minTitles);
             
-            // If no groups meet the minimum, return empty array
             if (validGroups.length === 0) {
                 return [];
             }
