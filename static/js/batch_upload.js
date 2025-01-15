@@ -4,25 +4,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const uploadBtn = document.getElementById('uploadBtn');
     const batchStatus = document.getElementById('batchStatus');
 
-    async function updateTable(results) {
-        const searchResults = document.getElementById('searchResults');
-        if (!results.length) {
-            searchResults.innerHTML = '<div class="alert alert-info">No matches found</div>';
-            return;
-        }
-        // Update table with results
-        let html = '<table class="table"><thead><tr><th>Title</th><th>Format</th><th>Duration</th></tr></thead><tbody>';
-        results.forEach(result => {
-            html += `<tr>
-                <td>${result.title}</td>
-                <td>${result.format}</td>
-                <td>${result.duration}</td>
-            </tr>`;
-        });
-        html += '</tbody></table>';
-        searchResults.innerHTML = html;
-    }
-
     async function uploadFiles(files) {
         if (files.length === 0) {
             batchStatus.innerHTML = '<div class="alert alert-warning">Please select at least one file.</div>';
@@ -61,9 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
             await pollBatchStatus(batchId, result.status_url);
 
         } catch (error) {
-            batchStatus.innerHTML = `<div class="alert alert-warning">
-    ${error.message.includes('timed out') ? 'Operation timed out - retrying automatically...' : `Error: ${error.message}`}
-</div>`;
+            batchStatus.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
         }
     }
 
@@ -71,15 +50,15 @@ document.addEventListener('DOMContentLoaded', function() {
         while (true) {
             try {
                 const response = await fetch(statusUrl);
-                if (!response.ok) throw new Error('Failed to fetch status');
-                const status = await response.json();
+                if (!response.ok) {
+                    throw new Error('Failed to get batch status');
+                }
 
-                // Update UI with current status
+                const status = await response.json();
                 updateBatchStatus(status);
 
                 if (status.is_complete || status.completed_at) {
                     showCompletionStatus(status);
-                    window.location.reload(); // Reload page to show new entries
                     break;
                 }
 
@@ -165,20 +144,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         batchStatus.innerHTML = message;
+        if (failedFiles === 0) {
+            setTimeout(() => window.location.reload(), 2000);
+        }
     }
 
-    async function retryBatch(batchId) {
+    window.retryBatch = async function(batchId) {
         try {
             const response = await fetch(`/api/upload/batch/${batchId}/retry`);
-            if (!response.ok) throw new Error('Failed to retry batch');
+            if (!response.ok) {
+                throw new Error('Failed to retry batch');
+            }
             const result = await response.json();
-
-            // Start polling status again
-            pollBatchStatus(batchId, result.status_url);
+            batchStatus.innerHTML = 'Retrying failed files...';
+            await pollBatchStatus(batchId, result.status_url);
         } catch (error) {
             batchStatus.innerHTML = `<div class="alert alert-danger">Error retrying batch: ${error.message}</div>`;
         }
-    }
+    };
 
     form.addEventListener('submit', async function(e) {
         e.preventDefault();

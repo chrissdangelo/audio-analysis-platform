@@ -1,41 +1,7 @@
 import logging
 from datetime import datetime
-import secrets
 from database import db
 import json
-
-class GuestAccess(db.Model):
-    __tablename__ = 'guest_access'
-
-    id = db.Column(db.Integer, primary_key=True)
-    access_token = db.Column(db.String(64), unique=True, nullable=False)
-    access_level = db.Column(db.String(20), default='read-only', nullable=False)
-    expires_at = db.Column(db.DateTime, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    last_accessed = db.Column(db.DateTime)
-    is_active = db.Column(db.Boolean, default=True)
-
-    @staticmethod
-    def generate_token():
-        """Generate a secure random token for guest access"""
-        return secrets.token_urlsafe(32)
-
-    def is_valid(self):
-        """Check if the guest access token is still valid"""
-        return (self.is_active and 
-                self.expires_at > datetime.utcnow())
-
-    def to_dict(self):
-        """Convert the guest access object to a dictionary"""
-        return {
-            'id': self.id,
-            'access_token': self.access_token,
-            'access_level': self.access_level,
-            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'last_accessed': self.last_accessed.isoformat() if self.last_accessed else None,
-            'is_active': self.is_active
-        }
 
 class AudioAnalysis(db.Model):
     __tablename__ = 'audio_analyses'

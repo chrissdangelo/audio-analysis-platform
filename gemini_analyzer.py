@@ -3,7 +3,6 @@ import logging
 import google.generativeai as genai
 import json
 from typing import Dict, Any, Tuple
-import time
 
 # Configure logging
 logging.basicConfig(
@@ -78,7 +77,7 @@ class GeminiAnalyzer:
                     "Include speaker labels where possible."
                 )
 
-            response = self._send_message_with_timeout([file, prompt], timeout=1800) # 30 minutes timeout
+            response = self.chat.send_message([file, prompt])
             content = response.text.strip()
 
             logger.info("Successfully extracted content")
@@ -104,7 +103,7 @@ class GeminiAnalyzer:
                 "Provide a natural, flowing summary that captures the essence of the content."
             )
 
-            response = self._send_message_with_timeout(prompt, timeout=1800) # 30 minutes timeout
+            response = self.chat.send_message(prompt)
             summary = response.text.strip()
 
             logger.info("Successfully generated summary from transcript")
@@ -184,7 +183,7 @@ class GeminiAnalyzer:
                 )
 
             logger.info("Sending analysis request to Gemini")
-            response = self._send_message_with_timeout([file, prompt], timeout=1800) # 30 minutes timeout
+            response = self.chat.send_message([file, prompt])
 
             # Log the raw response
             logger.info("Received response from Gemini")
@@ -374,7 +373,7 @@ class GeminiAnalyzer:
             )
 
             logger.info("Sending summary request to Gemini")
-            response = self._send_message_with_timeout(prompt, timeout=1800) # 30 minutes timeout
+            response = self.chat.send_message(prompt)
             logger.debug(f"Raw response:\n{response.text}")
 
             # Extract summary from response
@@ -424,7 +423,7 @@ class GeminiAnalyzer:
             )
 
             logger.info("Sending emotion analysis request to Gemini")
-            response = self._send_message_with_timeout(prompt, timeout=1800) # 30 minutes timeout
+            response = self.chat.send_message(prompt)
             logger.debug(f"Raw response:\n{response.text}")
 
             try:
@@ -487,38 +486,3 @@ class GeminiAnalyzer:
         except Exception as e:
             logger.error(f"Error regenerating summary: {str(e)}", exc_info=True)
             raise ValueError(f"Error regenerating summary: {str(e)}")
-
-    def _send_message_with_timeout(self, message, timeout=3600):
-        """Sends a message to the Gemini chat with a timeout."""
-        start_time = time.time()
-        response = None
-        retry_count = 0
-        max_retries = 8
-
-        # Configure longer timeout for large file uploads
-        import httplib2
-        import socket
-        httplib2.TIMEOUT = 600  # 10 minute timeout for each attempt
-        socket.setdefaulttimeout(600)  # Also set socket timeout
-
-        while response is None and time.time() - start_time < timeout and retry_count < max_retries:
-            try:
-                response = self.chat.send_message(message)
-                break
-            except Exception as e:
-                retry_count += 1
-                wait_time = min(60, 10 * retry_count)  # Longer exponential backoff
-                logger.warning(f"Gemini API request failed (attempt {retry_count}/{max_retries}): {e}. Waiting {wait_time}s...")
-                time.sleep(wait_time)
-                
-                # Reset chat session on errors
-                logger.info("Resetting chat session after error...")
-                self.chat = self.model.start_chat(history=[])
-                
-                # If it's a timeout, wait longer before retry
-                if "timeout" in str(e).lower():
-                    time.sleep(30)  # Additional wait for timeouts
-
-        if response is None:
-            raise TimeoutError(f"Gemini API request timed out after {timeout} seconds.")
-        return response

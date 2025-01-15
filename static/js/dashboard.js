@@ -4,8 +4,6 @@ document.addEventListener('DOMContentLoaded', function() {
         scrollX: true,     // Enable horizontal scrolling
         autoWidth: false,  // Disable automatic column width calculation
         dom: 'Bfrtip',     // Add buttons to the DataTable
-        colReorder: true,  // Enable column reordering
-        stateSave: true,   // Enable state saving
         buttons: [
             {
                 extend: 'colvis',
@@ -13,20 +11,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 className: 'btn btn-secondary'
             },
             {
-                text: 'Reset Layout',
+                text: 'Reset Columns',
                 className: 'btn btn-secondary',
                 action: function (e, dt, node, config) {
-                    // Clear stored column widths and visibility
+                    // Clear stored column widths
                     localStorage.removeItem('analysisTableColumnWidths');
-                    localStorage.removeItem('DataTables_analysisTable_' + window.location.pathname);
                     // Reset column visibility
                     table.columns().visible(true);
                     // Reset column widths to default
                     table.columns().every(function() {
                         $(this.header()).width('auto');
                     });
-                    // Reset column order
-                    table.colReorder.reset();
                     table.draw();
                 }
             }
@@ -69,9 +64,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 const resizer = document.createElement('div');
                 resizer.className = 'resizer';
                 this.appendChild(resizer);
-
-                // Add tooltip
-                $(this).attr('title', 'Drag to resize, double-click to auto-fit');
             });
 
             // Initialize column resizing
@@ -92,32 +84,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Prevent text selection while resizing
                 e.preventDefault();
-            });
-
-            // Double-click to auto-fit column
-            headerCells.on('dblclick', '.resizer', function(e) {
-                const headerCell = e.target.parentElement;
-                const columnIndex = $(headerCell).index();
-
-                // Calculate maximum content width
-                let maxWidth = $(headerCell).width();
-                table.column(columnIndex).nodes().each(function() {
-                    const cellWidth = $(this).text().length * 8; // Approximate width
-                    maxWidth = Math.max(maxWidth, cellWidth);
-                });
-
-                // Set new width
-                $(headerCell).width(maxWidth);
-                table.column(columnIndex).nodes().each(function(cell) {
-                    $(cell).width(maxWidth);
-                });
-
-                // Save width
-                const savedWidths = JSON.parse(localStorage.getItem('analysisTableColumnWidths') || '{}');
-                savedWidths[columnIndex] = maxWidth;
-                localStorage.setItem('analysisTableColumnWidths', JSON.stringify(savedWidths));
-
-                table.columns.adjust();
             });
 
             function resize(e) {
@@ -777,18 +743,6 @@ function generateContentSummary(data) {
     const dominantEmotion = Object.entries(avgEmotions)
         .sort((a, b) => b[1] - a[1])[0][0];
 
-    // Calculate total duration
-    const totalSeconds = data.reduce((sum, item) => {
-        if (!item.duration) return sum;
-        const [hours, minutes, seconds] = item.duration.split(':').map(Number);
-        return sum + (hours * 3600 + minutes * 60 + seconds);
-    }, 0);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    const totalDuration = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-
-
     // Generate summary text
     const basicSummary = `This corpus contains ${totalItems} analyzed pieces of content. ` +
         `The content is primarily ${Object.entries(formats).map(([k,v]) => `${v} ${k}`).join(' and ')}. ` +
@@ -804,26 +758,7 @@ function generateContentSummary(data) {
         `${audioStats.withMusic / totalItems > 0.7 ? 'The high prevalence of background music indicates strong emphasis on mood and atmosphere. ' : ''}` +
         `${themes.size > 5 ? 'The diverse range of themes suggests content designed to engage with multiple aspects of the audience\'s interests.' : ''}`;
 
-    return basicSummary + aiInsights + `\n\nTotal Duration: ${totalDuration}`;
-}
-
-function updateTable(results) {
-    const resultsTable = document.getElementById('analysisTable');
-    if (!resultsTable) return;
-
-    const tbody = resultsTable.querySelector('tbody');
-    if (!tbody) return;
-
-    tbody.innerHTML = results.map(result => `
-        <tr>
-            <td>${result.id}</td>
-            <td>${result.title}</td>
-            <td>${result.filename}</td>
-            <td>${result.file_type}</td>
-            <td>${result.format}</td>
-            <td>${result.duration || '00:00:00'}</td>
-        </tr>
-    `).join('');
+    return basicSummary + aiInsights;
 }
 
 function updateCharts(data) {
@@ -979,5 +914,4 @@ function updateEmotionAnalysis(data) {
     } catch (error) {
         console.error('Error updating emotion analysis:', error);
     }
-}
 }
