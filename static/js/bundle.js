@@ -1,15 +1,15 @@
 document.addEventListener('DOMContentLoaded', function() {
     const bundleSuggestions = document.getElementById('bundleSuggestions');
-    
+
     function updateTable(data) {
         try {
             if ($.fn.DataTable.isDataTable('#analysisTable')) {
                 $('#analysisTable').DataTable().destroy();
             }
-            
+
             const tbody = $('#analysisTable tbody');
             tbody.empty();
-            
+
             data.forEach(analysis => {
                 const row = `
                     <tr data-id="${analysis.id}">
@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
                 tbody.append(row);
             });
-            
+
             $('#analysisTable').DataTable({
                 colReorder: true,
                 pageLength: 25
