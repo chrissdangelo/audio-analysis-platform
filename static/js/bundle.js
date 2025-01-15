@@ -446,11 +446,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function createBundleSection(title, groups, type) {
         const maxTitles = parseInt(document.getElementById('maxTitles').value) || 5;
+        const minTitles = parseInt(document.getElementById('minTitles').value) || 3;
+
+        // Filter groups that meet the minimum titles requirement
+        const filteredGroups = groups.filter(group => group.items.length >= minTitles);
+
         return `
             <div class="col-12 mb-4">
                 <h6 class="mb-3">${title}</h6>
-                ${groups.map(group => {
-                    // Limit the items in each group
+                ${filteredGroups.map(group => {
+                    // Limit the items in each group between min and max
                     const limitedItems = {...group, items: group.items.slice(0, maxTitles)};
                     const bundleTitle = generateBundleTitle(type, group.commonality, group.emotionalContext);
                     const elevatorPitch = generateElevatorPitch(
@@ -503,7 +508,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                         </div>
                     </div>
-                    `}).join('')}
+                    `;
+                }).join('')}
             </div>
         `;
     }
@@ -512,6 +518,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const bundleTab = document.getElementById('bundle-tab');
     bundleTab.addEventListener('shown.bs.tab', findBundleOpportunities);
 
-    // Update bundles when max titles changes
+    // Update bundles when max titles or min titles changes
     document.getElementById('maxTitles')?.addEventListener('change', findBundleOpportunities);
+    document.getElementById('minTitles')?.addEventListener('change', findBundleOpportunities);
 });
