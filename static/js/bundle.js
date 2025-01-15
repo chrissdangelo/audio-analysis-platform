@@ -282,9 +282,17 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             const minTitles = parseInt(document.getElementById('minTitles')?.value || '2');
-            let result = Array.from(groups.entries())
-                .filter(([_, items]) => items.length >= minTitles)
-                .map(([key, items]) => {
+            
+            // First filter to only get groups that meet minimum titles
+            const validGroups = Array.from(groups.entries())
+                .filter(([_, items]) => items.length >= minTitles);
+            
+            // If no groups meet the minimum, return empty array
+            if (validGroups.length === 0) {
+                return [];
+            }
+            
+            let result = validGroups.map(([key, items]) => {
                     // Group by series (first part of filename before underscore)
                     const seriesGroups = new Map();
                     items.forEach(item => {
