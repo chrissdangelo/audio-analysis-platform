@@ -784,14 +784,14 @@ def register_routes(app):
                         # Save batch status after each file
                         batch_manager.save_batch_status(batch_id)
 
-                        # Clean up the file only if successfully processed or failed permanently
+                        # Clean up the file only if successfully processed or failed 3 times
                         file_status = batch_manager.batch_status[batch_id]['files'][filename]
-                        if file_status['status'] in ['completed', 'failed'] or file_status['attempts'] >= 3:
+                        if file_status['status'] == 'completed' or (file_status['status'] == 'failed' and file_status['attempts'] >= 3):
                             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                             if os.path.exists(filepath):
                                 try:
                                     os.remove(filepath)
-                                    logger.info(f"Cleaned up file {filepath} after processing")
+                                    logger.info(f"Cleaned up file {filepath} after processing (status: {file_status['status']}, attempts: {file_status['attempts']})")
                                 except Exception as e:
                                     logger.error(f"Error cleaning up file {filepath}: {str(e)}")
 
