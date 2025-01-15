@@ -170,6 +170,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Filter results locally based on selected criteria
             const filteredResults = analyses.filter(analysis => {
+                // If no criteria are selected, return false to show no results
+                if (selectedCharacters.length === 0 && selectedEnvironments.length === 0 && selectedThemes.length === 0) {
+                    return false;
+                }
+
                 const matchesCharacters = selectedCharacters.length === 0 || 
                     (matchAll ? selectedCharacters.every(char => analysis.speaking_characters && analysis.speaking_characters.includes(char))
                              : selectedCharacters.some(char => analysis.speaking_characters && analysis.speaking_characters.includes(char)));
@@ -186,9 +191,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Must match all selected criteria
                     return matchesCharacters && matchesEnvironments && matchesThemes;
                 } else {
-                    // Match any of the selected criteria (if any criteria are selected)
-                    return (selectedCharacters.length === 0 && selectedEnvironments.length === 0 && selectedThemes.length === 0) ? false :
-                           (matchesCharacters || matchesEnvironments || matchesThemes);
+                    // Match any of the selected criteria
+                    return (selectedCharacters.length > 0 && matchesCharacters) ||
+                           (selectedEnvironments.length > 0 && matchesEnvironments) ||
+                           (selectedThemes.length > 0 && matchesThemes);
                 }
             });
 
