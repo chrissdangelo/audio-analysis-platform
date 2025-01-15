@@ -497,7 +497,9 @@ class GeminiAnalyzer:
 
         # Configure longer timeout for large file uploads
         import httplib2
-        httplib2.TIMEOUT = 300  # 5 minute timeout for each attempt
+        import socket
+        httplib2.TIMEOUT = 600  # 10 minute timeout for each attempt
+        socket.setdefaulttimeout(600)  # Also set socket timeout
 
         while response is None and time.time() - start_time < timeout and retry_count < max_retries:
             try:
