@@ -780,7 +780,7 @@ def register_routes(app):
                 has_narration=analysis_result.get('has_narration', False),
                 has_underscore=analysis_result.get('has_underscore', False),
                 has_sound_effects=analysis_result.get('sound_effects_count', 0) > 0,
-                songs_count=analysis_resultresult.get('songs_count', 0),
+                songs_count=analysis_result.get('songs_count', 0),
                 environments=analysis_result.get('environments', '[]'),
                 characters_mentioned=analysis_result.get('characters_mentioned', '[]'),
                 speaking_characters=analysis_result.get('speaking_characters', '[]'),
@@ -888,5 +888,69 @@ def register_routes(app):
         except Exception as e:
             logger.error(f"Error performing search: {str(e)}")
             return jsonify({"error": "Error performing search"}), 500
+
+    @app.route('/api/bundle-suggestions', methods=['GET'])
+    @require_auth
+    def get_bundle_suggestions():
+        """Get bundle suggestions based on size and criteria"""
+        try:
+            # Get parameters
+            bundle_size = request.args.get('bundle_size', type=int, default=3)
+            selected_themes = request.args.getlist('themes[]')
+            selected_characters = request.args.getlist('characters[]')
+            selected_environments = request.args.getlist('environments[]')
+
+            # Start with all analyses
+            query = AudioAnalysis.query
+
+            # Apply filters if provided
+            if selected_themes:
+                query = query.filter(AudioAnalysis.themes.cast(JSONB).contains(selected_themes))
+            if selected_characters:
+                query = query.filter(AudioAnalysis.characters_mentioned.cast(JSONB).contains(selected_characters))
+            if selected_environments:
+                query = query.filter(AudioAnalysis.environments.cast(JSONB).contains(selected_environments))
+
+            # Get all matching analyses
+            analyses = query.all()
+
+            # Group analyses into bundles of specified size
+            bundles = []
+            current_bundle = []
+
+            for analysis in analyses:
+                current_bundle.append(analysis.to_dict())
+                if len(current_bundle) == bundle_size:
+                    bundles.append({
+                        'id': len(bundles) + 1,
+                        'items': current_bundle,
+                        'total_duration': sum(
+                            sum(int(x) * (60 if i == 0 else 1) 
+                                for i, x in enumerate(item['duration'].split(':')[-2:]))
+                            for item in current_bundle
+                        ),
+                        'common_themes': list(set.intersection(*[
+                            set(json.loads(item['themes'])) 
+                            for item in current_bundle 
+                            if json.loads(item['themes'])
+                        ])) if current_bundle else [],
+                        'environments': list(set.union(*[
+                            set(json.loads(item['environments'])) 
+                            for item in current_bundle
+                            if json.loads(item['environments'])
+                        ])) if current_bundle else []
+                    })
+                    current_bundle = []
+
+            logger.info(f"Generated {len(bundles)} bundle suggestions")
+            return jsonify({
+                'bundles': bundles,
+                'total_matches': len(analyses),
+                'bundle_count': len(bundles)
+            }), 200
+
+        except Exception as e:
+            logger.error(f"Error generating bundle suggestions: {str(e)}")
+            return jsonify({'error': 'Error generating bundle suggestions'}), 500
 
     return app
