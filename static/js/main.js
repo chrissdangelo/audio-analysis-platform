@@ -7,78 +7,6 @@ document.addEventListener('DOMContentLoaded', function() {
     errorAlert.className = 'alert alert-danger alert-dismissible fade';
     errorAlert.setAttribute('role', 'alert');
 
-    // Initialize DataTable with resizable columns
-    let table;
-
-    function initializeDataTable() {
-        if ($.fn.DataTable.isDataTable('#analysisTable')) {
-            table = $('#analysisTable').DataTable();
-        } else {
-            table = $('#analysisTable').DataTable({
-                scrollX: true,
-                autoWidth: false,
-                columnDefs: [
-                    { width: '300px', targets: 1 }, // Title column wider
-                    { width: '200px', targets: 2 }, // Filename column
-                    { width: '100px', targets: '_all' } // Default width for other columns
-                ]
-            });
-
-            // Add resizer handles to each header cell
-            $('#analysisTable thead th').each(function() {
-                const resizer = document.createElement('div');
-                resizer.classList.add('resizer');
-                this.appendChild(resizer);
-                createResizableColumn(this, resizer);
-            });
-        }
-        return table;
-    }
-
-    function createResizableColumn(th, resizer) {
-        let startX, startWidth;
-
-        function startDragging(e) {
-            startX = e.pageX;
-            startWidth = th.offsetWidth;
-            resizer.classList.add('resizing');
-
-            // Add event listeners for dragging
-            document.addEventListener('mousemove', onDrag);
-            document.addEventListener('mouseup', stopDragging);
-
-            // Prevent text selection while dragging
-            document.body.style.userSelect = 'none';
-        }
-
-        function onDrag(e) {
-            if (!startX) return;
-
-            const diffX = e.pageX - startX;
-            const newWidth = Math.max(100, startWidth + diffX); // Minimum width of 100px
-
-            // Update column width
-            th.style.width = `${newWidth}px`;
-            th.style.minWidth = `${newWidth}px`;
-
-            // Force DataTables to recalculate column widths
-            if (table) {
-                table.columns.adjust();
-            }
-        }
-
-        function stopDragging() {
-            resizer.classList.remove('resizing');
-            document.removeEventListener('mousemove', onDrag);
-            document.removeEventListener('mouseup', stopDragging);
-            document.body.style.userSelect = '';
-            startX = null;
-        }
-
-        // Add mousedown event listener to resizer
-        resizer.addEventListener('mousedown', startDragging);
-    }
-
     function showError(message) {
         // Remove any existing error alerts
         const existingAlert = document.querySelector('.alert-danger');
@@ -96,17 +24,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateTable() {
         // Only fetch and update if we're on a page with the analysis table
-        const analysisTable = document.querySelector('#analysisTable');
+        const analysisTable = document.querySelector('table tbody');
         if (!analysisTable) return;
-
-        if (!table) {
-            table = initializeDataTable();
-        }
 
         fetch('/api/analyses')
             .then(response => response.json())
             .then(data => {
-                table.clear().rows.add(data).draw();
+                const tbody = document.querySelector('table tbody');
+                if (!tbody) return;
+
+                tbody.innerHTML = ''; // Clear existing rows
+                data.forEach(item => {
+                    // Create table row
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${item.id}</td>
+                        <td>${item.title}</td>
+                        <td>${item.filename}</td>
+                        <td>${item.format}</td>
+                        <td>${item.duration}</td>
+                        <td>${item.environments}</td>
+                        <td>${item.characters_mentioned}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
             })
             .catch(error => console.error('Error updating table:', error));
     }
@@ -131,8 +72,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Show spinner
             if (spinner) {
-                spinner.classList.add('d-inline-block');
-                spinner.classList.remove('d-none');
+                spinner.style.display = 'inline-block';
             }
 
             const formData = new FormData();
@@ -149,7 +89,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     throw new Error(result.error || 'Upload failed');
                 }
 
-                // Refresh the table
+                // Update the table with the new data
                 updateTable();
 
                 // Clear the file input
@@ -160,8 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } finally {
                 // Hide spinner
                 if (spinner) {
-                    spinner.classList.remove('d-inline-block');
-                    spinner.classList.add('d-none');
+                    spinner.style.display = 'none';
                 }
             }
         });
