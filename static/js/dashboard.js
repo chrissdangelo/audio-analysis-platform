@@ -4,6 +4,8 @@ document.addEventListener('DOMContentLoaded', function() {
         scrollX: true,     // Enable horizontal scrolling
         autoWidth: false,  // Disable automatic column width calculation
         dom: 'Bfrtip',     // Add buttons to the DataTable
+        colReorder: true,  // Enable column reordering
+        stateSave: true,   // Enable state saving
         buttons: [
             {
                 extend: 'colvis',
@@ -11,17 +13,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 className: 'btn btn-secondary'
             },
             {
-                text: 'Reset Columns',
+                text: 'Reset Layout',
                 className: 'btn btn-secondary',
                 action: function (e, dt, node, config) {
-                    // Clear stored column widths
+                    // Clear stored column widths and visibility
                     localStorage.removeItem('analysisTableColumnWidths');
+                    localStorage.removeItem('DataTables_analysisTable_' + window.location.pathname);
                     // Reset column visibility
                     table.columns().visible(true);
                     // Reset column widths to default
                     table.columns().every(function() {
                         $(this.header()).width('auto');
                     });
+                    // Reset column order
+                    table.colReorder.reset();
                     table.draw();
                 }
             }
@@ -64,6 +69,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const resizer = document.createElement('div');
                 resizer.className = 'resizer';
                 this.appendChild(resizer);
+
+                // Add tooltip
+                $(this).attr('title', 'Drag to resize, double-click to auto-fit');
             });
 
             // Initialize column resizing
@@ -84,6 +92,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Prevent text selection while resizing
                 e.preventDefault();
+            });
+
+            // Double-click to auto-fit column
+            headerCells.on('dblclick', '.resizer', function(e) {
+                const headerCell = e.target.parentElement;
+                const columnIndex = $(headerCell).index();
+
+                // Calculate maximum content width
+                let maxWidth = $(headerCell).width();
+                table.column(columnIndex).nodes().each(function() {
+                    const cellWidth = $(this).text().length * 8; // Approximate width
+                    maxWidth = Math.max(maxWidth, cellWidth);
+                });
+
+                // Set new width
+                $(headerCell).width(maxWidth);
+                table.column(columnIndex).nodes().each(function(cell) {
+                    $(cell).width(maxWidth);
+                });
+
+                // Save width
+                const savedWidths = JSON.parse(localStorage.getItem('analysisTableColumnWidths') || '{}');
+                savedWidths[columnIndex] = maxWidth;
+                localStorage.setItem('analysisTableColumnWidths', JSON.stringify(savedWidths));
+
+                table.columns.adjust();
             });
 
             function resize(e) {
@@ -776,7 +810,7 @@ function generateContentSummary(data) {
 function updateTable(results) {
     const resultsTable = document.getElementById('analysisTable');
     if (!resultsTable) return;
-    
+
     const tbody = resultsTable.querySelector('tbody');
     if (!tbody) return;
 
@@ -945,4 +979,5 @@ function updateEmotionAnalysis(data) {
     } catch (error) {
         console.error('Error updating emotion analysis:', error);
     }
+}
 }

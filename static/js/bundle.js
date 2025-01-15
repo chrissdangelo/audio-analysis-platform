@@ -1,5 +1,154 @@
 document.addEventListener('DOMContentLoaded', function() {
     const bundleSuggestions = document.getElementById('bundleSuggestions');
+    const noBundlesMessage = document.getElementById('noBundlesMessage');
+    const bundleSize = document.getElementById('bundleSize');
+
+    // Add event listeners for real-time updates
+    bundleSize.addEventListener('change', findBundleOpportunities);
+
+    // Theme, character, and environment selection handlers
+    function setupSelectionHandlers(containerId, items) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        items.forEach(item => {
+            const button = document.createElement('button');
+            button.className = 'btn btn-outline-primary btn-sm';
+            button.textContent = item;
+            button.dataset.selected = 'false';
+
+            button.addEventListener('click', () => {
+                const wasSelected = button.dataset.selected === 'true';
+                button.dataset.selected = (!wasSelected).toString();
+                button.className = wasSelected ? 
+                    'btn btn-outline-primary btn-sm' : 
+                    'btn btn-primary btn-sm';
+                findBundleOpportunities();
+            });
+
+            container.appendChild(button);
+        });
+    }
+
+    function getSelectedItems(containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return [];
+
+        return Array.from(container.children)
+            .filter(button => button.dataset.selected === 'true')
+            .map(button => button.textContent);
+    }
+
+    async function findBundleOpportunities() {
+        try {
+            const response = await fetch('/api/analyses');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const analyses = await response.json();
+
+            if (!Array.isArray(analyses)) {
+                throw new Error('Expected analyses to be an array');
+            }
+
+            if (analyses.length === 0) {
+                showNoBundlesMessage('No content available for bundle analysis');
+                return;
+            }
+
+            // Get current bundle size requirement
+            const requiredSize = parseInt(bundleSize.value);
+
+            // Get selected criteria
+            const selectedThemes = getSelectedItems('bundleThemesList');
+            const selectedCharacters = getSelectedItems('bundleCharacterList');
+            const selectedEnvironments = getSelectedItems('bundleEnvironmentList');
+
+            // Filter analyses based on selected criteria
+            let filteredAnalyses = analyses;
+            if (selectedThemes.length > 0) {
+                filteredAnalyses = filteredAnalyses.filter(analysis => 
+                    analysis.themes?.some(theme => selectedThemes.includes(theme))
+                );
+            }
+            if (selectedCharacters.length > 0) {
+                filteredAnalyses = filteredAnalyses.filter(analysis =>
+                    analysis.characters_mentioned?.some(char => selectedCharacters.includes(char))
+                );
+            }
+            if (selectedEnvironments.length > 0) {
+                filteredAnalyses = filteredAnalyses.filter(analysis =>
+                    analysis.environments?.some(env => selectedEnvironments.includes(env))
+                );
+            }
+
+            // Group by themes with emotion context
+            const themeGroups = groupByCommonality(filteredAnalyses, 'themes', 'emotion_scores')
+                .filter(group => group.items.length >= requiredSize);
+
+            // Group by characters with interaction context
+            const characterGroups = groupByCharacterInteractions(filteredAnalyses)
+                .filter(group => group.items.length >= requiredSize);
+
+            // Group by emotional patterns
+            const emotionGroups = groupByEmotions(filteredAnalyses)
+                .filter(group => group.items.length >= requiredSize);
+
+            // Group by environments with emotional context
+            const environmentGroups = groupByCommonality(filteredAnalyses, 'environments', 'emotion_scores')
+                .filter(group => group.items.length >= requiredSize);
+
+            // Display results
+            const hasResults = themeGroups.length > 0 || characterGroups.length > 0 || 
+                             emotionGroups.length > 0 || environmentGroups.length > 0;
+
+            if (!hasResults) {
+                showNoBundlesMessage(`No bundles of size ${requiredSize} match the current criteria`);
+                return;
+            }
+
+            displayBundleSuggestions(themeGroups, characterGroups, emotionGroups, environmentGroups);
+
+        } catch (error) {
+            console.error('Error finding bundle opportunities:', error);
+            showNoBundlesMessage('Error analyzing bundle opportunities: ' + error.message);
+        }
+    }
+
+    function showNoBundlesMessage(message) {
+        if (noBundlesMessage) {
+            noBundlesMessage.textContent = message;
+            noBundlesMessage.classList.remove('d-none');
+        }
+        if (bundleSuggestions) {
+            bundleSuggestions.innerHTML = '';
+        }
+    }
+
+    // Initialize available options
+    fetch('/api/analyses').then(response => response.json()).then(analyses => {
+        // Extract unique themes, characters, and environments
+        const themes = new Set();
+        const characters = new Set();
+        const environments = new Set();
+
+        analyses.forEach(analysis => {
+            analysis.themes?.forEach(theme => themes.add(theme));
+            analysis.characters_mentioned?.forEach(char => characters.add(char));
+            analysis.environments?.forEach(env => environments.add(env));
+        });
+
+        // Setup selection handlers
+        setupSelectionHandlers('bundleThemesList', Array.from(themes));
+        setupSelectionHandlers('bundleCharacterList', Array.from(characters));
+        setupSelectionHandlers('bundleEnvironmentList', Array.from(environments));
+
+        // Initial bundle search
+        findBundleOpportunities();
+    }).catch(error => {
+        console.error('Error initializing bundle options:', error);
+        showNoBundlesMessage('Error loading bundle options: ' + error.message);
+    });
 
     function updateTable(data) {
         try {
@@ -57,41 +206,78 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             if (analyses.length === 0) {
-                bundleSuggestions.innerHTML = '<div class="col-12"><div class="alert alert-info">No content available for bundle analysis</div></div>';
+                showNoBundlesMessage('No content available for bundle analysis');
                 return;
             }
 
+            // Get current bundle size requirement
+            const requiredSize = parseInt(bundleSize.value);
+
+            // Get selected criteria
+            const selectedThemes = getSelectedItems('bundleThemesList');
+            const selectedCharacters = getSelectedItems('bundleCharacterList');
+            const selectedEnvironments = getSelectedItems('bundleEnvironmentList');
+
+            // Filter analyses based on selected criteria
+            let filteredAnalyses = analyses;
+            if (selectedThemes.length > 0) {
+                filteredAnalyses = filteredAnalyses.filter(analysis => 
+                    analysis.themes?.some(theme => selectedThemes.includes(theme))
+                );
+            }
+            if (selectedCharacters.length > 0) {
+                filteredAnalyses = filteredAnalyses.filter(analysis =>
+                    analysis.characters_mentioned?.some(char => selectedCharacters.includes(char))
+                );
+            }
+            if (selectedEnvironments.length > 0) {
+                filteredAnalyses = filteredAnalyses.filter(analysis =>
+                    analysis.environments?.some(env => selectedEnvironments.includes(env))
+                );
+            }
+
             // Group by themes with emotion context
-            const themeGroups = groupByCommonality(analyses, 'themes', 'emotion_scores');
+            const themeGroups = groupByCommonality(filteredAnalyses, 'themes', 'emotion_scores')
+                .filter(group => group.items.length >= requiredSize);
 
             // Group by characters with interaction context
-            const characterGroups = groupByCharacterInteractions(analyses);
+            const characterGroups = groupByCharacterInteractions(filteredAnalyses)
+                .filter(group => group.items.length >= requiredSize);
 
             // Group by emotional patterns
-            const emotionGroups = groupByEmotions(analyses);
+            const emotionGroups = groupByEmotions(filteredAnalyses)
+                .filter(group => group.items.length >= requiredSize);
 
             // Group by emotional arcs (stories that follow similar emotional progressions)
-            const emotionalArcGroups = groupByEmotionalArcs(analyses);
+            const emotionalArcGroups = groupByEmotionalArcs(filteredAnalyses)
+                .filter(group => group.items.length >= requiredSize);
 
             // Group by environments with emotional context
-            const environmentGroups = groupByCommonality(analyses, 'environments', 'emotion_scores');
+            const environmentGroups = groupByCommonality(filteredAnalyses, 'environments', 'emotion_scores')
+                .filter(group => group.items.length >= requiredSize);
 
             // Group by character dynamics (recurring character relationships)
-            const characterDynamicsGroups = groupByCharacterDynamics(analyses);
+            const characterDynamicsGroups = groupByCharacterDynamics(filteredAnalyses)
+                .filter(group => group.items.length >= requiredSize);
+
+            // Display results
+            const hasResults = themeGroups.length > 0 || characterGroups.length > 0 || 
+                             emotionGroups.length > 0 || environmentGroups.length > 0 ||
+                             emotionalArcGroups.length > 0 || characterDynamicsGroups.length > 0;
+
+            if (!hasResults) {
+                showNoBundlesMessage(`No bundles of size ${requiredSize} match the current criteria`);
+                return;
+            }
 
             displayBundleSuggestions(themeGroups, characterGroups, emotionGroups, environmentGroups, emotionalArcGroups, characterDynamicsGroups);
 
         } catch (error) {
             console.error('Error finding bundle opportunities:', error);
-            bundleSuggestions.innerHTML = `
-                <div class="col-12">
-                    <div class="alert alert-danger">
-                        <h5 class="alert-heading">Error analyzing bundle opportunities</h5>
-                        <p>${error.message}</p>
-                    </div>
-                </div>`;
+            showNoBundlesMessage('Error analyzing bundle opportunities: ' + error.message);
         }
     }
+
 
     function groupByEmotions(analyses) {
         const emotionGroups = [];
@@ -287,14 +473,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
             
+
             // Filter groups to only those that meet minimum titles requirement
             const validGroups = Array.from(groups.entries())
                 .filter(([_, items]) => items.length >= minTitles);
             
+
             if (validGroups.length === 0) {
                 return [];
             }
             
+
             let result = validGroups.map(([key, items]) => {
                     // Group by series (first part of filename before underscore)
                     const seriesGroups = new Map();
@@ -322,13 +511,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         emotionalContext: emotionField ? getEmotionalContext(items) : null
                     };
                 });
+            
 
             // Filter groups to only show those with the minimum number of items
             const minSize = Math.min(...result.map(group => group.items.length));
             result = result.filter(group => group.items.length === minSize);
+            
 
             return result.sort((a, b) => b.count - a.count);
-
         } catch (error) {
             console.error('Error in groupByCommonality:', error);
             return [];
@@ -463,6 +653,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function displayBundleSuggestions(themeGroups, characterGroups, emotionGroups, environmentGroups, emotionalArcGroups, characterDynamicsGroups) {
         const minTitles = parseInt(document.getElementById('minTitles')?.value || '2');
         
+
         // Filter all groups to meet minimum titles requirement
         emotionGroups = emotionGroups.filter(group => group.items.length >= minTitles);
         characterGroups = characterGroups.filter(group => group.items.length >= minTitles);
@@ -470,44 +661,54 @@ document.addEventListener('DOMContentLoaded', function() {
         environmentGroups = environmentGroups.filter(group => group.items.length >= minTitles);
         emotionalArcGroups = emotionalArcGroups.filter(group => group.items.length >= minTitles);
         characterDynamicsGroups = characterDynamicsGroups.filter(group => group.items.length >= minTitles);
+        
 
         let html = '';
+        
 
         // Emotion-based bundles
         if (emotionGroups.length > 0) {
             html += createBundleSection('Emotional Journeys', emotionGroups, 'emotion');
         }
+        
 
         // Character Dynamics
         if (characterDynamicsGroups.length > 0) {
             html += createBundleSection('Character Spotlights', characterDynamicsGroups, 'character');
         }
+        
 
         // Character Interactions
         if (characterGroups.length > 0) {
             html += createBundleSection('Dynamic Duos', characterGroups, 'character');
         }
+        
 
         // Emotional Arcs
         if (emotionalArcGroups.length > 0) {
             html += createBundleSection('Emotional Story Arcs', emotionalArcGroups, 'emotion');
         }
+        
 
         // Theme-based bundles
         if (themeGroups.length > 0) {
             html += createBundleSection('Theme-based Collections', themeGroups, 'theme');
         }
+        
 
         // Environment-based bundles
         if (environmentGroups.length > 0) {
             html += createBundleSection('Magical Realms', environmentGroups, 'environment');
         }
+        
 
         if (!html) {
             html = '<div class="col-12"><div class="alert alert-info">No bundle opportunities found</div></div>';
         }
+        
 
         bundleSuggestions.innerHTML = html;
+        
 
         // Initialize tooltips
         const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -527,6 +728,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         group.items,
                         group.emotionalContext
                     );
+                    
 
                     return `
                     <div class="card mb-3">
