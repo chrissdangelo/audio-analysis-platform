@@ -281,8 +281,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
 
+            const minTitles = parseInt(document.getElementById('minTitles')?.value || '2');
             let result = Array.from(groups.entries())
-                .filter(([_, items]) => items.length > 1)
+                .filter(([_, items]) => items.length === minTitles)
                 .map(([key, items]) => {
                     // Group by series (first part of filename before underscore)
                     const seriesGroups = new Map();
@@ -557,6 +558,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const bundleTab = document.getElementById('bundle-tab');
     bundleTab.addEventListener('shown.bs.tab', findBundleOpportunities);
 
-    // Update bundles when max titles changes
-    document.getElementById('maxTitles')?.addEventListener('change', findBundleOpportunities);
+    // Update bundles when minimum titles changes
+    document.getElementById('minTitles')?.addEventListener('change', findBundleOpportunities);
 });
