@@ -283,7 +283,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const minTitles = parseInt(document.getElementById('minTitles')?.value || '2');
             let result = Array.from(groups.entries())
-                .filter(([_, items]) => items.length === minTitles)
+                .filter(([_, items]) => items.length >= minTitles)
                 .map(([key, items]) => {
                     // Group by series (first part of filename before underscore)
                     const seriesGroups = new Map();
