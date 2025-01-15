@@ -492,13 +492,23 @@ class GeminiAnalyzer:
         """Sends a message to the Gemini chat with a timeout."""
         start_time = time.time()
         response = None
-        while response is None and time.time() - start_time < timeout:
+        retry_count = 0
+        max_retries = 5
+
+        while response is None and time.time() - start_time < timeout and retry_count < max_retries:
             try:
                 response = self.chat.send_message(message)
                 break
             except Exception as e:
-                logger.warning(f"Gemini API request failed: {e}. Retrying...")
-                time.sleep(5) # wait before retrying
+                retry_count += 1
+                wait_time = min(30, 5 * retry_count)  # Exponential backoff
+                logger.warning(f"Gemini API request failed (attempt {retry_count}/{max_retries}): {e}. Waiting {wait_time}s...")
+                time.sleep(wait_time)
+                
+                # Reset chat session on SSL errors
+                if "SSL" in str(e):
+                    logger.info("SSL error detected, resetting chat session...")
+                    self.chat = self.model.start_chat(history=[])
 
         if response is None:
             raise TimeoutError(f"Gemini API request timed out after {timeout} seconds.")
