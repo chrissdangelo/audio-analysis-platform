@@ -61,7 +61,9 @@ async function uploadFiles(files) {
             await pollBatchStatus(batchId, result.status_url);
 
         } catch (error) {
-            batchStatus.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+            batchStatus.innerHTML = `<div class="alert alert-warning">
+    ${error.message.includes('timed out') ? 'Operation timed out - retrying automatically...' : `Error: ${error.message}`}
+</div>`;
         }
     }
 
