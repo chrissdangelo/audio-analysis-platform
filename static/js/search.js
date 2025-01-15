@@ -155,7 +155,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .map(input => input.value);
 
             // If no criteria are selected, show the default message
-            if (!selectedCharacters.length && !selectedEnvironments.length && !selectedThemes.length) {
+            if (selectedCharacters.length === 0 && selectedEnvironments.length === 0 && selectedThemes.length === 0) {
                 searchResults.innerHTML = `
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
@@ -170,31 +170,49 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Filter results locally based on selected criteria
             const filteredResults = analyses.filter(analysis => {
-                // If no criteria are selected, return false to show no results
-                if (selectedCharacters.length === 0 && selectedEnvironments.length === 0 && selectedThemes.length === 0) {
-                    return false;
-                }
-
+                // Check matches for each category
                 const matchesCharacters = selectedCharacters.length === 0 || 
-                    (matchAll ? selectedCharacters.every(char => analysis.speaking_characters && analysis.speaking_characters.includes(char))
-                             : selectedCharacters.some(char => analysis.speaking_characters && analysis.speaking_characters.includes(char)));
+                    (analysis.speaking_characters && selectedCharacters.some(char => 
+                        analysis.speaking_characters.includes(char)));
 
                 const matchesEnvironments = selectedEnvironments.length === 0 || 
-                    (matchAll ? selectedEnvironments.every(env => analysis.environments && analysis.environments.includes(env))
-                             : selectedEnvironments.some(env => analysis.environments && analysis.environments.includes(env)));
+                    (analysis.environments && selectedEnvironments.some(env => 
+                        analysis.environments.includes(env)));
 
                 const matchesThemes = selectedThemes.length === 0 || 
-                    (matchAll ? selectedThemes.every(theme => analysis.themes && analysis.themes.includes(theme))
-                             : selectedThemes.some(theme => analysis.themes && analysis.themes.includes(theme)));
+                    (analysis.themes && selectedThemes.some(theme => 
+                        analysis.themes.includes(theme)));
 
                 if (matchAll) {
-                    // Must match all selected criteria
-                    return matchesCharacters && matchesEnvironments && matchesThemes;
+                    // In "Match All" mode:
+                    // - If a category has selections, all of them must match
+                    // - Only consider categories that have selections
+                    const characterMatches = selectedCharacters.length === 0 || 
+                        selectedCharacters.every(char => 
+                            analysis.speaking_characters && analysis.speaking_characters.includes(char));
+
+                    const environmentMatches = selectedEnvironments.length === 0 || 
+                        selectedEnvironments.every(env => 
+                            analysis.environments && analysis.environments.includes(env));
+
+                    const themeMatches = selectedThemes.length === 0 || 
+                        selectedThemes.every(theme => 
+                            analysis.themes && analysis.themes.includes(theme));
+
+                    return characterMatches && environmentMatches && themeMatches;
                 } else {
-                    // Match any of the selected criteria
-                    return (selectedCharacters.length > 0 && matchesCharacters) ||
-                           (selectedEnvironments.length > 0 && matchesEnvironments) ||
-                           (selectedThemes.length > 0 && matchesThemes);
+                    // In "Any" mode:
+                    // - If any selected criterion matches in any category, include the result
+                    // - Only consider categories that have selections
+                    const hasSelections = selectedCharacters.length > 0 || 
+                                        selectedEnvironments.length > 0 || 
+                                        selectedThemes.length > 0;
+
+                    return hasSelections && (
+                        (selectedCharacters.length > 0 && matchesCharacters) ||
+                        (selectedEnvironments.length > 0 && matchesEnvironments) ||
+                        (selectedThemes.length > 0 && matchesThemes)
+                    );
                 }
             });
 
