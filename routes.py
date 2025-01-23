@@ -521,6 +521,27 @@ def register_routes(app):
             logger.error(f"Error cancelling batch: {str(e)}")
             return jsonify({'error': 'Error cancelling batch'}), 500
 
+    @app.route('/export_transcripts')
+    def export_transcripts():
+        try:
+            analyses = AudioAnalysis.query.order_by(AudioAnalysis.created_at.desc()).all()
+            output = ""
+            
+            for analysis in analyses:
+                if analysis.transcript:
+                    output += f"\n### {analysis.title} ###\n\n"
+                    output += f"{analysis.transcript}\n"
+                    output += "\n" + "="*50 + "\n"  # Separator between shows
+            
+            return Response(
+                output,
+                mimetype="text/plain",
+                headers={"Content-disposition": "attachment; filename=show_transcripts.txt"}
+            )
+        except Exception as e:
+            logger.error(f"Error exporting transcripts: {str(e)}")
+            return jsonify({'error': 'Error exporting transcripts'}), 500
+
     @app.route('/export_csv')
     def export_csv():
         try:
