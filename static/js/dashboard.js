@@ -535,12 +535,31 @@ function updateCharacterNetwork(data) {
             return;
         }
 
+        // Get container dimensions
         const container = document.getElementById('characterNetwork');
-        if (!container || !networkSvg || !networkG) {
-            console.log('Network visualization elements not ready');
-            initializeCharacterNetwork();
-            if (!networkSvg || !networkG) return;
-        }
+        if (!container) return;
+        
+        const containerWidth = container.offsetWidth;
+        const containerHeight = 600;
+
+        // Reinitialize network visualization
+        container.innerHTML = '';
+        networkSvg = d3.select('#characterNetwork')
+            .append('svg')
+            .attr('width', containerWidth)
+            .attr('height', containerHeight);
+
+        networkG = networkSvg.append('g');
+
+        // Add zoom behavior
+        const zoom = d3.zoom()
+            .scaleExtent([0.2, 4])
+            .on('zoom', (event) => networkG.attr('transform', event.transform));
+
+        networkSvg.call(zoom);
+        networkSvg.call(zoom.transform, d3.zoomIdentity
+            .translate(containerWidth/2, containerHeight/2)
+            .scale(0.8));
 
         const nodes = new Set();
         const linkMap = new Map();
