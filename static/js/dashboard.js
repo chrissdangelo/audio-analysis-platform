@@ -477,7 +477,8 @@ function initializeCharacterNetwork() {
         const svg = d3.select('#characterNetwork')
             .append('svg')
             .attr('width', width)
-            .attr('height', height);
+            .attr('height', 400)
+            .attr('viewBox', [0, 0, width, 400]);
 
         // Add zoom functionality
         const g = svg.append('g');
@@ -566,16 +567,29 @@ function updateCharacterNetwork(data) {
                 .attr('cy', d => d.y);
 
             // Position labels with offset to avoid overlap
+            // Position labels relative to their nodes with offset
             labels
                 .attr('x', d => d.x)
-                .attr('y', d => d.y - 10)
+                .attr('y', d => d.y - 15)
                 .attr('text-anchor', 'middle')
                 .attr('dominant-baseline', 'auto')
-                .attr('fill', '#fff')
-                .attr('stroke', '#000')
-                .attr('stroke-width', '0.5px')
-                .attr('font-size', '12px')
-                .attr('background-color', 'rgba(0,0,0,0.5)');
+                .style('fill', '#fff')
+                .style('stroke', '#000')
+                .style('stroke-width', '0.5px')
+                .style('font-size', '12px')
+                .style('font-weight', 'bold')
+                .style('pointer-events', 'none')  // Prevent labels from interfering with interactions
+                .each(function() {  // Add background for better readability
+                    const bbox = this.getBBox();
+                    const padding = 2;
+                    d3.select(this.parentNode)
+                        .insert('rect', 'text')
+                        .attr('x', bbox.x - padding)
+                        .attr('y', bbox.y - padding)
+                        .attr('width', bbox.width + (padding * 2))
+                        .attr('height', bbox.height + (padding * 2))
+                        .style('fill', 'rgba(0, 0, 0, 0.5)');
+                });
         });
     } catch (error) {
         console.error('Error updating character network:', error);
