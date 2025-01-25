@@ -567,9 +567,15 @@ function updateCharacterNetwork(data) {
 
             // Position labels with offset to avoid overlap
             labels
-                .attr('x', d => d.x + 15)
-                .attr('y', d => d.y + 15)
-                .attr('text-anchor', 'start');
+                .attr('x', d => d.x)
+                .attr('y', d => d.y - 10)
+                .attr('text-anchor', 'middle')
+                .attr('dominant-baseline', 'auto')
+                .attr('fill', '#fff')
+                .attr('stroke', '#000')
+                .attr('stroke-width', '0.5px')
+                .attr('font-size', '12px')
+                .attr('background-color', 'rgba(0,0,0,0.5)');
         });
     } catch (error) {
         console.error('Error updating character network:', error);
