@@ -466,245 +466,90 @@ function initializeCharts() {
     }
 }
 
-let networkSvg, networkG, labelVisibility = true;
-
 function initializeCharacterNetwork() {
     try {
         const container = document.getElementById('characterNetwork');
         if (!container) return;
 
-        // Clear any existing SVG
-        container.innerHTML = '';
+        const height = 400;
+        width = container.offsetWidth || 800;
 
-        // Set dimensions
-        const containerHeight = 600;
-        const containerWidth = container.offsetWidth || 800;
-
-        // Create new SVG
-        networkSvg = d3.select('#characterNetwork')
-            .append('svg')
-            .attr('width', containerWidth)
-            .attr('height', containerHeight)
-            .attr('class', 'character-network');
-
-        // Add zoom functionality
-        networkG = networkSvg.append('g')
-            .attr('transform', `translate(${containerWidth/2},${containerHeight/2})`);
-
-        const zoom = d3.zoom()
-            .scaleExtent([0.2, 4])
-            .on('zoom', (event) => {
-                networkG.attr('transform', event.transform);
-            });
-
-        networkSvg.call(zoom);
-        
-        // Initial zoom to center
-        networkSvg.call(zoom.transform, d3.zoomIdentity
-            .translate(containerWidth/2, containerHeight/2)
-            .scale(0.8));
-
-        return true;
-    } catch (error) {
-        console.error('Error initializing character network:', error);
-        return false;
-    }
-}
-
-function resetZoom() {
-    const containerHeight = 600;
-    const containerWidth = document.getElementById('characterNetwork')?.offsetWidth || 800;
-    
-    networkSvg?.transition()
-        .duration(750)
-        .call(d3.zoom().transform, d3.zoomIdentity
-            .translate(containerWidth / 2, containerHeight / 2)
-            .scale(0.8));
-}
-
-function toggleLabels() {
-    labelVisibility = !labelVisibility;
-    networkG.selectAll('.node-label')
-        .style('display', labelVisibility ? 'block' : 'none');
-}
-
-function updateCharacterNetwork(data) {
-    try {
-        const container = document.getElementById('characterNetwork');
-        if (!container) return;
-
-        const width = container.offsetWidth;
-        const height = 600;
-        
-        container.innerHTML = '';
-        
         const svg = d3.select('#characterNetwork')
             .append('svg')
             .attr('width', width)
             .attr('height', height);
-            
-        const g = svg.append('g');
-        
-        const zoom = d3.zoom()
-            .scaleExtent([0.2, 4])
-            .on('zoom', (event) => g.attr('transform', event.transform));
-            
-        svg.call(zoom);
-        
-        // Process data
-        const nodes = new Set();
-        const links = new Map();
-        
-        data.forEach(item => {
-            const chars = item.speaking_characters || [];
-            chars.forEach(char => nodes.add(char));
-            
-            for (let i = 0; i < chars.length; i++) {
-                for (let j = i + 1; j < chars.length; j++) {
-                    const key = [chars[i], chars[j]].sort().join('-');
-                    links.set(key, (links.get(key) || 0) + 1);
-                }
-            }
-        });
-        
-        const nodesArray = Array.from(nodes).map(id => ({id}));
-        const linksArray = Array.from(links).map(([key, value]) => {
-            const [source, target] = key.split('-');
-            return {source, target, value};
-        });
 
-        // Create force simulation
-        const simulation = d3.forceSimulation(nodesArray)
-            .force('link', d3.forceLink(linksArray).id(d => d.id))
-            .force('charge', d3.forceManyBody().strength(-200))
-            .force('center', d3.forceCenter(width / 2, height / 2));
-            
-        // Draw links
-        const link = g.append('g')
-            .selectAll('line')
-            .data(linksArray)
-            .enter().append('line')
-            .attr('stroke', '#999')
-            .attr('stroke-opacity', 0.6)
-            .attr('stroke-width', d => Math.sqrt(d.value));
-            
-        // Draw nodes
-        const node = g.append('g')
-            .selectAll('circle')
-            .data(nodesArray)
-            .enter().append('circle')
-            .attr('r', 5)
-            .attr('fill', '#69b3a2');
-            
-        // Add labels
-        const labels = g.append('g')
-            .selectAll('text')
-            .data(nodesArray)
-            .enter().append('text')
-            .text(d => d.id)
-            .attr('font-size', '12px')
-            .attr('dx', 8)
-            .attr('dy', 4)
-            .style('fill', '#fff');
-            
-        // Update positions on simulation tick
-        simulation.on('tick', () => {
-            link
-                .attr('x1', d => d.source.x)
-                .attr('y1', d => d.source.y)
-                .attr('x2', d => d.target.x)
-                .attr('y2', d => d.target.y);
-                
-            node
-                .attr('cx', d => d.x)
-                .attr('cy', d => d.y);
-                
-            labels
-                .attr('x', d => d.x)
-                .attr('y', d => d.y);
-        });
-        
-        // Center the visualization initially
-        svg.call(zoom.transform, d3.zoomIdentity
-            .translate(width/2, height/2)
-            .scale(0.8));
-            
+        // Add zoom functionality
+        const g = svg.append('g');
+        svg.call(d3.zoom()
+            .scaleExtent([0.1, 4])
+            .on('zoom', (event) => {
+                g.attr('transform', event.transform);
+            }));
     } catch (error) {
-        console.error('Error updating character network:', error);
+        console.error('Error initializing character network:', error);
     }
 }
+
+function updateCharacterNetwork(data) {
+    try {
+        const nodes = new Set();
+        const links = [];
+
+        // Build character relationships
+        data.forEach(analysis => {
+            const speakingChars = analysis.speaking_characters || [];
+            speakingChars.forEach(char => nodes.add(char));
+
+            // Create links between characters that appear together
+            for (let i = 0; i < speakingChars.length; i++) {
                 for (let j = i + 1; j < speakingChars.length; j++) {
-                    const linkKey = [speakingChars[i], speakingChars[j]].sort().join('-');
-                    const linkCount = (linkMap.get(linkKey) || 0) + 1;
-                    linkMap.set(linkKey, linkCount);
+                    links.push({
+                        source: speakingChars[i],
+                        target: speakingChars[j],
+                        value: 1
+                    });
                 }
             }
-        });
-
-        const links = Array.from(linkMap.entries()).map(([key, value]) => {
-            const [source, target] = key.split('-');
-            return { source, target, value };
         });
 
         const nodesArray = Array.from(nodes);
-        // Create node and link arrays
-        const nodesArray = Array.from(nodes).map(id => ({id}));
-        const links = Array.from(linkMap, ([key, value]) => {
-            const [source, target] = key.split('--');
-            return {source, target, value};
-        });
+        const simulation = d3.forceSimulation(nodesArray.map(d => ({id: d})))
+            .force('link', d3.forceLink(links).id(d => d.id))
+            .force('charge', d3.forceManyBody().strength(-100))
+            .force('center', d3.forceCenter(width / 2, 200));
+
+        const svg = d3.select('#characterNetwork svg g');
 
         // Clear previous network
-        networkG.selectAll('*').remove();
+        svg.selectAll('*').remove();
 
-        // Set up force simulation
-        const simulation = d3.forceSimulation(nodesArray)
-            .force('link', d3.forceLink(links)
-                .id(d => d.id)
-                .distance(100))
-            .force('charge', d3.forceManyBody()
-                .strength(-200))
-            .force('center', d3.forceCenter(containerWidth / 2, containerHeight / 2))
-            .force('collision', d3.forceCollide().radius(30));
-
-        // Draw links with varying thickness based on frequency
-        const maxLinkValue = Math.max(...links.map(d => d.value));
-        const link = networkG.append('g')
+        // Draw links
+        const link = svg.append('g')
             .selectAll('line')
             .data(links)
             .enter().append('line')
-            .attr('stroke', '#666')
-            .attr('stroke-opacity', 0.6)
-            .attr('stroke-width', d => Math.max(1, (d.value / maxLinkValue) * 4));
+            .attr('stroke', '#999')
+            .attr('stroke-opacity', 0.6);
 
-        // Draw nodes with size based on connections
-        const nodeConnections = {};
-        links.forEach(link => {
-            nodeConnections[link.source] = (nodeConnections[link.source] || 0) + link.value;
-            nodeConnections[link.target] = (nodeConnections[link.target] || 0) + link.value;
-        });
-
-        const node = networkG.append('g')
+        // Draw nodes
+        const node = svg.append('g')
             .selectAll('circle')
             .data(nodesArray.map(d => ({id: d})))
             .enter().append('circle')
-            .attr('r', d => Math.max(5, Math.sqrt(nodeConnections[d.id] || 1) * 3))
-            .attr('fill', (d, i) => d3.schemeCategory10[i % 10])
-            .attr('stroke', '#fff')
-            .attr('stroke-width', 2);
+            .attr('r', 5)
+            .attr('fill', (d, i) => d3.schemeCategory10[i % 10]);
 
-        // Add labels with background
-        const labels = networkG.append('g')
+        // Add labels
+        const labels = svg.append('g')
             .selectAll('text')
             .data(nodesArray.map(d => ({id: d})))
             .enter().append('text')
-            .attr('class', 'node-label')
             .text(d => d.id)
-            .attr('font-size', '12px')
-            .attr('dx', d => 8 + Math.sqrt(nodeConnections[d.id] || 1) * 3)
-            .attr('dy', 4)
-            .attr('fill', '#fff')
-            .style('text-shadow', '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000');
+            .attr('font-size', '10px')
+            .attr('dx', 8)
+            .attr('dy', 3)
+            .attr('fill', '#fff');
 
         // Update positions on simulation tick
         simulation.on('tick', () => {
