@@ -498,28 +498,25 @@ function updateCharacterNetwork(data) {
             return;
         }
 
-        const height = 400; // Define height explicitly
+        const height = 400;
         const nodes = new Set();
         const links = [];
 
         // Build character relationships
         data.forEach(analysis => {
-            if (!analysis || !Array.isArray(analysis.speaking_characters)) {
-                return; // Skip invalid entries
-            }
+            if (!analysis?.speaking_characters?.length) return;
             
-            const speakingChars = analysis.speaking_characters;
-            speakingChars.forEach(char => {
+            const characters = analysis.speaking_characters;
+            characters.forEach(char => {
                 if (char) nodes.add(char);
             });
 
-            // Create links between characters that appear together
-            for (let i = 0; i < speakingChars.length; i++) {
-                for (let j = i + 1; j < speakingChars.length; j++) {
-                    if (speakingChars[i] && speakingChars[j]) {
+            for (let i = 0; i < characters.length; i++) {
+                for (let j = i + 1; j < characters.length; j++) {
+                    if (characters[i] && characters[j]) {
                         links.push({
-                            source: speakingChars[i],
-                            target: speakingChars[j],
+                            source: characters[i],
+                            target: characters[j],
                             value: 1
                         });
                     }
@@ -527,64 +524,58 @@ function updateCharacterNetwork(data) {
             }
         });
 
-        const nodesArray = Array.from(nodes);
-        const simulation = d3.forceSimulation(nodesArray.map(d => ({id: d})))
-            .force('link', d3.forceLink(links).id(d => d.id))
-            .force('charge', d3.forceManyBody().strength(-100))
-            .force('center', d3.forceCenter(width / 2, 200));
-
         const svg = d3.select('#characterNetwork svg g');
-
-        // Clear previous network
         svg.selectAll('*').remove();
 
-        // Draw links
+        const simulation = d3.forceSimulation(Array.from(nodes).map(id => ({id})))
+            .force('link', d3.forceLink(links).id(d => d.id).distance(100))
+            .force('charge', d3.forceManyBody().strength(-200))
+            .force('center', d3.forceCenter(width / 2, height / 2))
+            .force('collision', d3.forceCollide().radius(40));
+
         const link = svg.append('g')
             .selectAll('line')
             .data(links)
-            .enter().append('line')
+            .join('line')
             .attr('stroke', '#999')
             .attr('stroke-opacity', 0.6);
 
-        // Draw nodes with labels
-        const nodeGroup = svg.append('g')
-            .selectAll('g')
-            .data(nodesArray.map(d => ({id: d})))
-            .enter()
-            .append('g')
-            .attr('class', 'node-group');
+        const node = svg.append('g')
+            .selectAll('.node')
+            .data(simulation.nodes())
+            .join('g')
+            .attr('class', 'node')
+            .call(d3.drag()
+                .on('start', dragstarted)
+                .on('drag', dragged)
+                .on('end', dragended));
 
-        // Add circles
-        nodeGroup.append('circle')
+        node.append('circle')
             .attr('r', 5)
             .attr('fill', (d, i) => d3.schemeCategory10[i % 10]);
 
-        // Add labels with background for better visibility
-        const labels = nodeGroup.append('g')
-            .attr('class', 'label');
-            
-        // Add white background behind text
-        labels.append('rect')
+        const labelBackground = node.append('rect')
             .attr('x', 8)
             .attr('y', -10)
-            .attr('width', function(d) {
-                return d.id.length * 7 + 6; // Adjust width based on text length
-            })
-            .attr('height', 20)
-            .attr('fill', 'rgba(0,0,0,0.5)')
-            .attr('rx', 3);
+            .attr('rx', 3)
+            .attr('fill', 'rgba(0, 0, 0, 0.5)');
 
-        // Add text on top of background
-        labels.append('text')
+        const label = node.append('text')
             .text(d => d.id)
-            .attr('x', 10)
+            .attr('x', 12)
             .attr('y', 4)
             .attr('font-size', '12px')
-            .attr('fill', '#fff')
-            .style('pointer-events', 'none');
+            .attr('fill', '#fff');
 
+        // Adjust background width based on text
+        label.each(function() {
+            const box = this.getBBox();
+            const parent = this.parentNode;
+            const rect = parent.querySelector('rect');
+            rect.setAttribute('width', box.width + 8);
+            rect.setAttribute('height', box.height + 4);
+        });
 
-        // Update positions on simulation tick
         simulation.on('tick', () => {
             link
                 .attr('x1', d => d.source.x)
@@ -592,9 +583,25 @@ function updateCharacterNetwork(data) {
                 .attr('x2', d => d.target.x)
                 .attr('y2', d => d.target.y);
 
-            nodeGroup
-                .attr('transform', d => `translate(${d.x}, ${d.y})`);
+            node.attr('transform', d => `translate(${d.x},${d.y})`);
         });
+
+        function dragstarted(event) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            event.subject.fx = event.subject.x;
+            event.subject.fy = event.subject.y;
+        }
+
+        function dragged(event) {
+            event.subject.fx = event.x;
+            event.subject.fy = event.y;
+        }
+
+        function dragended(event) {
+            if (!event.active) simulation.alphaTarget(0);
+            event.subject.fx = null;
+            event.subject.fy = null;
+        }
     } catch (error) {
         console.error('Error updating character network:', error);
     }
