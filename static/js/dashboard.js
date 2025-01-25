@@ -473,16 +473,24 @@ function initializeCharacterNetwork() {
         const container = document.getElementById('characterNetwork');
         if (!container) return;
 
-        const height = 600;
-        width = container.offsetWidth || 800;
+        // Clear any existing SVG
+        container.innerHTML = '';
 
+        // Set dimensions
+        const containerHeight = 600;
+        const containerWidth = container.offsetWidth || 800;
+
+        // Create new SVG
         networkSvg = d3.select('#characterNetwork')
             .append('svg')
-            .attr('width', width)
-            .attr('height', height);
+            .attr('width', containerWidth)
+            .attr('height', containerHeight)
+            .attr('class', 'character-network');
 
         // Add zoom functionality
-        networkG = networkSvg.append('g');
+        networkG = networkSvg.append('g')
+            .attr('transform', `translate(${containerWidth/2},${containerHeight/2})`);
+
         const zoom = d3.zoom()
             .scaleExtent([0.2, 4])
             .on('zoom', (event) => {
@@ -493,10 +501,13 @@ function initializeCharacterNetwork() {
         
         // Initial zoom to center
         networkSvg.call(zoom.transform, d3.zoomIdentity
-            .translate(width / 2, height / 2)
+            .translate(containerWidth/2, containerHeight/2)
             .scale(0.8));
+
+        return true;
     } catch (error) {
         console.error('Error initializing character network:', error);
+        return false;
     }
 }
 
@@ -516,13 +527,25 @@ function toggleLabels() {
 
 function updateCharacterNetwork(data) {
     try {
+        if (!Array.isArray(data) || data.length === 0) {
+            console.log('No data available for character network');
+            return;
+        }
+
         const nodes = new Set();
         const linkMap = new Map();
 
         // Build character relationships
         data.forEach(analysis => {
-            const speakingChars = analysis.speaking_characters || [];
-            speakingChars.forEach(char => nodes.add(char));
+            if (!analysis) return;
+            const speakingChars = Array.isArray(analysis.speaking_characters) ? 
+                analysis.speaking_characters : [];
+            
+            speakingChars.forEach(char => {
+                if (char && typeof char === 'string') {
+                    nodes.add(char);
+                }
+            });
 
             // Create links between characters that appear together
             for (let i = 0; i < speakingChars.length; i++) {
