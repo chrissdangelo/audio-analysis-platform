@@ -530,78 +530,109 @@ function toggleLabels() {
 
 function updateCharacterNetwork(data) {
     try {
-        if (!data || !Array.isArray(data)) {
-            console.log('Invalid data for character network');
-            return;
-        }
-
-        const validData = data.filter(item => 
-            item && 
-            Array.isArray(item.speaking_characters) && 
-            item.speaking_characters.length > 0
-        );
-
-        if (validData.length === 0) {
-            console.log('No valid character data available');
-            return;
-        }
-
         const container = document.getElementById('characterNetwork');
-        if (!container) {
-            console.log('Character network container not found');
-            return;
-        }
+        if (!container) return;
 
-        const containerWidth = container.offsetWidth || 800;
-        const containerHeight = 600;
-
+        const width = container.offsetWidth;
+        const height = 600;
+        
         container.innerHTML = '';
         
-        networkSvg = d3.select('#characterNetwork')
+        const svg = d3.select('#characterNetwork')
             .append('svg')
-            .attr('width', containerWidth)
-            .attr('height', containerHeight);
-
-        networkG = networkSvg.append('g');
-
+            .attr('width', width)
+            .attr('height', height);
+            
+        const g = svg.append('g');
+        
         const zoom = d3.zoom()
             .scaleExtent([0.2, 4])
-            .on('zoom', (event) => {
-                networkG.attr('transform', event.transform);
-            });
-
-        networkSvg.call(zoom);
-            .scaleExtent([0.2, 4])
-            .on('zoom', (event) => networkG.attr('transform', event.transform));
-
-        networkSvg.call(zoom);
-        networkSvg.call(zoom.transform, d3.zoomIdentity
-            .translate(containerWidth/2, containerHeight/2)
-            .scale(0.8));
-
-        const nodes = new Set();
-        const linkMap = new Map();
+            .on('zoom', (event) => g.attr('transform', event.transform));
+            
+        svg.call(zoom);
         
-        validData.forEach(analysis => {
-            const chars = analysis.speaking_characters
-                .filter(char => typeof char === 'string' && char.trim());
-                
+        // Process data
+        const nodes = new Set();
+        const links = new Map();
+        
+        data.forEach(item => {
+            const chars = item.speaking_characters || [];
             chars.forEach(char => nodes.add(char));
             
             for (let i = 0; i < chars.length; i++) {
                 for (let j = i + 1; j < chars.length; j++) {
-                    const pair = [chars[i], chars[j]].sort();
-                    const key = pair.join('--');
-                    linkMap.set(key, (linkMap.get(key) || 0) + 1);
+                    const key = [chars[i], chars[j]].sort().join('-');
+                    links.set(key, (links.get(key) || 0) + 1);
                 }
             }
         });
-
+        
         const nodesArray = Array.from(nodes).map(id => ({id}));
-        const links = Array.from(linkMap, ([key, value]) => {
-            const [source, target] = key.split('--');
+        const linksArray = Array.from(links).map(([key, value]) => {
+            const [source, target] = key.split('-');
             return {source, target, value};
         });
+
+        // Create force simulation
+        const simulation = d3.forceSimulation(nodesArray)
+            .force('link', d3.forceLink(linksArray).id(d => d.id))
+            .force('charge', d3.forceManyBody().strength(-200))
+            .force('center', d3.forceCenter(width / 2, height / 2));
+            
+        // Draw links
+        const link = g.append('g')
+            .selectAll('line')
+            .data(linksArray)
+            .enter().append('line')
+            .attr('stroke', '#999')
+            .attr('stroke-opacity', 0.6)
+            .attr('stroke-width', d => Math.sqrt(d.value));
+            
+        // Draw nodes
+        const node = g.append('g')
+            .selectAll('circle')
+            .data(nodesArray)
+            .enter().append('circle')
+            .attr('r', 5)
+            .attr('fill', '#69b3a2');
+            
+        // Add labels
+        const labels = g.append('g')
+            .selectAll('text')
+            .data(nodesArray)
+            .enter().append('text')
+            .text(d => d.id)
+            .attr('font-size', '12px')
+            .attr('dx', 8)
+            .attr('dy', 4)
+            .style('fill', '#fff');
+            
+        // Update positions on simulation tick
+        simulation.on('tick', () => {
+            link
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+                
+            node
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y);
+                
+            labels
+                .attr('x', d => d.x)
+                .attr('y', d => d.y);
+        });
+        
+        // Center the visualization initially
+        svg.call(zoom.transform, d3.zoomIdentity
+            .translate(width/2, height/2)
+            .scale(0.8));
+            
+    } catch (error) {
+        console.error('Error updating character network:', error);
+    }
+}
                 for (let j = i + 1; j < speakingChars.length; j++) {
                     const linkKey = [speakingChars[i], speakingChars[j]].sort().join('-');
                     const linkCount = (linkMap.get(linkKey) || 0) + 1;
