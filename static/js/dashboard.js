@@ -530,26 +530,47 @@ function toggleLabels() {
 
 function updateCharacterNetwork(data) {
     try {
-        if (!data || !Array.isArray(data) || data.length === 0) {
-            console.log('No data available for character network');
+        // Validate input data
+        if (!data || !Array.isArray(data)) {
+            console.log('Invalid data for character network');
             return;
         }
 
-        // Get container dimensions
+        // Filter valid entries
+        const validData = data.filter(item => 
+            item && 
+            Array.isArray(item.speaking_characters) && 
+            item.speaking_characters.length > 0
+        );
+
+        if (validData.length === 0) {
+            console.log('No valid character data available');
+            return;
+        }
+
+        // Get container and validate
         const container = document.getElementById('characterNetwork');
-        if (!container) return;
-        
-        const containerWidth = container.offsetWidth;
+        if (!container) {
+            console.log('Character network container not found');
+            return;
+        }
+
+        // Set dimensions
+        const containerWidth = container.offsetWidth || 800;
         const containerHeight = 600;
 
-        // Reinitialize network visualization
+        // Clear and initialize container
         container.innerHTML = '';
+        
+        // Create new SVG
         networkSvg = d3.select('#characterNetwork')
             .append('svg')
             .attr('width', containerWidth)
             .attr('height', containerHeight);
 
-        networkG = networkSvg.append('g');
+        // Create group for zoom
+        networkG = networkSvg.append('g')
+            .attr('class', 'network-container');
 
         // Add zoom behavior
         const zoom = d3.zoom()
@@ -564,22 +585,26 @@ function updateCharacterNetwork(data) {
         const nodes = new Set();
         const linkMap = new Map();
 
-        // Build character relationships
-        if (!networkSvg || !networkG) {
-            console.log('Network SVG not initialized');
-            return;
-        }
-
-        data.forEach(analysis => {
-            if (!analysis || !analysis.speaking_characters) return;
-            const speakingChars = Array.isArray(analysis.speaking_characters) ? 
-                analysis.speaking_characters.filter(char => char && typeof char === 'string') : [];
+        // Process character relationships
+        const nodes = new Set();
+        const linkMap = new Map();
+        
+        validData.forEach(analysis => {
+            const chars = analysis.speaking_characters
+                .filter(char => typeof char === 'string' && char.trim());
+                
+            // Add nodes
+            chars.forEach(char => nodes.add(char));
             
-            speakingChars.forEach(char => {
-                if (char && typeof char === 'string') {
-                    nodes.add(char);
+            // Create relationships
+            for (let i = 0; i < chars.length; i++) {
+                for (let j = i + 1; j < chars.length; j++) {
+                    const pair = [chars[i], chars[j]].sort();
+                    const key = pair.join('--');
+                    linkMap.set(key, (linkMap.get(key) || 0) + 1);
                 }
-            });
+            }
+        });
 
             // Create links between characters that appear together
             for (let i = 0; i < speakingChars.length; i++) {
@@ -597,18 +622,25 @@ function updateCharacterNetwork(data) {
         });
 
         const nodesArray = Array.from(nodes);
-        const simulation = d3.forceSimulation(nodesArray.map(d => ({id: d})))
-            .force('link', d3.forceLink(links).id(d => d.id))
-            .force('charge', d3.forceManyBody().strength(-100))
-            .force('center', d3.forceCenter(containerWidth / 2, containerHeight / 2));
-
-        const svg = d3.select('#characterNetwork svg g');
-
-        // Clear previous network
-        svg.selectAll('*').remove();
+        // Create node and link arrays
+        const nodesArray = Array.from(nodes).map(id => ({id}));
+        const links = Array.from(linkMap, ([key, value]) => {
+            const [source, target] = key.split('--');
+            return {source, target, value};
+        });
 
         // Clear previous network
         networkG.selectAll('*').remove();
+
+        // Set up force simulation
+        const simulation = d3.forceSimulation(nodesArray)
+            .force('link', d3.forceLink(links)
+                .id(d => d.id)
+                .distance(100))
+            .force('charge', d3.forceManyBody()
+                .strength(-200))
+            .force('center', d3.forceCenter(containerWidth / 2, containerHeight / 2))
+            .force('collision', d3.forceCollide().radius(30));
 
         // Draw links with varying thickness based on frequency
         const maxLinkValue = Math.max(...links.map(d => d.value));
