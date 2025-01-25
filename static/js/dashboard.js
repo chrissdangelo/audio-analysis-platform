@@ -822,7 +822,19 @@ function updateCharts(data) {
 
             environmentChart.data.labels = Object.keys(environments);
             environmentChart.data.datasets[0].data = Object.values(environments);
-            environmentChart.data.datasets[0].backgroundColor = colors;
+            environmentChart.data.datasets[0].backgroundColor = colors.map(() => 'rgba(150, 150, 150, 0.2)');
+            environmentChart.options.plugins.legend.display = false;
+            environmentChart.options.onHover = (event, elements) => {
+                if (elements.length) {
+                    const index = elements[0].index;
+                    environmentChart.data.datasets[0].backgroundColor = colors.map((color, i) => 
+                        i === index ? color : 'rgba(150, 150, 150, 0.2)'
+                    );
+                } else {
+                    environmentChart.data.datasets[0].backgroundColor = colors.map(() => 'rgba(150, 150, 150, 0.2)');
+                }
+                environmentChart.update();
+            };
             environmentChart.update();
         }
 
