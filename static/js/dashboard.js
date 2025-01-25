@@ -493,22 +493,36 @@ function initializeCharacterNetwork() {
 
 function updateCharacterNetwork(data) {
     try {
+        if (!Array.isArray(data) || data.length === 0) {
+            console.log('No data available for character network');
+            return;
+        }
+
+        const height = 400; // Define height explicitly
         const nodes = new Set();
         const links = [];
 
         // Build character relationships
         data.forEach(analysis => {
-            const speakingChars = analysis.speaking_characters || [];
-            speakingChars.forEach(char => nodes.add(char));
+            if (!analysis || !Array.isArray(analysis.speaking_characters)) {
+                return; // Skip invalid entries
+            }
+            
+            const speakingChars = analysis.speaking_characters;
+            speakingChars.forEach(char => {
+                if (char) nodes.add(char);
+            });
 
             // Create links between characters that appear together
             for (let i = 0; i < speakingChars.length; i++) {
                 for (let j = i + 1; j < speakingChars.length; j++) {
-                    links.push({
-                        source: speakingChars[i],
-                        target: speakingChars[j],
-                        value: 1
-                    });
+                    if (speakingChars[i] && speakingChars[j]) {
+                        links.push({
+                            source: speakingChars[i],
+                            target: speakingChars[j],
+                            value: 1
+                        });
+                    }
                 }
             }
         });
