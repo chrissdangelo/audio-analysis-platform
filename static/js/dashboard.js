@@ -498,7 +498,25 @@ function updateCharacterNetwork(data) {
             return;
         }
 
-        const height = 400; // Define height explicitly
+        // Clear existing SVG
+        d3.select('#characterNetwork').selectAll('svg').remove();
+        
+        const width = document.getElementById('characterNetwork').offsetWidth || 800;
+        const height = 400;
+        
+        // Create new SVG
+        const svg = d3.select('#characterNetwork')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height);
+            
+        const g = svg.append('g');
+        
+        // Add zoom behavior
+        svg.call(d3.zoom()
+            .scaleExtent([0.1, 4])
+            .on('zoom', (event) => g.attr('transform', event.transform)));
+
         const nodes = new Set();
         const links = [];
 
@@ -546,38 +564,37 @@ function updateCharacterNetwork(data) {
             .attr('stroke', '#999')
             .attr('stroke-opacity', 0.6);
 
-        // Draw nodes with labels
-        const nodeGroup = svg.append('g')
-            .selectAll('g')
+        // Draw nodes and labels directly in the transformed group
+        const nodeGroup = g.selectAll('.node-group')
             .data(nodesArray.map(d => ({id: d})))
-            .enter()
-            .append('g')
+            .join('g')
             .attr('class', 'node-group');
 
         // Add circles
         nodeGroup.append('circle')
-            .attr('r', 5)
-            .attr('fill', (d, i) => d3.schemeCategory10[i % 10]);
+            .attr('r', 6)
+            .attr('fill', (d, i) => d3.schemeCategory10[i % 10])
+            .attr('stroke', '#fff')
+            .attr('stroke-width', 1.5);
 
-        // Add labels with background for better visibility
-        const labels = nodeGroup.append('g')
-            .attr('class', 'label');
-            
-        // Add white background behind text
-        labels.append('rect')
-            .attr('x', 8)
+        // Create label groups
+        const labelGroup = nodeGroup.append('g')
+            .attr('class', 'label')
+            .attr('transform', 'translate(10, 0)');
+
+        // Add background rectangles
+        labelGroup.append('rect')
+            .attr('x', 0)
             .attr('y', -10)
-            .attr('width', function(d) {
-                return d.id.length * 7 + 6; // Adjust width based on text length
-            })
+            .attr('width', d => d.id.length * 8 + 8)
             .attr('height', 20)
-            .attr('fill', 'rgba(0,0,0,0.5)')
-            .attr('rx', 3);
+            .attr('fill', 'rgba(0,0,0,0.7)')
+            .attr('rx', 4);
 
-        // Add text on top of background
-        labels.append('text')
+        // Add text labels
+        labelGroup.append('text')
             .text(d => d.id)
-            .attr('x', 10)
+            .attr('x', 4)
             .attr('y', 4)
             .attr('font-size', '12px')
             .attr('fill', '#fff')
