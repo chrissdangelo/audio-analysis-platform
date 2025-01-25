@@ -512,10 +512,13 @@ function initializeCharacterNetwork() {
 }
 
 function resetZoom() {
-    networkSvg.transition()
+    const containerHeight = 600;
+    const containerWidth = document.getElementById('characterNetwork')?.offsetWidth || 800;
+    
+    networkSvg?.transition()
         .duration(750)
         .call(d3.zoom().transform, d3.zoomIdentity
-            .translate(width / 2, height / 2)
+            .translate(containerWidth / 2, containerHeight / 2)
             .scale(0.8));
 }
 
@@ -527,9 +530,16 @@ function toggleLabels() {
 
 function updateCharacterNetwork(data) {
     try {
-        if (!Array.isArray(data) || data.length === 0) {
+        if (!data || !Array.isArray(data) || data.length === 0) {
             console.log('No data available for character network');
             return;
+        }
+
+        const container = document.getElementById('characterNetwork');
+        if (!container || !networkSvg || !networkG) {
+            console.log('Network visualization elements not ready');
+            initializeCharacterNetwork();
+            if (!networkSvg || !networkG) return;
         }
 
         const nodes = new Set();
