@@ -559,17 +559,29 @@ function updateCharacterNetwork(data) {
             .attr('r', 5)
             .attr('fill', (d, i) => d3.schemeCategory10[i % 10]);
 
-        // Add labels with better visibility
-        nodeGroup.append('text')
+        // Add labels with background for better visibility
+        const labels = nodeGroup.append('g')
+            .attr('class', 'label');
+            
+        // Add white background behind text
+        labels.append('rect')
+            .attr('x', 8)
+            .attr('y', -10)
+            .attr('width', function(d) {
+                return d.id.length * 7 + 6; // Adjust width based on text length
+            })
+            .attr('height', 20)
+            .attr('fill', 'rgba(0,0,0,0.5)')
+            .attr('rx', 3);
+
+        // Add text on top of background
+        labels.append('text')
             .text(d => d.id)
-            .attr('x', 8) // Offset label to the right of the node
-            .attr('y', 4) // Center vertically
+            .attr('x', 10)
+            .attr('y', 4)
             .attr('font-size', '12px')
             .attr('fill', '#fff')
-            .attr('stroke', '#000')
-            .attr('stroke-width', '0.3px')
-            .attr('paint-order', 'stroke')
-            .style('pointer-events', 'none'); // Prevent labels from interfering with interactions
+            .style('pointer-events', 'none');
 
 
         // Update positions on simulation tick
