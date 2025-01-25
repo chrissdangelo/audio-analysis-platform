@@ -530,13 +530,11 @@ function toggleLabels() {
 
 function updateCharacterNetwork(data) {
     try {
-        // Validate input data
         if (!data || !Array.isArray(data)) {
             console.log('Invalid data for character network');
             return;
         }
 
-        // Filter valid entries
         const validData = data.filter(item => 
             item && 
             Array.isArray(item.speaking_characters) && 
@@ -548,32 +546,31 @@ function updateCharacterNetwork(data) {
             return;
         }
 
-        // Get container and validate
         const container = document.getElementById('characterNetwork');
         if (!container) {
             console.log('Character network container not found');
             return;
         }
 
-        // Set dimensions
         const containerWidth = container.offsetWidth || 800;
         const containerHeight = 600;
 
-        // Clear and initialize container
         container.innerHTML = '';
         
-        // Create new SVG
         networkSvg = d3.select('#characterNetwork')
             .append('svg')
             .attr('width', containerWidth)
             .attr('height', containerHeight);
 
-        // Create group for zoom
-        networkG = networkSvg.append('g')
-            .attr('class', 'network-container');
+        networkG = networkSvg.append('g');
 
-        // Add zoom behavior
         const zoom = d3.zoom()
+            .scaleExtent([0.2, 4])
+            .on('zoom', (event) => {
+                networkG.attr('transform', event.transform);
+            });
+
+        networkSvg.call(zoom);
             .scaleExtent([0.2, 4])
             .on('zoom', (event) => networkG.attr('transform', event.transform));
 
@@ -584,19 +581,13 @@ function updateCharacterNetwork(data) {
 
         const nodes = new Set();
         const linkMap = new Map();
-
-        // Process character relationships
-        const nodes = new Set();
-        const linkMap = new Map();
         
         validData.forEach(analysis => {
             const chars = analysis.speaking_characters
                 .filter(char => typeof char === 'string' && char.trim());
                 
-            // Add nodes
             chars.forEach(char => nodes.add(char));
             
-            // Create relationships
             for (let i = 0; i < chars.length; i++) {
                 for (let j = i + 1; j < chars.length; j++) {
                     const pair = [chars[i], chars[j]].sort();
@@ -606,8 +597,11 @@ function updateCharacterNetwork(data) {
             }
         });
 
-            // Create links between characters that appear together
-            for (let i = 0; i < speakingChars.length; i++) {
+        const nodesArray = Array.from(nodes).map(id => ({id}));
+        const links = Array.from(linkMap, ([key, value]) => {
+            const [source, target] = key.split('--');
+            return {source, target, value};
+        });
                 for (let j = i + 1; j < speakingChars.length; j++) {
                     const linkKey = [speakingChars[i], speakingChars[j]].sort().join('-');
                     const linkCount = (linkMap.get(linkKey) || 0) + 1;
