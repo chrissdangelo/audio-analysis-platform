@@ -515,11 +515,9 @@ function updateCharacterNetwork(data) {
 
         const nodesArray = Array.from(nodes);
         const simulation = d3.forceSimulation(nodesArray.map(d => ({id: d})))
-            .force('link', d3.forceLink(links).id(d => d.id).distance(100))
-            .force('charge', d3.forceManyBody().strength(-200))
-            .force('collision', d3.forceCollide().radius(50))
-            .force('x', d3.forceX(width / 2).strength(0.1))
-            .force('y', d3.forceY(200).strength(0.1));
+            .force('link', d3.forceLink(links).id(d => d.id))
+            .force('charge', d3.forceManyBody().strength(-100))
+            .force('center', d3.forceCenter(width / 2, 200));
 
         const svg = d3.select('#characterNetwork svg g');
 
@@ -565,17 +563,9 @@ function updateCharacterNetwork(data) {
                 .attr('cx', d => d.x)
                 .attr('cy', d => d.y);
 
-            // Position labels with offset to avoid overlap
             labels
                 .attr('x', d => d.x)
-                .attr('y', d => d.y - 10)
-                .attr('text-anchor', 'middle')
-                .attr('dominant-baseline', 'auto')
-                .attr('fill', '#fff')
-                .attr('stroke', '#000')
-                .attr('stroke-width', '0.5px')
-                .attr('font-size', '12px')
-                .attr('background-color', 'rgba(0,0,0,0.5)');
+                .attr('y', d => d.y);
         });
     } catch (error) {
         console.error('Error updating character network:', error);
