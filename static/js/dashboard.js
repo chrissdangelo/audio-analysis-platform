@@ -532,24 +532,29 @@ function updateCharacterNetwork(data) {
             .attr('stroke', '#999')
             .attr('stroke-opacity', 0.6);
 
-        // Draw nodes
-        const node = svg.append('g')
-            .selectAll('circle')
+        // Draw nodes with labels
+        const nodeGroup = svg.append('g')
+            .selectAll('g')
             .data(nodesArray.map(d => ({id: d})))
-            .enter().append('circle')
+            .enter()
+            .append('g')
+            .attr('class', 'node-group');
+
+        // Add circles
+        nodeGroup.append('circle')
             .attr('r', 5)
             .attr('fill', (d, i) => d3.schemeCategory10[i % 10]);
 
         // Add labels
-        const labels = svg.append('g')
-            .selectAll('text')
-            .data(nodesArray.map(d => ({id: d})))
-            .enter().append('text')
+        nodeGroup.append('text')
             .text(d => d.id)
-            .attr('font-size', '10px')
-            .attr('dx', 8)
-            .attr('dy', 3)
-            .attr('fill', '#fff');
+            .attr('font-size', '12px')
+            .attr('text-anchor', 'middle')
+            .attr('dy', -10)
+            .attr('fill', '#fff')
+            .attr('stroke', '#000')
+            .attr('stroke-width', '0.5px');
+
 
         // Update positions on simulation tick
         simulation.on('tick', () => {
@@ -559,13 +564,8 @@ function updateCharacterNetwork(data) {
                 .attr('x2', d => d.target.x)
                 .attr('y2', d => d.target.y);
 
-            node
-                .attr('cx', d => d.x)
-                .attr('cy', d => d.y);
-
-            labels
-                .attr('x', d => d.x)
-                .attr('y', d => d.y);
+            nodeGroup
+                .attr('transform', d => `translate(${d.x}, ${d.y})`);
         });
     } catch (error) {
         console.error('Error updating character network:', error);
