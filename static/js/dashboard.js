@@ -817,23 +817,30 @@ function updateCharts(data) {
 
             const colors = Array.from(
                 { length: Object.keys(environments).length },
-                (_, i) => `hsl(${(i * 360) / Object.keys(environments).length}, 70%, 60%)`
+                (_, i) => `hsla(${(i * 360) / Object.keys(environments).length}, 85%, 65%, 0.8)`
             );
 
             environmentChart.data.labels = Object.keys(environments);
             environmentChart.data.datasets[0].data = Object.values(environments);
-            environmentChart.data.datasets[0].backgroundColor = colors.map(() => 'rgba(150, 150, 150, 0.2)');
-            environmentChart.options.plugins.legend.display = false;
-            environmentChart.options.onHover = (event, elements) => {
-                if (elements.length) {
-                    const index = elements[0].index;
-                    environmentChart.data.datasets[0].backgroundColor = colors.map((color, i) => 
-                        i === index ? color : 'rgba(150, 150, 150, 0.2)'
-                    );
-                } else {
-                    environmentChart.data.datasets[0].backgroundColor = colors.map(() => 'rgba(150, 150, 150, 0.2)');
+            environmentChart.data.datasets[0].backgroundColor = colors;
+            environmentChart.data.datasets[0].borderColor = colors.map(color => color.replace('0.8', '1'));
+            environmentChart.data.datasets[0].borderWidth = 2;
+            environmentChart.options.plugins.legend.display = true;
+            environmentChart.options.plugins.legend.position = 'right';
+            environmentChart.options.plugins.legend.labels.color = '#fff';
+            environmentChart.options.plugins.legend.labels.font = {
+                size: 12
+            };
+            environmentChart.options.plugins.tooltip = {
+                callbacks: {
+                    label: function(context) {
+                        return `${context.label}: ${context.raw} occurrences`;
+                    }
                 }
-                environmentChart.update();
+            };
+            environmentChart.options.animation = {
+                animateRotate: true,
+                animateScale: true
             };
             environmentChart.update();
         }
