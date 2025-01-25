@@ -545,15 +545,17 @@ function updateCharacterNetwork(data) {
             .attr('r', 5)
             .attr('fill', (d, i) => d3.schemeCategory10[i % 10]);
 
-        // Add labels
+        // Add labels with better visibility
         nodeGroup.append('text')
             .text(d => d.id)
+            .attr('x', 8) // Offset label to the right of the node
+            .attr('y', 4) // Center vertically
             .attr('font-size', '12px')
-            .attr('text-anchor', 'middle')
-            .attr('dy', -10)
             .attr('fill', '#fff')
             .attr('stroke', '#000')
-            .attr('stroke-width', '0.5px');
+            .attr('stroke-width', '0.3px')
+            .attr('paint-order', 'stroke')
+            .style('pointer-events', 'none'); // Prevent labels from interfering with interactions
 
 
         // Update positions on simulation tick
