@@ -546,10 +546,15 @@ function updateCharacterNetwork(data) {
         const linkMap = new Map();
 
         // Build character relationships
+        if (!networkSvg || !networkG) {
+            console.log('Network SVG not initialized');
+            return;
+        }
+
         data.forEach(analysis => {
-            if (!analysis) return;
+            if (!analysis || !analysis.speaking_characters) return;
             const speakingChars = Array.isArray(analysis.speaking_characters) ? 
-                analysis.speaking_characters : [];
+                analysis.speaking_characters.filter(char => char && typeof char === 'string') : [];
             
             speakingChars.forEach(char => {
                 if (char && typeof char === 'string') {
@@ -576,7 +581,7 @@ function updateCharacterNetwork(data) {
         const simulation = d3.forceSimulation(nodesArray.map(d => ({id: d})))
             .force('link', d3.forceLink(links).id(d => d.id))
             .force('charge', d3.forceManyBody().strength(-100))
-            .force('center', d3.forceCenter(width / 2, 200));
+            .force('center', d3.forceCenter(containerWidth / 2, containerHeight / 2));
 
         const svg = d3.select('#characterNetwork svg g');
 
