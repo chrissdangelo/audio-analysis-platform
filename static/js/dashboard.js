@@ -466,35 +466,58 @@ function initializeCharts() {
     }
 }
 
+let networkSvg, networkG, labelVisibility = true;
+
 function initializeCharacterNetwork() {
     try {
         const container = document.getElementById('characterNetwork');
         if (!container) return;
 
-        const height = 400;
+        const height = 600;
         width = container.offsetWidth || 800;
 
-        const svg = d3.select('#characterNetwork')
+        networkSvg = d3.select('#characterNetwork')
             .append('svg')
             .attr('width', width)
             .attr('height', height);
 
         // Add zoom functionality
-        const g = svg.append('g');
-        svg.call(d3.zoom()
-            .scaleExtent([0.1, 4])
+        networkG = networkSvg.append('g');
+        const zoom = d3.zoom()
+            .scaleExtent([0.2, 4])
             .on('zoom', (event) => {
-                g.attr('transform', event.transform);
-            }));
+                networkG.attr('transform', event.transform);
+            });
+
+        networkSvg.call(zoom);
+        
+        // Initial zoom to center
+        networkSvg.call(zoom.transform, d3.zoomIdentity
+            .translate(width / 2, height / 2)
+            .scale(0.8));
     } catch (error) {
         console.error('Error initializing character network:', error);
     }
 }
 
+function resetZoom() {
+    networkSvg.transition()
+        .duration(750)
+        .call(d3.zoom().transform, d3.zoomIdentity
+            .translate(width / 2, height / 2)
+            .scale(0.8));
+}
+
+function toggleLabels() {
+    labelVisibility = !labelVisibility;
+    networkG.selectAll('.node-label')
+        .style('display', labelVisibility ? 'block' : 'none');
+}
+
 function updateCharacterNetwork(data) {
     try {
         const nodes = new Set();
-        const links = [];
+        const linkMap = new Map();
 
         // Build character relationships
         data.forEach(analysis => {
@@ -504,13 +527,16 @@ function updateCharacterNetwork(data) {
             // Create links between characters that appear together
             for (let i = 0; i < speakingChars.length; i++) {
                 for (let j = i + 1; j < speakingChars.length; j++) {
-                    links.push({
-                        source: speakingChars[i],
-                        target: speakingChars[j],
-                        value: 1
-                    });
+                    const linkKey = [speakingChars[i], speakingChars[j]].sort().join('-');
+                    const linkCount = (linkMap.get(linkKey) || 0) + 1;
+                    linkMap.set(linkKey, linkCount);
                 }
             }
+        });
+
+        const links = Array.from(linkMap.entries()).map(([key, value]) => {
+            const [source, target] = key.split('-');
+            return { source, target, value };
         });
 
         const nodesArray = Array.from(nodes);
@@ -524,32 +550,47 @@ function updateCharacterNetwork(data) {
         // Clear previous network
         svg.selectAll('*').remove();
 
-        // Draw links
-        const link = svg.append('g')
+        // Clear previous network
+        networkG.selectAll('*').remove();
+
+        // Draw links with varying thickness based on frequency
+        const maxLinkValue = Math.max(...links.map(d => d.value));
+        const link = networkG.append('g')
             .selectAll('line')
             .data(links)
             .enter().append('line')
-            .attr('stroke', '#999')
-            .attr('stroke-opacity', 0.6);
+            .attr('stroke', '#666')
+            .attr('stroke-opacity', 0.6)
+            .attr('stroke-width', d => Math.max(1, (d.value / maxLinkValue) * 4));
 
-        // Draw nodes
-        const node = svg.append('g')
+        // Draw nodes with size based on connections
+        const nodeConnections = {};
+        links.forEach(link => {
+            nodeConnections[link.source] = (nodeConnections[link.source] || 0) + link.value;
+            nodeConnections[link.target] = (nodeConnections[link.target] || 0) + link.value;
+        });
+
+        const node = networkG.append('g')
             .selectAll('circle')
             .data(nodesArray.map(d => ({id: d})))
             .enter().append('circle')
-            .attr('r', 5)
-            .attr('fill', (d, i) => d3.schemeCategory10[i % 10]);
+            .attr('r', d => Math.max(5, Math.sqrt(nodeConnections[d.id] || 1) * 3))
+            .attr('fill', (d, i) => d3.schemeCategory10[i % 10])
+            .attr('stroke', '#fff')
+            .attr('stroke-width', 2);
 
-        // Add labels
-        const labels = svg.append('g')
+        // Add labels with background
+        const labels = networkG.append('g')
             .selectAll('text')
             .data(nodesArray.map(d => ({id: d})))
             .enter().append('text')
+            .attr('class', 'node-label')
             .text(d => d.id)
-            .attr('font-size', '10px')
-            .attr('dx', 8)
-            .attr('dy', 3)
-            .attr('fill', '#fff');
+            .attr('font-size', '12px')
+            .attr('dx', d => 8 + Math.sqrt(nodeConnections[d.id] || 1) * 3)
+            .attr('dy', 4)
+            .attr('fill', '#fff')
+            .style('text-shadow', '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000');
 
         // Update positions on simulation tick
         simulation.on('tick', () => {

@@ -179,12 +179,16 @@
                 </div>
 
                 <!-- Character Network -->
-                <div class="col-md-6">
+                <div class="col-12">
                     <div class="card">
                         <div class="card-body">
                             <h5 class="card-title">Character Interactions</h5>
                             <p class="card-subtitle mb-2 text-muted">Network of character co-appearances</p>
-                            <div id="characterNetwork" style="height: 400px;"></div>
+                            <div id="characterNetwork" style="height: 600px;"></div>
+                            <div class="text-center mt-2">
+                                <button class="btn btn-sm btn-secondary me-2" onclick="resetZoom()">Reset View</button>
+                                <button class="btn btn-sm btn-secondary" onclick="toggleLabels()">Toggle Labels</button>
+                            </div>
                         </div>
                     </div>
                 </div>
